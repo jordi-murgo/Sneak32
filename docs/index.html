@@ -112,9 +112,9 @@
         <div id="characteristicsContainer" style="display: none;">
             <h2>Settings</h2>
             <div class="characteristics-grid">
-                <label for="onlyProbeRequests">Only probe requests:</label>
-                <input type="checkbox" id="onlyProbeRequests">
-                <button id="writeOnlyProbeRequests">Update</button>
+                <label for="onlyManagementFrames">Only Mgmt Frames:</label>
+                <input type="checkbox" id="onlyManagementFrames">
+                <button id="writeOnlyManagementFrames">Update</button>
 
                 <label for="minimalRSSI">Minimal RSSI:</label>
                 <input type="number" id="minimalRSSI" min="-100" max="0">
@@ -146,14 +146,14 @@
             const copyButton = document.getElementById('copyButton');
             const jsonViewer = document.getElementById('jsonViewer');
 
-            let onlyProbeRequestsCharacteristic;
+            let onlyManagementFramesCharacteristic;
             let minimalRSSICharacteristic;
             let loopDelayCharacteristic;
             let notificationCharacteristic;
 
             const UART_SERVICE_UUID = "81af4cd7-e091-490a-99ee-caa99032ef4e";
             const UART_DATATRANSFER_UUID = 0xFFE2;
-            const ONLY_PROBE_REQUESTS_UUID = 0xFFE0;
+            const ONLY_MANAGEMENT_FRAMES_UUID = 0xFFE0;
             const MINIMAL_RSSI_UUID = 0xFFE1;
             const LOOP_DELAY_UUID = 0xFFE3;
 
@@ -174,7 +174,7 @@
                     const server = await device.gatt.connect();
 
                     const service = await server.getPrimaryService(UART_SERVICE_UUID);
-                    onlyProbeRequestsCharacteristic = await service.getCharacteristic(ONLY_PROBE_REQUESTS_UUID);
+                    onlyManagementFramesCharacteristic = await service.getCharacteristic(ONLY_MANAGEMENT_FRAMES_UUID);
                     minimalRSSICharacteristic = await service.getCharacteristic(MINIMAL_RSSI_UUID);
                     loopDelayCharacteristic = await service.getCharacteristic(LOOP_DELAY_UUID);
                     notificationCharacteristic = await service.getCharacteristic(UART_DATATRANSFER_UUID);
@@ -183,11 +183,11 @@
                     characteristicsContainer.style.display = 'block';
                     dataContainer.style.display = 'block';
 
-                    await readCharacteristicValue(onlyProbeRequestsCharacteristic, 'onlyProbeRequests');
+                    await readCharacteristicValue(onlyManagementFramesCharacteristic, 'onlyManagementFrames');
                     await readCharacteristicValue(minimalRSSICharacteristic, 'minimalRSSI');
                     await readCharacteristicValue(loopDelayCharacteristic, 'loopDelay');
 
-                    setupWriteEvent('writeOnlyProbeRequests', onlyProbeRequestsCharacteristic, 'onlyProbeRequests');
+                    setupWriteEvent('writeOnlyManagementFrames', onlyManagementFramesCharacteristic, 'onlyManagementFrames');
                     setupWriteEvent('writeMinimalRSSI', minimalRSSICharacteristic, 'minimalRSSI');
                     setupWriteEvent('writeLoopDelay', loopDelayCharacteristic, 'loopDelay');
 
@@ -203,7 +203,7 @@
             async function readCharacteristicValue(characteristic, elementId) {
                 const value = await characteristic.readValue();
                 const element = document.getElementById(elementId);
-                if (elementId === 'onlyProbeRequests') {
+                if (elementId === 'onlyManagementFrames') {
                     element.checked = new TextDecoder().decode(value).trim() === 'true';
                 } else {
                     element.value = new TextDecoder().decode(value);
@@ -213,7 +213,7 @@
             function setupWriteEvent(buttonId, characteristic, inputId) {
                 document.getElementById(buttonId).addEventListener('click', async () => {
                     const element = document.getElementById(inputId);
-                    const value = inputId === 'onlyProbeRequests' ? element.checked.toString() : element.value;
+                    const value = inputId === 'onlyManagementFrames' ? element.checked.toString() : element.value;
                     await characteristic.writeValue(new TextEncoder().encode(value));
                     statusElement.textContent = `Value updated for ${inputId}`;
                 });
