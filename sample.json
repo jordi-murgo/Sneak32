@@ -1,0 +1,420 @@
+{
+    "timestamp": 833,
+    "stations_count": 40,
+    "ssids_count": 24,
+    "free_heap": 116924,
+    "only_probe_requests": true,
+    "minimal_rssi": -80,
+    "stations": [
+      {
+        "mac": "10:33:BF:30:40:38",
+        "rssi": -68,
+        "channel": 1,
+        "last_seen": 833
+      },
+      {
+        "mac": "40:3F:8C:85:92:B6",
+        "rssi": -78,
+        "channel": 2,
+        "last_seen": 71
+      },
+      {
+        "mac": "E0:B6:68:26:5B:FB",
+        "rssi": -69,
+        "channel": 3,
+        "last_seen": 820
+      },
+      {
+        "mac": "CC:D4:A1:EF:7B:96",
+        "rssi": -74,
+        "channel": 6,
+        "last_seen": 809
+      },
+      {
+        "mac": "E8:43:68:68:F2:88",
+        "rssi": -78,
+        "channel": 7,
+        "last_seen": 824
+      },
+      {
+        "mac": "7C:77:16:CE:DF:C1",
+        "rssi": -77,
+        "channel": 8,
+        "last_seen": 641
+      },
+      {
+        "mac": "7C:A7:B0:2D:86:EE",
+        "rssi": -79,
+        "channel": 9,
+        "last_seen": 572
+      },
+      {
+        "mac": "C4:EB:42:B8:59:44",
+        "rssi": -36,
+        "channel": 11,
+        "last_seen": 829
+      },
+      {
+        "mac": "34:49:5B:8B:E8:7E",
+        "rssi": -46,
+        "channel": 11,
+        "last_seen": 833
+      },
+      {
+        "mac": "C0:B1:01:F3:D3:84",
+        "rssi": -74,
+        "channel": 1,
+        "last_seen": 832
+      },
+      {
+        "mac": "CC:ED:DC:1F:45:67",
+        "rssi": -76,
+        "channel": 6,
+        "last_seen": 823
+      },
+      {
+        "mac": "E4:75:DC:34:F7:E3",
+        "rssi": -76,
+        "channel": 11,
+        "last_seen": 828
+      },
+      {
+        "mac": "B0:2A:43:7D:EA:34",
+        "rssi": -76,
+        "channel": 7,
+        "last_seen": 63
+      },
+      {
+        "mac": "A2:90:27:00:31:8B",
+        "rssi": -80,
+        "channel": 6,
+        "last_seen": 104
+      },
+      {
+        "mac": "2C:93:FB:9A:01:65",
+        "rssi": -78,
+        "channel": 11,
+        "last_seen": 828
+      },
+      {
+        "mac": "66:02:63:33:17:2E",
+        "rssi": -76,
+        "channel": 1,
+        "last_seen": 141
+      },
+      {
+        "mac": "16:AE:82:37:DC:9D",
+        "rssi": -78,
+        "channel": 13,
+        "last_seen": 223
+      },
+      {
+        "mac": "86:C0:7F:C7:14:49",
+        "rssi": -78,
+        "channel": 2,
+        "last_seen": 226
+      },
+      {
+        "mac": "66:02:63:00:F3:D3",
+        "rssi": -76,
+        "channel": 6,
+        "last_seen": 301
+      },
+      {
+        "mac": "E8:D1:1B:A4:53:F0",
+        "rssi": -79,
+        "channel": 6,
+        "last_seen": 829
+      },
+      {
+        "mac": "D8:EB:46:94:1F:A6",
+        "rssi": -44,
+        "channel": 1,
+        "last_seen": 367
+      },
+      {
+        "mac": "EA:D1:6F:01:A9:88",
+        "rssi": -80,
+        "channel": 4,
+        "last_seen": 370
+      },
+      {
+        "mac": "3A:91:E6:51:0D:25",
+        "rssi": -79,
+        "channel": 8,
+        "last_seen": 374
+      },
+      {
+        "mac": "A2:41:3F:B6:9E:06",
+        "rssi": -79,
+        "channel": 8,
+        "last_seen": 374
+      },
+      {
+        "mac": "DE:4D:CF:A3:21:87",
+        "rssi": -80,
+        "channel": 8,
+        "last_seen": 374
+      },
+      {
+        "mac": "B2:2E:1E:3F:1E:0E",
+        "rssi": -80,
+        "channel": 8,
+        "last_seen": 374
+      },
+      {
+        "mac": "48:8D:36:4F:F1:B8",
+        "rssi": -79,
+        "channel": 1,
+        "last_seen": 677
+      },
+      {
+        "mac": "66:02:63:5F:C2:44",
+        "rssi": -69,
+        "channel": 7,
+        "last_seen": 709
+      },
+      {
+        "mac": "AC:3B:77:8D:B0:46",
+        "rssi": -80,
+        "channel": 6,
+        "last_seen": 795
+      },
+      {
+        "mac": "22:1E:BC:BC:15:08",
+        "rssi": -80,
+        "channel": 7,
+        "last_seen": 541
+      },
+      {
+        "mac": "DE:B2:EA:5A:90:00",
+        "rssi": -79,
+        "channel": 11,
+        "last_seen": 559
+      },
+      {
+        "mac": "C2:38:DA:76:D9:2B",
+        "rssi": -76,
+        "channel": 7,
+        "last_seen": 598
+      },
+      {
+        "mac": "4E:21:E8:A8:6B:93",
+        "rssi": -79,
+        "channel": 6,
+        "last_seen": 654
+      },
+      {
+        "mac": "5A:8C:D6:FA:4A:BA",
+        "rssi": -80,
+        "channel": 6,
+        "last_seen": 654
+      },
+      {
+        "mac": "EE:24:0A:C0:C7:4B",
+        "rssi": -80,
+        "channel": 6,
+        "last_seen": 654
+      },
+      {
+        "mac": "16:D1:8D:C2:23:8C",
+        "rssi": -78,
+        "channel": 6,
+        "last_seen": 682
+      },
+      {
+        "mac": "36:01:09:36:F4:07",
+        "rssi": -77,
+        "channel": 2,
+        "last_seen": 748
+      },
+      {
+        "mac": "3A:EC:5D:38:0D:D5",
+        "rssi": -80,
+        "channel": 1,
+        "last_seen": 775
+      },
+      {
+        "mac": "2E:B0:9F:BE:9A:4A",
+        "rssi": -74,
+        "channel": 4,
+        "last_seen": 821
+      },
+      {
+        "mac": "B8:2C:A0:2A:F0:D6",
+        "rssi": -80,
+        "channel": 8,
+        "last_seen": 825
+      }
+    ],
+    "ssids": [
+      {
+        "ssid": "vodafoneAAB93N",
+        "rssi": -68,
+        "channel": 1,
+        "type": "beacon",
+        "last_seen": 833
+      },
+      {
+        "ssid": "TP-Link_92B6",
+        "rssi": -78,
+        "channel": 2,
+        "type": "beacon",
+        "last_seen": 71
+      },
+      {
+        "ssid": "DIGIFIBRA-e7xA",
+        "rssi": -69,
+        "channel": 3,
+        "type": "beacon",
+        "last_seen": 820
+      },
+      {
+        "ssid": "MOVISTAR_7B95",
+        "rssi": -74,
+        "channel": 6,
+        "type": "beacon",
+        "last_seen": 809
+      },
+      {
+        "ssid": "DIGIFIBRA-2fTC",
+        "rssi": -78,
+        "channel": 7,
+        "type": "beacon",
+        "last_seen": 824
+      },
+      {
+        "ssid": "DIGIFIBRA-0852",
+        "rssi": -77,
+        "channel": 8,
+        "type": "beacon",
+        "last_seen": 641
+      },
+      {
+        "ssid": "Livebox6-5940",
+        "rssi": -36,
+        "channel": 11,
+        "type": "beacon",
+        "last_seen": 829
+      },
+      {
+        "ssid": "sagemcomE878",
+        "rssi": -46,
+        "channel": 11,
+        "type": "beacon",
+        "last_seen": 833
+      },
+      {
+        "ssid": "VIRGIN-telco_D384",
+        "rssi": -74,
+        "channel": 1,
+        "type": "beacon",
+        "last_seen": 832
+      },
+      {
+        "ssid": "MOVISTAR_4566",
+        "rssi": -76,
+        "channel": 6,
+        "type": "beacon",
+        "last_seen": 823
+      },
+      {
+        "ssid": "MiFibra-37F0",
+        "rssi": -76,
+        "channel": 11,
+        "type": "beacon",
+        "last_seen": 828
+      },
+      {
+        "ssid": "AndroidAPD7FF",
+        "rssi": -79,
+        "channel": 1,
+        "type": "probe",
+        "last_seen": 494
+      },
+      {
+        "ssid": "Especialistes_tic",
+        "rssi": -80,
+        "channel": 6,
+        "type": "probe",
+        "last_seen": 374
+      },
+      {
+        "ssid": "MiFibra-19B0",
+        "rssi": -78,
+        "channel": 11,
+        "type": "beacon",
+        "last_seen": 828
+      },
+      {
+        "ssid": "MOVISTAR_53EF",
+        "rssi": -79,
+        "channel": 6,
+        "type": "beacon",
+        "last_seen": 829
+      },
+      {
+        "ssid": "wifiTorre",
+        "rssi": -79,
+        "channel": 8,
+        "type": "probe",
+        "last_seen": 654
+      },
+      {
+        "ssid": "OPPO DAVID",
+        "rssi": -80,
+        "channel": 8,
+        "type": "probe",
+        "last_seen": 654
+      },
+      {
+        "ssid": "MiFibra-F1B6",
+        "rssi": -79,
+        "channel": 1,
+        "type": "beacon",
+        "last_seen": 677
+      },
+      {
+        "ssid": "usk1jf",
+        "rssi": -69,
+        "channel": 7,
+        "type": "probe",
+        "last_seen": 509
+      },
+      {
+        "ssid": "....v..",
+        "rssi": -69,
+        "channel": 7,
+        "type": "probe",
+        "last_seen": 709
+      },
+      {
+        "ssid": "eydu",
+        "rssi": -69,
+        "channel": 7,
+        "type": "probe",
+        "last_seen": 709
+      },
+      {
+        "ssid": "gsihsjh1hbdh",
+        "rssi": -69,
+        "channel": 7,
+        "type": "probe",
+        "last_seen": 709
+      },
+      {
+        "ssid": "vodafoneB040",
+        "rssi": -80,
+        "channel": 6,
+        "type": "beacon",
+        "last_seen": 795
+      },
+      {
+        "ssid": "WiFi WSD",
+        "rssi": -80,
+        "channel": 6,
+        "type": "probe",
+        "last_seen": 654
+      }
+    ]
+  }
