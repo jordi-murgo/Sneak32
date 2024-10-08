@@ -545,13 +545,14 @@ void sendJsonOverBLE(const String &jsonData)
     String startMarker = PACKET_START_MARKER + String(packetsHeader);
     pTxCharacteristic->setValue(startMarker.c_str());
     pTxCharacteristic->notify();
+    Serial.println("Sent " + startMarker);
     delay(PACKET_DELAY);
 
     while (sentLength < totalLength)
     {
       size_t chunkSize = min((size_t)BLE_MTU_SIZE - 4, totalLength - sentLength); // 4 bytes for packet number
       String chunk = jsonData.substring(sentLength, sentLength + chunkSize);
-
+      
       // Prepend packet number to chunk
       char packetHeader[5];
       snprintf(packetHeader, sizeof(packetHeader), "%04X", packetNumber);
@@ -559,6 +560,7 @@ void sendJsonOverBLE(const String &jsonData)
 
       pTxCharacteristic->setValue(packetData.c_str());
       pTxCharacteristic->notify();
+      Serial.println("Sent " + packetData);
 
       sentLength += chunkSize;
       packetNumber++;
@@ -569,6 +571,8 @@ void sendJsonOverBLE(const String &jsonData)
     // Send end marker
     pTxCharacteristic->setValue(PACKET_END_MARKER);
     pTxCharacteristic->notify();
+    Serial.printf("Sent %s\n", PACKET_END_MARKER);
+
     delay(PACKET_DELAY);
 
     Serial.println("BLE data transmission completed");
