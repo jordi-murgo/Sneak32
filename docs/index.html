@@ -31,40 +31,54 @@
             background-color: #3498db;
             color: #fff;
             border: none;
-            padding: 10px 15px;
+            padding: 0 15px;  
             border-radius: 3px;
             cursor: pointer;
             transition: background-color 0.3s;
+            height: 32px;
+            line-height: 32px; 
         }
 
         button:hover {
             background-color: #2980b9;
         }
 
-        .characteristic-row {
-            display: flex;
+        .characteristics-grid {
+            display: grid;
+            grid-template-columns: 150px 100px 80px;
+            gap: 10px;
             align-items: center;
-            margin-bottom: 10px;
         }
 
-        .characteristic-row label {
-            flex: 0 0 150px;
-            margin-right: 10px;
+        .characteristics-grid label {
+            grid-column: 1;
         }
 
-        .characteristic-row input {
-            flex: 0 0 100px;
+        .characteristics-grid input[type="number"],
+        .characteristics-grid input[type="checkbox"] {
+            grid-column: 2;
+            width: 100%;
             padding: 5px;
             border: 1px solid #ddd;
             border-radius: 3px;
-            margin-right: 10px;
+            height: 32px;
+            box-sizing: border-box;
         }
 
-        .characteristic-row button {
-            flex: 0 0 auto;
+        .characteristics-grid input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            justify-self: start;
+        }
+
+        .characteristics-grid button {
+            grid-column: 3;
+            width: 100%;
+            height: 32px;
         }
 
         #jsonViewer {
+            clear: both;
             white-space: pre-wrap;
             background-color: #f8f8f8;
             border: 1px solid #ddd;
@@ -74,16 +88,18 @@
             max-height: 400px;
             overflow-y: auto;
         }
-
-        #copyButton {
-            margin-top: 10px;
-        }
-
+        
         .json-key { color: #881391; }
         .json-string { color: #1A1AA6; }
         .json-number { color: #1E90FF; }
         .json-boolean { color: #228B22; }
         .json-null { color: #808080; }
+
+        .button-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 
@@ -95,27 +111,27 @@
 
         <div id="characteristicsContainer" style="display: none;">
             <h2>Settings</h2>
-            <div class="characteristic-row">
+            <div class="characteristics-grid">
                 <label for="onlyProbeRequests">Only probe requests:</label>
                 <input type="checkbox" id="onlyProbeRequests">
                 <button id="writeOnlyProbeRequests">Update</button>
-            </div>
-            <div class="characteristic-row">
+
                 <label for="minimalRSSI">Minimal RSSI:</label>
                 <input type="number" id="minimalRSSI" min="-100" max="0">
                 <button id="writeMinimalRSSI">Update</button>
-            </div>
-            <div class="characteristic-row">
+
                 <label for="loopDelay">Loop Delay (ms):</label>
                 <input type="number" id="loopDelay" min="100" max="10000" step="100">
                 <button id="writeLoopDelay">Update</button>
             </div>
-            <button id="getDataButton">Get Data</button>
         </div>
 
         <div id="dataContainer" style="display: none;">
             <h2>Captured Data</h2>
-            <button id="copyButton">Copy to Clipboard</button>
+            <div class="button-container">
+                <button id="getDataButton">Get Data</button>
+                <button id="copyButton">Copy to Clipboard</button>
+            </div>
             <div id="jsonViewer"></div>
         </div>
     </div>
@@ -221,16 +237,24 @@
 
             function handleNotification(event) {
                 const value = new TextDecoder().decode(event.target.value);
-                
-                if (value.trim() === "START") {
+                console.log(value);
+
+                if (value.trim().startsWith("START:")) {
                     isCollectingNotifications = true;
                     notificationBuffer = '';
+                    statusElement.textContent = "Collecting data, " + value.substring(5) + " packets";
+                    console.log("Collecting START");
                 } else if (value.trim() === "END") {
                     isCollectingNotifications = false;
                     showData(notificationBuffer);
                     notificationBuffer = '';
+                    statusElement.textContent = "Data collection finished.";
+                    console.log("Collecting END");
                 } else if (isCollectingNotifications) {
-                    notificationBuffer += value;
+                    var pktNum = value.substring(0, 4);
+                    notificationBuffer += value.substring(4);
+                    statusElement.textContent = "Collected packet " + pktNum;
+                    console.log("Collected packet " + pktNum);
                 }
             }
 

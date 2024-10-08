@@ -44,7 +44,6 @@
 #include <string>
 #include <Preferences.h>
 
-
 #ifdef ENABLE_LED
 #include <Adafruit_NeoPixel.h>
 #endif
@@ -54,11 +53,13 @@
 #define LED_PIN 2
 #define BLE_PACKET_SIZE 100
 #define SSID_MAX_LEN 33
+#define BLE_MTU_SIZE 500 // Adjust this based on your BLE MTU size
+#define PACKET_DELAY 100 // Delay between packets in milliseconds
 
 // Our own Uart Service UUID
 #define UART_SERVICE_UUID "81af4cd7-e091-490a-99ee-caa99032ef4e"
 #define UART_DATATRANSFER_UUID 0xFFE2
-#define ONLY_PROBE_REQUESTS_UUID 0xFFE0
+#define ONLY_MANAGEMENT_FRAMES_UUID 0xFFE0
 #define MINIMAL_RSSI_UUID 0xFFE1
 #define LOOP_DELAY_UUID 0xFFE3
 
@@ -95,11 +96,11 @@ BLEService *pDeviceInfoService = nullptr;
 BLECharacteristic *pManufacturerNameCharacteristic = nullptr;
 BLECharacteristic *pModelNumberCharacteristic = nullptr;
 BLECharacteristic *pTxCharacteristic = nullptr;
-BLECharacteristic *pOnlyProbeRequestsCharacteristic = nullptr;
+BLECharacteristic *pOnlyManagementFramesCharacteristic = nullptr;
 BLECharacteristic *pMinimalRSSICharacteristic = nullptr;
 int currentChannel = 1;
 bool deviceConnected = false;
-bool only_probe_requests_stations = 0;
+bool only_management_frames = false;
 int minimal_rssi = -50;
 uint32_t loop_delay = 2000; // Default 2000ms
 char device_name[32];
@@ -107,13 +108,12 @@ char device_name[32];
 portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 
 // Constants for packet markers
-const char *PACKET_START_MARKER = "\nSTART\n";
-const char *PACKET_END_MARKER = "\nEND\n";
+const char *PACKET_START_MARKER = "START:";
+const char *PACKET_END_MARKER = "END";
 
 static void process_management_frame(const uint8_t *payload, int payload_len, uint8_t subtype, int8_t rssi, uint8_t channel);
 static void process_control_frame(const uint8_t *payload, int payload_len, uint8_t subtype, int8_t rssi, uint8_t channel);
 static void process_data_frame(const uint8_t *payload, int payload_len, uint8_t subtype, int8_t rssi, uint8_t channel);
-
 
 #ifdef ENABLE_LED
 #ifndef PIN_NEOPIXEL
@@ -159,7 +159,7 @@ String generateJsonString()
     jsonString += "\"stations_count\":" + String(stationsList.size()) + ",";
     jsonString += "\"ssids_count\":" + String(ssidList.size()) + ",";
     jsonString += "\"free_heap\":" + String(ESP.getFreeHeap()) + ",";
-    jsonString += "\"only_probe_requests\":" + (String)(only_probe_requests_stations ? "true" : "false") + ",";
+    jsonString += "\"only_management_frames\":" + (String)(only_management_frames ? "true" : "false") + ",";
     jsonString += "\"minimal_rssi\":" + String(minimal_rssi) + ",";
 
     // Add stations array
@@ -316,12 +316,16 @@ static void promiscuous_rx_cb(void *buf, wifi_promiscuous_pkt_type_t type)
       process_management_frame(payload, payload_len, frame_subtype, rssi, channel);
       break;
     case 1: // Control frame
-      if (only_probe_requests_stations == 0)
+      if (!only_management_frames)
+      {
         process_control_frame(payload, payload_len, frame_subtype, rssi, channel);
+      }
       break;
     case 2: // Data frame
-      if (only_probe_requests_stations == 0)
+      if (!only_management_frames)
+      {
         process_data_frame(payload, payload_len, frame_subtype, rssi, channel);
+      }
       break;
     default:
       break;
@@ -504,17 +508,17 @@ class MyServerCallbacks : public BLEServerCallbacks
   void onConnect(BLEServer *pServer)
   {
     deviceConnected = true;
-    #ifdef ENABLE_LED
+#ifdef ENABLE_LED
     setPixelColor(COLOR_BLUE); // Blue when a device connects
-    #endif
+#endif
   };
 
   void onDisconnect(BLEServer *pServer)
   {
     deviceConnected = false;
-    #ifdef ENABLE_LED
+#ifdef ENABLE_LED
     setPixelColor(COLOR_OFF); // Back to off when disconnected
-    #endif
+#endif
     // Restart advertising
     pServer->getAdvertising()->start();
   }
@@ -525,31 +529,52 @@ void sendJsonOverBLE(const String &jsonData)
   if (deviceConnected)
   {
     Serial.println("Starting BLE data transmission...");
-    #ifdef ENABLE_LED
+#ifdef ENABLE_LED
     setPixelColor(COLOR_BLUE); // Blue during transmission
-    #endif
-    // Send start marker
-    pTxCharacteristic->setValue(PACKET_START_MARKER);
-    pTxCharacteristic->notify();
-    delay(100);
+#endif
 
     // Send JSON in chunks
-    for (size_t i = 0; i < jsonData.length(); i += 200)
+    size_t totalLength = jsonData.length();
+    size_t sentLength = 0;
+    uint16_t packetNumber = 0;
+    uint16_t numPackets = (totalLength / (BLE_MTU_SIZE - 4)) + 1;
+
+    // Send start marker
+    char packetsHeader[5];
+    snprintf(packetsHeader, sizeof(packetsHeader), "%04X", numPackets);
+    String startMarker = PACKET_START_MARKER + String(packetsHeader);
+    pTxCharacteristic->setValue(startMarker.c_str());
+    pTxCharacteristic->notify();
+    delay(PACKET_DELAY);
+
+    while (sentLength < totalLength)
     {
-      String chunk = jsonData.substring(i, min(i + 200, jsonData.length()));
-      pTxCharacteristic->setValue(chunk.c_str());
+      size_t chunkSize = min((size_t)BLE_MTU_SIZE - 4, totalLength - sentLength); // 4 bytes for packet number
+      String chunk = jsonData.substring(sentLength, sentLength + chunkSize);
+
+      // Prepend packet number to chunk
+      char packetHeader[5];
+      snprintf(packetHeader, sizeof(packetHeader), "%04X", packetNumber);
+      String packetData = String(packetHeader) + chunk;
+
+      pTxCharacteristic->setValue(packetData.c_str());
       pTxCharacteristic->notify();
-      delay(100);
+
+      sentLength += chunkSize;
+      packetNumber++;
+
+      delay(PACKET_DELAY); // Add delay between packets
     }
 
     // Send end marker
     pTxCharacteristic->setValue(PACKET_END_MARKER);
     pTxCharacteristic->notify();
+    delay(PACKET_DELAY);
 
     Serial.println("BLE data transmission completed");
-    #ifdef ENABLE_LED
+#ifdef ENABLE_LED
     setPixelColor(COLOR_OFF); // Back to off after sending
-    #endif
+#endif
   }
   else
   {
@@ -565,11 +590,11 @@ BLECharacteristic *pRxCharacteristic = nullptr;
 void loadPreferences()
 {
   preferences.begin("wifi_monitor", false);
-  only_probe_requests_stations = preferences.getBool("only_probe", false);
+  only_management_frames = preferences.getBool("only_mgmt", false);
   minimal_rssi = preferences.getInt("min_rssi", -50);
   loop_delay = preferences.getUInt("loop_delay", 2000);
   preferences.end();
-  Serial.printf("loadPreferences > Only Probe Requests set to: %s\n", only_probe_requests_stations ? "true" : "false");
+  Serial.printf("loadPreferences > Only Management Frames set to: %s\n", only_management_frames ? "true" : "false");
   Serial.printf("loadPreferences > Minimal RSSI set to: %d\n", minimal_rssi);
   Serial.printf("loadPreferences > Loop delay set to: %u ms\n", loop_delay);
 }
@@ -577,7 +602,7 @@ void loadPreferences()
 void savePreferences()
 {
   preferences.begin("wifi_monitor", false);
-  preferences.putBool("only_probe", only_probe_requests_stations);
+  preferences.putBool("only_mgmt", only_management_frames);
   preferences.putInt("min_rssi", minimal_rssi);
   preferences.putUInt("loop_delay", loop_delay);
   preferences.end();
@@ -589,15 +614,15 @@ class SendDataOverBLECallbacks : public BLECharacteristicCallbacks
   {
     std::string value = pCharacteristic->getValue();
     Serial.printf("Received '%s' over BLE\n", value.c_str());
-      // Generate JSON and send via BLE
-      String jsonData = generateJsonString();
-      Serial.println("Generated JSON:");
-      Serial.println(jsonData);
-      sendJsonOverBLE(jsonData);
+    // Generate JSON and send via BLE
+    String jsonData = generateJsonString();
+    Serial.println("Generated JSON:");
+    Serial.println(jsonData);
+    sendJsonOverBLE(jsonData);
   }
 };
 
-class OnlyProbeRequestsCallbacks : public BLECharacteristicCallbacks
+class OnlyManagementFramesCallbacks : public BLECharacteristicCallbacks
 {
   void onWrite(BLECharacteristic *pCharacteristic)
   {
@@ -605,16 +630,17 @@ class OnlyProbeRequestsCallbacks : public BLECharacteristicCallbacks
     if (value.length() > 0)
     {
       bool new_value = false;
-      if (value == "true" || value == "1") {
+      if (value == "true" || value == "1")
+      {
         new_value = true;
       }
 
       // Use a critical section to update the shared variable
       portENTER_CRITICAL(&mux);
-      only_probe_requests_stations = new_value;
+      only_management_frames = new_value;
       portEXIT_CRITICAL(&mux);
 
-      Serial.printf("Only Probe Requests set to: %s\n", only_probe_requests_stations ? "true" : "false");
+      Serial.printf("Only Management Frames set to: %s\n", only_management_frames ? "true" : "false");
       savePreferences();
     }
   }
@@ -623,7 +649,7 @@ class OnlyProbeRequestsCallbacks : public BLECharacteristicCallbacks
   {
     // Use a critical section to read the shared variable
     portENTER_CRITICAL(&mux);
-    bool current_value = only_probe_requests_stations;
+    bool current_value = only_management_frames;
     portEXIT_CRITICAL(&mux);
 
     pCharacteristic->setValue(current_value ? "true" : "false");
@@ -703,11 +729,11 @@ void setupBLE()
   pTxCharacteristic->setCallbacks(new SendDataOverBLECallbacks());
   pTxCharacteristic->addDescriptor(new BLE2902());
 
-  pOnlyProbeRequestsCharacteristic = pNusService->createCharacteristic(
-      BLEUUID((uint16_t)ONLY_PROBE_REQUESTS_UUID),
+  pOnlyManagementFramesCharacteristic = pNusService->createCharacteristic(
+      BLEUUID((uint16_t)ONLY_MANAGEMENT_FRAMES_UUID),
       BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
-  pOnlyProbeRequestsCharacteristic->setCallbacks(new OnlyProbeRequestsCallbacks());
-  pOnlyProbeRequestsCharacteristic->addDescriptor(new BLE2902());
+  pOnlyManagementFramesCharacteristic->setCallbacks(new OnlyManagementFramesCallbacks());
+  pOnlyManagementFramesCharacteristic->addDescriptor(new BLE2902());
 
   pMinimalRSSICharacteristic = pNusService->createCharacteristic(
       BLEUUID((uint16_t)MINIMAL_RSSI_UUID),
@@ -723,8 +749,8 @@ void setupBLE()
   pLoopDelayCharacteristic->addDescriptor(new BLE2902());
 
   // Initialize the characteristics with the loaded values
-  std::string only_probe_str = std::to_string(only_probe_requests_stations);
-  pOnlyProbeRequestsCharacteristic->setValue(only_probe_str);
+  std::string only_mgmt_str = std::to_string(only_management_frames);
+  pOnlyManagementFramesCharacteristic->setValue(only_mgmt_str);
   std::string rssi_str = std::to_string(minimal_rssi);
   pMinimalRSSICharacteristic->setValue(rssi_str);
   std::string loop_delay_str = std::to_string(loop_delay);
@@ -747,7 +773,6 @@ void setupBLE()
   Serial.println("BLE Advertising started with UART Service");
 }
 
-
 void setup()
 {
   delay(1000); // Wait 1 second before starting
@@ -764,12 +789,12 @@ void setup()
   Serial.println("Loading preferences");
   loadPreferences();
 
-  #ifdef ENABLE_LED
+#ifdef ENABLE_LED
   pinMode(LED_PIN, OUTPUT);
   // Initialize NeoPixel
   pixels.begin();
   setPixelColor(COLOR_GREEN);
-  #endif
+#endif
 
   // Create the mutex
   Serial.println("Creating the mutex");
@@ -786,10 +811,7 @@ void setup()
   esp_wifi_set_promiscuous_rx_cb(promiscuous_rx_cb);
   esp_wifi_set_channel(currentChannel, WIFI_SECOND_CHAN_NONE);
   // Set promiscuous mode with specific filter for management frames
-  wifi_promiscuous_filter_t filter = {
-      .filter_mask = WIFI_PROMIS_FILTER_MASK_MGMT |
-                     WIFI_PROMIS_FILTER_MASK_DATA |
-                     WIFI_PROMIS_FILTER_MASK_CTRL};
+  wifi_promiscuous_filter_t filter = {only_management_frames ? WIFI_PROMIS_FILTER_MASK_MGMT : WIFI_PROMIS_FILTER_MASK_MGMT | WIFI_PROMIS_FILTER_MASK_DATA | WIFI_PROMIS_FILTER_MASK_CTRL};
   esp_wifi_set_promiscuous_filter(&filter);
   esp_wifi_set_promiscuous(true);
 
@@ -797,9 +819,9 @@ void setup()
 
   setupBLE();
 
-  #ifdef ENABLE_LED
+#ifdef ENABLE_LED
   setPixelColor(COLOR_OFF);
-  #endif
+#endif
 }
 
 void loop()
@@ -809,14 +831,14 @@ void loop()
 
   // Use a critical section when accessing shared variables
   portENTER_CRITICAL(&mux);
-  bool current_only_probe_requests = only_probe_requests_stations;
+  bool current_only_management_frames = only_management_frames;
   int current_minimal_rssi = minimal_rssi;
   uint32_t current_loop_delay = loop_delay;
   portEXIT_CRITICAL(&mux);
 
-  Serial.printf("WiFi channel: %d, Stations: %zu, SSIDs: %zu, Free Heap: %d, Minimal RSSI: %d, Only Probe Requests: %s, Loop Delay: %u ms\n",
-                currentChannel, stationsList.size(), ssidList.size(), ESP.getFreeHeap(), 
-                current_minimal_rssi, current_only_probe_requests ? "true" : "false", current_loop_delay);
+  Serial.printf("WiFi channel: %d, Stations: %zu, SSIDs: %zu, Free Heap: %d, Minimal RSSI: %d, Only Management Frames: %s, Loop Delay: %u ms\n",
+                currentChannel, stationsList.size(), ssidList.size(), ESP.getFreeHeap(),
+                current_minimal_rssi, current_only_management_frames ? "true" : "false", current_loop_delay);
 
   // Print SSID list every 30 seconds
   unsigned long currentTime = millis();
