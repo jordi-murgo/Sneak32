@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BLE WiFi Scanner</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        h1, h2 {
+            color: #2c3e50;
+        }
+
+        button {
+            background-color: #3498db;
+            color: #fff;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        .characteristic-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .characteristic-row label {
+            flex: 0 0 150px;
+            margin-right: 10px;
+        }
+
+        .characteristic-row input {
+            flex: 0 0 100px;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            margin-right: 10px;
+        }
+
+        .characteristic-row button {
+            flex: 0 0 auto;
+        }
+
+        #jsonViewer {
+            white-space: pre-wrap;
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 3px;
+            font-family: monospace;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        #copyButton {
+            margin-top: 10px;
+        }
+
+        .json-key { color: #881391; }
+        .json-string { color: #1A1AA6; }
+        .json-number { color: #1E90FF; }
+        .json-boolean { color: #228B22; }
+        .json-null { color: #808080; }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>BLE WiFi Scanner</h1>
+        <button id="connectButton">Connect to BLE Device</button>
+        <p id="status"></p>
+
+        <div id="characteristicsContainer" style="display: none;">
+            <h2>Settings</h2>
+            <div class="characteristic-row">
+                <label for="onlyProbeRequests">Only probe requests:</label>
+                <input type="checkbox" id="onlyProbeRequests">
+                <button id="writeOnlyProbeRequests">Update</button>
+            </div>
+            <div class="characteristic-row">
+                <label for="minimalRSSI">Minimal RSSI:</label>
+                <input type="number" id="minimalRSSI" min="-100" max="0">
+                <button id="writeMinimalRSSI">Update</button>
+            </div>
+            <div class="characteristic-row">
+                <label for="loopDelay">Loop Delay (ms):</label>
+                <input type="number" id="loopDelay" min="100" max="10000" step="100">
+                <button id="writeLoopDelay">Update</button>
+            </div>
+            <button id="getDataButton">Get Data</button>
+        </div>
+
+        <div id="dataContainer" style="display: none;">
+            <h2>Captured Data</h2>
+            <button id="copyButton">Copy to Clipboard</button>
+            <div id="jsonViewer"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const connectButton = document.getElementById('connectButton');
+            const statusElement = document.getElementById('status');
+            const characteristicsContainer = document.getElementById('characteristicsContainer');
+            const dataContainer = document.getElementById('dataContainer');
+            const getDataButton = document.getElementById('getDataButton');
+            const copyButton = document.getElementById('copyButton');
+            const jsonViewer = document.getElementById('jsonViewer');
+
+            let onlyProbeRequestsCharacteristic;
+            let minimalRSSICharacteristic;
+            let loopDelayCharacteristic;
+            let notificationCharacteristic;
+
+            const UART_SERVICE_UUID = "81af4cd7-e091-490a-99ee-caa99032ef4e";
+            const UART_DATATRANSFER_UUID = 0xFFE2;
+            const ONLY_PROBE_REQUESTS_UUID = 0xFFE0;
+            const MINIMAL_RSSI_UUID = 0xFFE1;
+            const LOOP_DELAY_UUID = 0xFFE3;
+
+            connectButton.addEventListener('click', connectToBLEDevice);
+            getDataButton.addEventListener('click', getData);
+            copyButton.addEventListener('click', copyToClipboard);
+
+            async function connectToBLEDevice() {
+                try {
+                    statusElement.textContent = 'Searching for BLE devices...';
+
+                    const device = await navigator.bluetooth.requestDevice({
+                        filters: [{ services: [UART_SERVICE_UUID] }],
+                        optionalServices: [0xFFE0, 0xFFE1, 0xFFE2, 0xFFE3]
+                    });
+
+                    statusElement.textContent = 'Connecting...';
+                    const server = await device.gatt.connect();
+
+                    const service = await server.getPrimaryService(UART_SERVICE_UUID);
+                    onlyProbeRequestsCharacteristic = await service.getCharacteristic(ONLY_PROBE_REQUESTS_UUID);
+                    minimalRSSICharacteristic = await service.getCharacteristic(MINIMAL_RSSI_UUID);
+                    loopDelayCharacteristic = await service.getCharacteristic(LOOP_DELAY_UUID);
+                    notificationCharacteristic = await service.getCharacteristic(UART_DATATRANSFER_UUID);
+
+                    statusElement.textContent = `Connected to ${device.name}`;
+                    characteristicsContainer.style.display = 'block';
+                    dataContainer.style.display = 'block';
+
+                    await readCharacteristicValue(onlyProbeRequestsCharacteristic, 'onlyProbeRequests');
+                    await readCharacteristicValue(minimalRSSICharacteristic, 'minimalRSSI');
+                    await readCharacteristicValue(loopDelayCharacteristic, 'loopDelay');
+
+                    setupWriteEvent('writeOnlyProbeRequests', onlyProbeRequestsCharacteristic, 'onlyProbeRequests');
+                    setupWriteEvent('writeMinimalRSSI', minimalRSSICharacteristic, 'minimalRSSI');
+                    setupWriteEvent('writeLoopDelay', loopDelayCharacteristic, 'loopDelay');
+
+                    await notificationCharacteristic.startNotifications();
+                    notificationCharacteristic.addEventListener('characteristicvaluechanged', handleNotification);
+
+                } catch (error) {
+                    console.error('Error:', error);
+                    statusElement.textContent = `Error: ${error.message}`;
+                }
+            }
+
+            async function readCharacteristicValue(characteristic, elementId) {
+                const value = await characteristic.readValue();
+                const element = document.getElementById(elementId);
+                if (elementId === 'onlyProbeRequests') {
+                    element.checked = new TextDecoder().decode(value).trim() === 'true';
+                } else {
+                    element.value = new TextDecoder().decode(value);
+                }
+            }
+
+            function setupWriteEvent(buttonId, characteristic, inputId) {
+                document.getElementById(buttonId).addEventListener('click', async () => {
+                    const element = document.getElementById(inputId);
+                    const value = inputId === 'onlyProbeRequests' ? element.checked.toString() : element.value;
+                    await characteristic.writeValue(new TextEncoder().encode(value));
+                    statusElement.textContent = `Value updated for ${inputId}`;
+                });
+            }
+
+            async function getData() {
+                try {
+                    // Limpiar el visor JSON
+                    jsonViewer.innerHTML = '';
+                    
+                    await notificationCharacteristic.writeValue(new TextEncoder().encode("get"));
+                    statusElement.textContent = "Data request sent";
+                } catch (error) {
+                    console.error('Error sending data request:', error);
+                    statusElement.textContent = `Error: ${error.message}`;
+                }
+            }
+
+            let notificationBuffer = '';
+            let isCollectingNotifications = false;
+
+            function handleNotification(event) {
+                const value = new TextDecoder().decode(event.target.value);
+                
+                if (value.trim() === "START") {
+                    isCollectingNotifications = true;
+                    notificationBuffer = '';
+                } else if (value.trim() === "END") {
+                    isCollectingNotifications = false;
+                    showData(notificationBuffer);
+                    notificationBuffer = '';
+                } else if (isCollectingNotifications) {
+                    notificationBuffer += value;
+                }
+            }
+
+            function showData(message) {
+                try {
+                    const jsonObject = JSON.parse(message);
+                    const formattedJson = JSON.stringify(jsonObject, null, 2);
+                    jsonViewer.innerHTML = syntaxHighlight(formattedJson);
+                    jsonViewer.scrollTop = jsonViewer.scrollHeight;
+                } catch (error) {
+                    console.error('Error parsing JSON:', error);
+                    jsonViewer.textContent = message;
+                }
+            }
+
+            function syntaxHighlight(json) {
+                return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                    let cls = 'json-number';
+                    if (/^"/.test(match)) {
+                        if (/:$/.test(match)) {
+                            cls = 'json-key';
+                        } else {
+                            cls = 'json-string';
+                        }
+                    } else if (/true|false/.test(match)) {
+                        cls = 'json-boolean';
+                    } else if (/null/.test(match)) {
+                        cls = 'json-null';
+                    }
+                    return '<span class="' + cls + '">' + match + '</span>';
+                });
+            }
+
+            function copyToClipboard() {
+                const textToCopy = jsonViewer.textContent;
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    const originalText = copyButton.textContent;
+                    copyButton.textContent = 'Copied!';
+                    setTimeout(() => {
+                        copyButton.textContent = originalText;
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Failed to copy text: ', err);
+                    alert('Failed to copy text. Please try again.');
+                });
+            }
+        });
+    </script>
+</body>
+
+</html>
