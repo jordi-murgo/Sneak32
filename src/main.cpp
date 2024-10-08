@@ -811,7 +811,7 @@ void setup()
   esp_wifi_set_promiscuous_rx_cb(promiscuous_rx_cb);
   esp_wifi_set_channel(currentChannel, WIFI_SECOND_CHAN_NONE);
   // Set promiscuous mode with specific filter for management frames
-  wifi_promiscuous_filter_t filter = {only_management_frames ? WIFI_PROMIS_FILTER_MASK_MGMT : WIFI_PROMIS_FILTER_MASK_MGMT | WIFI_PROMIS_FILTER_MASK_DATA | WIFI_PROMIS_FILTER_MASK_CTRL};
+  wifi_promiscuous_filter_t filter = { .filter_mask = only_management_frames ? WIFI_PROMIS_FILTER_MASK_MGMT : WIFI_PROMIS_FILTER_MASK_MGMT | WIFI_PROMIS_FILTER_MASK_DATA | WIFI_PROMIS_FILTER_MASK_CTRL};
   esp_wifi_set_promiscuous_filter(&filter);
   esp_wifi_set_promiscuous(true);
 
