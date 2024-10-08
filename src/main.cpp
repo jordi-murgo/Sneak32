@@ -70,7 +70,7 @@
 
 #define DEVICE_NAME "Redmi Watch 3.14C"
 #define DEVICE_APPEARANCE 0x03C0 // SmartWatch
-#define DEVICE_MANUFACTURER "Xiaomi"
+#define DEVICE_MANUFACTURER "Espressif"
 
 // Nuevas constantes y variables globales
 #define MAX_PACKET_SIZE (BLE_MTU_SIZE - 4) // 4 bytes para el número de paquete
@@ -156,6 +156,26 @@ unsigned long lastPrintTime = 0;
 const unsigned long printInterval = 30000; // 30 seconds in milliseconds
 
 Preferences preferences;
+
+String getChipInfo() {
+    esp_chip_info_t chip_info;
+    esp_chip_info(&chip_info);
+    
+    const char* chip_model;
+    switch (chip_info.model) {
+        case CHIP_ESP32:  chip_model = "ESP32"; break;
+        case CHIP_ESP32S2: chip_model = "ESP32-S2"; break;
+        case CHIP_ESP32S3: chip_model = "ESP32-S3"; break;
+        case CHIP_ESP32C3: chip_model = "ESP32-C3"; break;
+        case CHIP_ESP32H2: chip_model = "ESP32-H2"; break;
+        default: chip_model = "Unknown";
+    }
+    
+    char buffer[50];
+    snprintf(buffer, sizeof(buffer), "%s (Cores: %d, Rev: %d)", 
+             chip_model, chip_info.cores, chip_info.revision);
+    return String(buffer);
+}
 
 String generateJsonString()
 {
@@ -572,7 +592,7 @@ void sendPacket(uint16_t packetNumber)
     {
       // Limpiar el buffer de datos preparados
       preparedJsonData.clear();
-      
+
       // Enviar marcador de fin después del último paquete
       delay(PACKET_DELAY);
       pTxCharacteristic->setValue(PACKET_END_MARKER);
@@ -707,6 +727,9 @@ void setupBLE()
   // Initialize BLE
   BLEDevice::init(device_name);
 
+  // Reduce BLE transmit power
+  esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT, ESP_PWR_LVL_N12);
+  
   // Create the BLE Server
   pServer = BLEDevice::createServer();
   pServer->setCallbacks(new MyServerCallbacks());
@@ -723,7 +746,7 @@ void setupBLE()
   pModelNumberCharacteristic = pDeviceInfoService->createCharacteristic(
       BLEUUID((uint16_t)0x2A24),
       BLECharacteristic::PROPERTY_READ);
-  pModelNumberCharacteristic->setValue(device_name);
+  pModelNumberCharacteristic->setValue(getChipInfo().c_str());
 
   // Create the UART Service
   pNusService = pServer->createService(UART_SERVICE_UUID);
@@ -784,13 +807,13 @@ void setup()
   delay(1000); // Wait 1 second before starting
 
   Serial.begin(115200);
-  Serial.println("Starting setup...");
+  Serial.println("Device Model: " + getChipInfo());
 
   // Get my BT MAC Address
   uint8_t mac[6];
   esp_read_mac(mac, ESP_MAC_BT);
   snprintf(device_name, sizeof(device_name), "%s (%02X%02X)", DEVICE_NAME, mac[4], mac[5]);
-  Serial.println("Device name: " + String(device_name));
+  Serial.println("Device Name : " + String(device_name));
 
   Serial.println("Loading preferences");
   loadPreferences();

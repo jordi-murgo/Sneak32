@@ -115,14 +115,49 @@
             border-radius: 5px;
             transition: width 0.5s ease-in-out;
         }
+
+        #deviceInfo {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+
+        h1 {
+            font-size: 1.8em; /* Reducir el tamaño de la fuente del título */
+            margin-bottom: 5px; /* Reducir el espacio debajo del título */
+        }
+
+        #logContainer {
+            height: 100px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 5px;
+            margin-top: 10px;
+            background-color: #f8f8f8;
+        }
+
+        #log {
+            font-family: monospace;
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+
+        #log p {
+            margin: 0;
+            padding: 2px 0;
+        }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <h1>BLE WiFi Scanner</h1>
+        <h1 id="title">BLE WiFi Scanner</h1>
+        <div id="deviceInfo" style="display: none;"></div>
         <button id="connectButton">Connect to BLE Device</button>
-        <p id="status"></p>
+        <div id="logContainer">
+            <div id="log"></div>
+        </div>
 
         <div id="characteristicsContainer" style="display: none;">
             <h2>Settings</h2>
@@ -157,17 +192,23 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const connectButton = document.getElementById('connectButton');
-            const statusElement = document.getElementById('status');
             const characteristicsContainer = document.getElementById('characteristicsContainer');
             const dataContainer = document.getElementById('dataContainer');
             const getDataButton = document.getElementById('getDataButton');
             const copyButton = document.getElementById('copyButton');
             const jsonViewer = document.getElementById('jsonViewer');
+            const titleElement = document.getElementById('title');
+            const deviceInfoElement = document.getElementById('deviceInfo');
+            const logElement = document.getElementById('log');
+            const maxLogLines = 5;
 
             let onlyManagementFramesCharacteristic;
             let minimalRSSICharacteristic;
             let loopDelayCharacteristic;
             let notificationCharacteristic;
+            let deviceInfoService;
+            let manufacturerCharacteristic;
+            let modelCharacteristic;
 
             const UART_SERVICE_UUID = "81af4cd7-e091-490a-99ee-caa99032ef4e";
             const UART_DATATRANSFER_UUID = 0xFFE2;
@@ -184,16 +225,32 @@
             getDataButton.addEventListener('click', getData);
             copyButton.addEventListener('click', copyToClipboard);
 
+            function addLog(message) {
+                const now = new Date();
+                const timestamp = now.toLocaleTimeString();
+                const logMessage = `[${timestamp}] ${message}`;
+
+                const newLogEntry = document.createElement('p');
+                newLogEntry.textContent = logMessage;
+                logElement.appendChild(newLogEntry);
+
+                while (logElement.childElementCount > maxLogLines) {
+                    logElement.removeChild(logElement.firstChild);
+                }
+
+                logElement.scrollTop = logElement.scrollHeight;
+            }
+
             async function connectToBLEDevice() {
                 try {
-                    statusElement.textContent = 'Searching for BLE devices...';
+                    addLog('Searching for BLE devices...');
 
                     const device = await navigator.bluetooth.requestDevice({
-                        filters: [{ services: [UART_SERVICE_UUID] }],
-                        optionalServices: [0xFFE0, 0xFFE1, 0xFFE2, 0xFFE3]
+                        filters: [{ services: [UART_SERVICE_UUID, 0x180A] }],
+                        optionalServices: [0xFFE0, 0xFFE1, 0xFFE2, 0xFFE3, 0x2A29, 0x2A24]
                     });
 
-                    statusElement.textContent = 'Connecting...';
+                    addLog('Connecting...');
                     const server = await device.gatt.connect();
 
                     const service = await server.getPrimaryService(UART_SERVICE_UUID);
@@ -202,7 +259,23 @@
                     loopDelayCharacteristic = await service.getCharacteristic(LOOP_DELAY_UUID);
                     notificationCharacteristic = await service.getCharacteristic(UART_DATATRANSFER_UUID);
 
-                    statusElement.textContent = `Connected to ${device.name}`;
+                    // Obtener el servicio de información del dispositivo
+                    deviceInfoService = await server.getPrimaryService(0x180A);
+                    manufacturerCharacteristic = await deviceInfoService.getCharacteristic(0x2A29);
+                    modelCharacteristic = await deviceInfoService.getCharacteristic(0x2A24);
+
+                    // Leer y mostrar la información del dispositivo
+                    const manufacturer = await manufacturerCharacteristic.readValue();
+                    const model = await modelCharacteristic.readValue();
+                    const manufacturerName = new TextDecoder().decode(manufacturer);
+                    const modelNumber = new TextDecoder().decode(model);
+
+                    // Actualizar el título y mostrar la información del dispositivo
+                    titleElement.textContent = `BLE WiFi Scanner :: ${device.name}`;
+                    deviceInfoElement.textContent = `Manufacturer: ${manufacturerName} :: Model: ${modelNumber}`;
+                    deviceInfoElement.style.display = 'block';
+
+                    addLog(`Connected to ${device.name}`);
                     characteristicsContainer.style.display = 'block';
                     dataContainer.style.display = 'block';
 
@@ -219,7 +292,7 @@
 
                 } catch (error) {
                     console.error('Error:', error);
-                    statusElement.textContent = `Error: ${error.message}`;
+                    addLog(`Error: ${error.message}`);
                 }
             }
 
@@ -238,7 +311,7 @@
                     const element = document.getElementById(inputId);
                     const value = inputId === 'onlyManagementFrames' ? element.checked.toString() : element.value;
                     await characteristic.writeValue(new TextEncoder().encode(value));
-                    statusElement.textContent = `Value updated for ${inputId}`;
+                    addLog(`Value updated for ${inputId}`);
                 });
             }
 
@@ -251,10 +324,10 @@
                     
                     // Solicitar el paquete inicial (0)
                     await requestPacket(0);
-                    statusElement.textContent = "Data transfer started";
+                    addLog("Data transfer started");
                 } catch (error) {
                     console.error('Error starting data transfer:', error);
-                    statusElement.textContent = `Error: ${error.message}`;
+                    addLog(`Error: ${error.message}`);
                 }
             }
 
@@ -269,12 +342,12 @@
 
                 if (value.startsWith("START:")) {
                     totalPackets = parseInt(value.substring(6), 16);
-                    statusElement.textContent = `Receiving ${totalPackets} packets`;
+                    addLog(`Receiving ${totalPackets} packets`);
                     currentPacket = 1;
                     requestPacket(currentPacket);
                 } else if (value === "END") {
                     showData(receivedData);
-                    statusElement.textContent = "Data transfer completed";
+                    addLog("Data transfer completed");
                     progressBar.style.width = '100%';
                     
                     // Resetear la barra de progreso después de 1 segundo
@@ -300,7 +373,7 @@
             function updateProgress() {
                 const progress = (currentPacket / totalPackets) * 100;
                 progressBar.style.width = `${progress}%`;
-                statusElement.textContent = `Received packet ${currentPacket} of ${totalPackets}`;
+                addLog(`Received packet ${currentPacket} of ${totalPackets}`);
             }
 
             function showData(message) {
