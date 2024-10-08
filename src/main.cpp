@@ -72,6 +72,15 @@
 #define DEVICE_APPEARANCE 0x03C0 // SmartWatch
 #define DEVICE_MANUFACTURER "Xiaomi"
 
+// Nuevas constantes y variables globales
+#define MAX_PACKET_SIZE (BLE_MTU_SIZE - 4) // 4 bytes para el número de paquete
+#define PACKET_HEADER_SIZE 4
+#define PACKET_TIMEOUT 5000 // 5 segundos de timeout
+
+String preparedJsonData;
+uint16_t totalPackets = 0;
+unsigned long lastPacketRequestTime = 0;
+
 struct WifiDevice
 {
   std::string address;
@@ -524,72 +533,79 @@ class MyServerCallbacks : public BLEServerCallbacks
   }
 };
 
-void sendJsonOverBLE(const String &jsonData)
+// Función para preparar los datos JSON
+void prepareJsonData()
 {
-  if (deviceConnected)
+  preparedJsonData = generateJsonString();
+  totalPackets = (preparedJsonData.length() / MAX_PACKET_SIZE) + 1;
+}
+
+// Función para enviar un paquete específico
+void sendPacket(uint16_t packetNumber)
+{
+  if (packetNumber == 0)
   {
-    Serial.println("Starting BLE data transmission...");
-#ifdef ENABLE_LED
-    setPixelColor(COLOR_BLUE); // Blue during transmission
-#endif
-
-    // Send JSON in chunks
-    size_t totalLength = jsonData.length();
-    size_t sentLength = 0;
-    uint16_t packetNumber = 0;
-    uint16_t numPackets = (totalLength / (BLE_MTU_SIZE - 4)) + 1;
-
-    // Send start marker
+    // Enviar marcador de inicio
     char packetsHeader[5];
-    snprintf(packetsHeader, sizeof(packetsHeader), "%04X", numPackets);
+    snprintf(packetsHeader, sizeof(packetsHeader), "%04X", totalPackets);
     String startMarker = PACKET_START_MARKER + String(packetsHeader);
     pTxCharacteristic->setValue(startMarker.c_str());
     pTxCharacteristic->notify();
     Serial.println("Sent " + startMarker);
-    delay(PACKET_DELAY);
-
-    while (sentLength < totalLength)
-    {
-      size_t chunkSize = min((size_t)BLE_MTU_SIZE - 4, totalLength - sentLength); // 4 bytes for packet number
-      String chunk = jsonData.substring(sentLength, sentLength + chunkSize);
-      
-      // Prepend packet number to chunk
-      char packetHeader[5];
-      snprintf(packetHeader, sizeof(packetHeader), "%04X", packetNumber);
-      String packetData = String(packetHeader) + chunk;
-
-      pTxCharacteristic->setValue(packetData.c_str());
-      pTxCharacteristic->notify();
-      Serial.println("Sent " + packetData);
-
-      sentLength += chunkSize;
-      packetNumber++;
-
-      delay(PACKET_DELAY); // Add delay between packets
-    }
-
-    // Send end marker
-    pTxCharacteristic->setValue(PACKET_END_MARKER);
-    pTxCharacteristic->notify();
-    Serial.printf("Sent %s\n", PACKET_END_MARKER);
-
-    delay(PACKET_DELAY);
-
-    Serial.println("BLE data transmission completed");
-#ifdef ENABLE_LED
-    setPixelColor(COLOR_OFF); // Back to off after sending
-#endif
   }
-  else
+  else if (packetNumber <= totalPackets)
   {
-    Serial.println("BLE device not connected. Cannot send data.");
+    // Enviar paquete de datos
+    size_t startIndex = (packetNumber - 1) * MAX_PACKET_SIZE;
+    size_t endIndex = min(startIndex + MAX_PACKET_SIZE, preparedJsonData.length());
+    String chunk = preparedJsonData.substring(startIndex, endIndex);
+
+    char packetHeader[PACKET_HEADER_SIZE + 1];
+    snprintf(packetHeader, sizeof(packetHeader), "%04X", packetNumber);
+    String packetData = String(packetHeader) + chunk;
+
+    pTxCharacteristic->setValue(packetData.c_str());
+    pTxCharacteristic->notify();
+    Serial.println("Sent packet " + String(packetNumber));
+
+    if (packetNumber == totalPackets)
+    {
+      // Limpiar el buffer de datos preparados
+      preparedJsonData.clear();
+      
+      // Enviar marcador de fin después del último paquete
+      delay(PACKET_DELAY);
+      pTxCharacteristic->setValue(PACKET_END_MARKER);
+      pTxCharacteristic->notify();
+      Serial.println("Sent " + String(PACKET_END_MARKER));
+    }
   }
 }
 
+class SendDataOverBLECallbacks : public BLECharacteristicCallbacks
+{
+  void onWrite(BLECharacteristic *pCharacteristic)
+  {
+    std::string value = pCharacteristic->getValue();
+    if (value.length() >= 4)
+    {
+      uint16_t requestedPacket = strtoul(value.substr(0, 4).c_str(), NULL, 16);
+      Serial.printf("Received request for packet %d\n", requestedPacket);
+
+      if (requestedPacket == 0)
+      {
+        // Preparar nuevos datos JSON
+        prepareJsonData();
+      }
+
+      sendPacket(requestedPacket);
+      lastPacketRequestTime = millis();
+    }
+  }
+};
+
 BLEService *pNusService = nullptr;
 BLECharacteristic *pRxCharacteristic = nullptr;
-
-// Add these new classes after the MyServerCallbacks class
 
 void loadPreferences()
 {
@@ -611,20 +627,6 @@ void savePreferences()
   preferences.putUInt("loop_delay", loop_delay);
   preferences.end();
 }
-
-class SendDataOverBLECallbacks : public BLECharacteristicCallbacks
-{
-  void onWrite(BLECharacteristic *pCharacteristic)
-  {
-    std::string value = pCharacteristic->getValue();
-    Serial.printf("Received '%s' over BLE\n", value.c_str());
-    // Generate JSON and send via BLE
-    String jsonData = generateJsonString();
-    Serial.println("Generated JSON:");
-    Serial.println(jsonData);
-    sendJsonOverBLE(jsonData);
-  }
-};
 
 class OnlyManagementFramesCallbacks : public BLECharacteristicCallbacks
 {
@@ -814,9 +816,21 @@ void setup()
   WiFi.mode(WIFI_STA);
   esp_wifi_set_promiscuous_rx_cb(promiscuous_rx_cb);
   esp_wifi_set_channel(currentChannel, WIFI_SECOND_CHAN_NONE);
+
   // Set promiscuous mode with specific filter for management frames
-  wifi_promiscuous_filter_t filter = { .filter_mask = only_management_frames ? WIFI_PROMIS_FILTER_MASK_MGMT : WIFI_PROMIS_FILTER_MASK_MGMT | WIFI_PROMIS_FILTER_MASK_DATA | WIFI_PROMIS_FILTER_MASK_CTRL};
-  esp_wifi_set_promiscuous_filter(&filter);
+  if (only_management_frames)
+  {
+    Serial.println("Only Management Frames enabled");
+    wifi_promiscuous_filter_t filter = {.filter_mask = WIFI_PROMIS_FILTER_MASK_MGMT};
+    esp_wifi_set_promiscuous_filter(&filter);
+  }
+  else
+  {
+    Serial.println("All frames enabled");
+    wifi_promiscuous_filter_t filter = {.filter_mask = WIFI_PROMIS_FILTER_MASK_MGMT | WIFI_PROMIS_FILTER_MASK_DATA | WIFI_PROMIS_FILTER_MASK_CTRL};
+    esp_wifi_set_promiscuous_filter(&filter);
+  }
+
   esp_wifi_set_promiscuous(true);
 
   Serial.println("WiFi configuration completed");
@@ -840,9 +854,14 @@ void loop()
   uint32_t current_loop_delay = loop_delay;
   portEXIT_CRITICAL(&mux);
 
-  Serial.printf("WiFi channel: %d, Stations: %zu, SSIDs: %zu, Free Heap: %d, Minimal RSSI: %d, Only Management Frames: %s, Loop Delay: %u ms\n",
-                currentChannel, stationsList.size(), ssidList.size(), ESP.getFreeHeap(),
-                current_minimal_rssi, current_only_management_frames ? "true" : "false", current_loop_delay);
+  if (xSemaphoreTake(dataAccessMutex, pdMS_TO_TICKS(50)) == pdTRUE)
+  {
+    Serial.printf(">> Time: %lu, WiFi Ch: %2d, St: %zu, SS: %zu, Heap: %d, minRSSI: %d, MgmtOnly: %d, Delay: %u, InTx: %d\n",
+                  millis(), currentChannel, stationsList.size(), ssidList.size(), ESP.getFreeHeap(),
+                  current_minimal_rssi, current_only_management_frames, current_loop_delay,
+                  preparedJsonData.length() > 0);
+    xSemaphoreGive(dataAccessMutex);
+  }
 
   // Print SSID list every 30 seconds
   unsigned long currentTime = millis();
@@ -874,6 +893,14 @@ void loop()
     }
     Serial.println(ssidListString);
     lastPrintTime = currentTime;
+  }
+
+  // Manejar timeout de paquetes enviados
+  if (deviceConnected && preparedJsonData.length() > 0 && (millis() - lastPacketRequestTime > PACKET_TIMEOUT))
+  {
+    Serial.println("Packet request timeout. Resetting transfer.");
+    totalPackets = 0;
+    preparedJsonData = "";
   }
 
   delay(current_loop_delay);

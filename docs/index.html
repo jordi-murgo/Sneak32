@@ -100,6 +100,21 @@
             justify-content: space-between;
             margin-bottom: 10px;
         }
+
+        .progress-container {
+            width: 100%;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+
+        .progress-bar {
+            width: 0;
+            height: 20px;
+            background-color: #4CAF50;
+            border-radius: 5px;
+            transition: width 0.5s ease-in-out;
+        }
     </style>
 </head>
 
@@ -132,6 +147,9 @@
                 <button id="getDataButton">Get Data</button>
                 <button id="copyButton">Copy to Clipboard</button>
             </div>
+            <div class="progress-container">
+                <div id="progressBar" class="progress-bar"></div>
+            </div>
             <div id="jsonViewer"></div>
         </div>
     </div>
@@ -156,6 +174,11 @@
             const ONLY_MANAGEMENT_FRAMES_UUID = 0xFFE0;
             const MINIMAL_RSSI_UUID = 0xFFE1;
             const LOOP_DELAY_UUID = 0xFFE3;
+
+            let totalPackets = 0;
+            let currentPacket = 0;
+            let receivedData = '';
+            const progressBar = document.getElementById('progressBar');
 
             connectButton.addEventListener('click', connectToBLEDevice);
             getDataButton.addEventListener('click', getData);
@@ -221,41 +244,63 @@
 
             async function getData() {
                 try {
-                    // Limpiar el visor JSON
                     jsonViewer.innerHTML = '';
+                    progressBar.style.width = '0%';
+                    receivedData = '';
+                    currentPacket = 0;
                     
-                    await notificationCharacteristic.writeValue(new TextEncoder().encode("get"));
-                    statusElement.textContent = "Data request sent";
+                    // Solicitar el paquete inicial (0)
+                    await requestPacket(0);
+                    statusElement.textContent = "Data transfer started";
                 } catch (error) {
-                    console.error('Error sending data request:', error);
+                    console.error('Error starting data transfer:', error);
                     statusElement.textContent = `Error: ${error.message}`;
                 }
             }
 
-            let notificationBuffer = '';
-            let isCollectingNotifications = false;
+            async function requestPacket(packetNumber) {
+                const packetRequestHex = packetNumber.toString(16).padStart(4, '0').toUpperCase();
+                await notificationCharacteristic.writeValue(new TextEncoder().encode(packetRequestHex));
+            }
 
             function handleNotification(event) {
                 const value = new TextDecoder().decode(event.target.value);
-                console.log(value);
+                console.log("Received:", value);
 
-                if (value.trim().startsWith("START:")) {
-                    isCollectingNotifications = true;
-                    notificationBuffer = '';
-                    statusElement.textContent = "Collecting data, " + value.substring(5) + " packets";
-                    console.log("Collecting START");
-                } else if (value.trim() === "END") {
-                    isCollectingNotifications = false;
-                    showData(notificationBuffer);
-                    notificationBuffer = '';
-                    statusElement.textContent = "Data collection finished.";
-                    console.log("Collecting END");
-                } else if (isCollectingNotifications) {
-                    var pktNum = value.substring(0, 4);
-                    notificationBuffer += value.substring(4);
-                    statusElement.textContent = "Collected packet " + pktNum;
-                    console.log("Collected packet " + pktNum);
+                if (value.startsWith("START:")) {
+                    totalPackets = parseInt(value.substring(6), 16);
+                    statusElement.textContent = `Receiving ${totalPackets} packets`;
+                    currentPacket = 1;
+                    requestPacket(currentPacket);
+                } else if (value === "END") {
+                    showData(receivedData);
+                    statusElement.textContent = "Data transfer completed";
+                    progressBar.style.width = '100%';
+                    
+                    // Resetear la barra de progreso después de 1 segundo
+                    setTimeout(() => {
+                        progressBar.style.width = '0%';
+                    }, 1000);
+                } else {
+                    const packetNumber = parseInt(value.substring(0, 4), 16);
+                    if (packetNumber === currentPacket) {
+                        receivedData += value.substring(4);
+                        updateProgress();
+                        currentPacket++;
+                        if (currentPacket <= totalPackets) {
+                            requestPacket(currentPacket);
+                        }
+                    } else {
+                        console.error(`Received unexpected packet ${packetNumber}, expected ${currentPacket}`);
+                        // Opcionalmente, podrías implementar aquí una lógica de reintento
+                    }
                 }
+            }
+
+            function updateProgress() {
+                const progress = (currentPacket / totalPackets) * 100;
+                progressBar.style.width = `${progress}%`;
+                statusElement.textContent = `Received packet ${currentPacket} of ${totalPackets}`;
             }
 
             function showData(message) {
