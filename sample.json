@@ -1,420 +1,1138 @@
 {
-    "timestamp": 833,
-    "stations_count": 40,
-    "ssids_count": 24,
-    "free_heap": 116924,
-    "only_probe_requests": true,
-    "minimal_rssi": -80,
-    "stations": [
-      {
-        "mac": "10:33:BF:30:40:38",
-        "rssi": -68,
-        "channel": 1,
-        "last_seen": 833
-      },
-      {
-        "mac": "40:3F:8C:85:92:B6",
-        "rssi": -78,
-        "channel": 2,
-        "last_seen": 71
-      },
-      {
-        "mac": "E0:B6:68:26:5B:FB",
-        "rssi": -69,
-        "channel": 3,
-        "last_seen": 820
-      },
-      {
-        "mac": "CC:D4:A1:EF:7B:96",
-        "rssi": -74,
-        "channel": 6,
-        "last_seen": 809
-      },
-      {
-        "mac": "E8:43:68:68:F2:88",
-        "rssi": -78,
-        "channel": 7,
-        "last_seen": 824
-      },
-      {
-        "mac": "7C:77:16:CE:DF:C1",
-        "rssi": -77,
-        "channel": 8,
-        "last_seen": 641
-      },
-      {
-        "mac": "7C:A7:B0:2D:86:EE",
-        "rssi": -79,
-        "channel": 9,
-        "last_seen": 572
-      },
-      {
-        "mac": "C4:EB:42:B8:59:44",
-        "rssi": -36,
-        "channel": 11,
-        "last_seen": 829
-      },
-      {
-        "mac": "34:49:5B:8B:E8:7E",
-        "rssi": -46,
-        "channel": 11,
-        "last_seen": 833
-      },
-      {
-        "mac": "C0:B1:01:F3:D3:84",
-        "rssi": -74,
-        "channel": 1,
-        "last_seen": 832
-      },
-      {
-        "mac": "CC:ED:DC:1F:45:67",
-        "rssi": -76,
-        "channel": 6,
-        "last_seen": 823
-      },
-      {
-        "mac": "E4:75:DC:34:F7:E3",
-        "rssi": -76,
-        "channel": 11,
-        "last_seen": 828
-      },
-      {
-        "mac": "B0:2A:43:7D:EA:34",
-        "rssi": -76,
-        "channel": 7,
-        "last_seen": 63
-      },
-      {
-        "mac": "A2:90:27:00:31:8B",
-        "rssi": -80,
-        "channel": 6,
-        "last_seen": 104
-      },
-      {
-        "mac": "2C:93:FB:9A:01:65",
-        "rssi": -78,
-        "channel": 11,
-        "last_seen": 828
-      },
-      {
-        "mac": "66:02:63:33:17:2E",
-        "rssi": -76,
-        "channel": 1,
-        "last_seen": 141
-      },
-      {
-        "mac": "16:AE:82:37:DC:9D",
-        "rssi": -78,
-        "channel": 13,
-        "last_seen": 223
-      },
-      {
-        "mac": "86:C0:7F:C7:14:49",
-        "rssi": -78,
-        "channel": 2,
-        "last_seen": 226
-      },
-      {
-        "mac": "66:02:63:00:F3:D3",
-        "rssi": -76,
-        "channel": 6,
-        "last_seen": 301
-      },
-      {
-        "mac": "E8:D1:1B:A4:53:F0",
-        "rssi": -79,
-        "channel": 6,
-        "last_seen": 829
-      },
-      {
-        "mac": "D8:EB:46:94:1F:A6",
-        "rssi": -44,
-        "channel": 1,
-        "last_seen": 367
-      },
-      {
-        "mac": "EA:D1:6F:01:A9:88",
-        "rssi": -80,
-        "channel": 4,
-        "last_seen": 370
-      },
-      {
-        "mac": "3A:91:E6:51:0D:25",
-        "rssi": -79,
-        "channel": 8,
-        "last_seen": 374
-      },
-      {
-        "mac": "A2:41:3F:B6:9E:06",
-        "rssi": -79,
-        "channel": 8,
-        "last_seen": 374
-      },
-      {
-        "mac": "DE:4D:CF:A3:21:87",
-        "rssi": -80,
-        "channel": 8,
-        "last_seen": 374
-      },
-      {
-        "mac": "B2:2E:1E:3F:1E:0E",
-        "rssi": -80,
-        "channel": 8,
-        "last_seen": 374
-      },
-      {
-        "mac": "48:8D:36:4F:F1:B8",
-        "rssi": -79,
-        "channel": 1,
-        "last_seen": 677
-      },
-      {
-        "mac": "66:02:63:5F:C2:44",
-        "rssi": -69,
-        "channel": 7,
-        "last_seen": 709
-      },
-      {
-        "mac": "AC:3B:77:8D:B0:46",
-        "rssi": -80,
-        "channel": 6,
-        "last_seen": 795
-      },
-      {
-        "mac": "22:1E:BC:BC:15:08",
-        "rssi": -80,
-        "channel": 7,
-        "last_seen": 541
-      },
-      {
-        "mac": "DE:B2:EA:5A:90:00",
-        "rssi": -79,
-        "channel": 11,
-        "last_seen": 559
-      },
-      {
-        "mac": "C2:38:DA:76:D9:2B",
-        "rssi": -76,
-        "channel": 7,
-        "last_seen": 598
-      },
-      {
-        "mac": "4E:21:E8:A8:6B:93",
-        "rssi": -79,
-        "channel": 6,
-        "last_seen": 654
-      },
-      {
-        "mac": "5A:8C:D6:FA:4A:BA",
-        "rssi": -80,
-        "channel": 6,
-        "last_seen": 654
-      },
-      {
-        "mac": "EE:24:0A:C0:C7:4B",
-        "rssi": -80,
-        "channel": 6,
-        "last_seen": 654
-      },
-      {
-        "mac": "16:D1:8D:C2:23:8C",
-        "rssi": -78,
-        "channel": 6,
-        "last_seen": 682
-      },
-      {
-        "mac": "36:01:09:36:F4:07",
-        "rssi": -77,
-        "channel": 2,
-        "last_seen": 748
-      },
-      {
-        "mac": "3A:EC:5D:38:0D:D5",
-        "rssi": -80,
-        "channel": 1,
-        "last_seen": 775
-      },
-      {
-        "mac": "2E:B0:9F:BE:9A:4A",
-        "rssi": -74,
-        "channel": 4,
-        "last_seen": 821
-      },
-      {
-        "mac": "B8:2C:A0:2A:F0:D6",
-        "rssi": -80,
-        "channel": 8,
-        "last_seen": 825
-      }
-    ],
-    "ssids": [
-      {
-        "ssid": "vodafoneAAB93N",
-        "rssi": -68,
-        "channel": 1,
-        "type": "beacon",
-        "last_seen": 833
-      },
-      {
-        "ssid": "TP-Link_92B6",
-        "rssi": -78,
-        "channel": 2,
-        "type": "beacon",
-        "last_seen": 71
-      },
-      {
-        "ssid": "DIGIFIBRA-e7xA",
-        "rssi": -69,
-        "channel": 3,
-        "type": "beacon",
-        "last_seen": 820
-      },
-      {
-        "ssid": "MOVISTAR_7B95",
-        "rssi": -74,
-        "channel": 6,
-        "type": "beacon",
-        "last_seen": 809
-      },
-      {
-        "ssid": "DIGIFIBRA-2fTC",
-        "rssi": -78,
-        "channel": 7,
-        "type": "beacon",
-        "last_seen": 824
-      },
-      {
-        "ssid": "DIGIFIBRA-0852",
-        "rssi": -77,
-        "channel": 8,
-        "type": "beacon",
-        "last_seen": 641
-      },
-      {
-        "ssid": "Livebox6-5940",
-        "rssi": -36,
-        "channel": 11,
-        "type": "beacon",
-        "last_seen": 829
-      },
-      {
-        "ssid": "sagemcomE878",
-        "rssi": -46,
-        "channel": 11,
-        "type": "beacon",
-        "last_seen": 833
-      },
-      {
-        "ssid": "VIRGIN-telco_D384",
-        "rssi": -74,
-        "channel": 1,
-        "type": "beacon",
-        "last_seen": 832
-      },
-      {
-        "ssid": "MOVISTAR_4566",
-        "rssi": -76,
-        "channel": 6,
-        "type": "beacon",
-        "last_seen": 823
-      },
-      {
-        "ssid": "MiFibra-37F0",
-        "rssi": -76,
-        "channel": 11,
-        "type": "beacon",
-        "last_seen": 828
-      },
-      {
-        "ssid": "AndroidAPD7FF",
-        "rssi": -79,
-        "channel": 1,
-        "type": "probe",
-        "last_seen": 494
-      },
-      {
-        "ssid": "Especialistes_tic",
-        "rssi": -80,
-        "channel": 6,
-        "type": "probe",
-        "last_seen": 374
-      },
-      {
-        "ssid": "MiFibra-19B0",
-        "rssi": -78,
-        "channel": 11,
-        "type": "beacon",
-        "last_seen": 828
-      },
-      {
-        "ssid": "MOVISTAR_53EF",
-        "rssi": -79,
-        "channel": 6,
-        "type": "beacon",
-        "last_seen": 829
-      },
-      {
-        "ssid": "wifiTorre",
-        "rssi": -79,
-        "channel": 8,
-        "type": "probe",
-        "last_seen": 654
-      },
-      {
-        "ssid": "OPPO DAVID",
-        "rssi": -80,
-        "channel": 8,
-        "type": "probe",
-        "last_seen": 654
-      },
-      {
-        "ssid": "MiFibra-F1B6",
-        "rssi": -79,
-        "channel": 1,
-        "type": "beacon",
-        "last_seen": 677
-      },
-      {
-        "ssid": "usk1jf",
-        "rssi": -69,
-        "channel": 7,
-        "type": "probe",
-        "last_seen": 509
-      },
-      {
-        "ssid": "....v..",
-        "rssi": -69,
-        "channel": 7,
-        "type": "probe",
-        "last_seen": 709
-      },
-      {
-        "ssid": "eydu",
-        "rssi": -69,
-        "channel": 7,
-        "type": "probe",
-        "last_seen": 709
-      },
-      {
-        "ssid": "gsihsjh1hbdh",
-        "rssi": -69,
-        "channel": 7,
-        "type": "probe",
-        "last_seen": 709
-      },
-      {
-        "ssid": "vodafoneB040",
-        "rssi": -80,
-        "channel": 6,
-        "type": "beacon",
-        "last_seen": 795
-      },
-      {
-        "ssid": "WiFi WSD",
-        "rssi": -80,
-        "channel": 6,
-        "type": "probe",
-        "last_seen": 654
-      }
-    ]
-  }
+  "stations": [
+    {
+      "mac": "D8:EB:46:94:1F:A6",
+      "rssi": -37,
+      "channel": 4,
+      "last_seen": 2543,
+      "times_seen": 33
+    },
+    {
+      "mac": "EC:BE:5F:D1:93:A8",
+      "rssi": -78,
+      "channel": 9,
+      "last_seen": 931,
+      "times_seen": 28
+    },
+    {
+      "mac": "86:87:E5:93:90:05",
+      "rssi": -87,
+      "channel": 3,
+      "last_seen": 2507,
+      "times_seen": 1
+    },
+    {
+      "mac": "B0:2A:43:7D:EA:34",
+      "rssi": -81,
+      "channel": 1,
+      "last_seen": 2813,
+      "times_seen": 58
+    },
+    {
+      "mac": "9A:C8:31:37:D9:13",
+      "rssi": -87,
+      "channel": 11,
+      "last_seen": 2146,
+      "times_seen": 13
+    },
+    {
+      "mac": "8C:55:4A:4B:E1:28",
+      "rssi": -86,
+      "channel": 10,
+      "last_seen": 2910,
+      "times_seen": 28
+    },
+    {
+      "mac": "86:7B:B6:62:EC:94",
+      "rssi": -85,
+      "channel": 3,
+      "last_seen": 2562,
+      "times_seen": 1
+    },
+    {
+      "mac": "2E:14:DA:94:51:FB",
+      "rssi": -85,
+      "channel": 6,
+      "last_seen": 2613,
+      "times_seen": 1
+    },
+    {
+      "mac": "68:3A:48:60:92:23",
+      "rssi": -84,
+      "channel": 14,
+      "last_seen": 2676,
+      "times_seen": 6
+    },
+    {
+      "mac": "E6:A2:46:5C:54:D9",
+      "rssi": -83,
+      "channel": 10,
+      "last_seen": 2637,
+      "times_seen": 1
+    },
+    {
+      "mac": "06:8E:02:78:D9:C2",
+      "rssi": -80,
+      "channel": 1,
+      "last_seen": 2662,
+      "times_seen": 1
+    },
+    {
+      "mac": "8A:35:4F:4B:00:51",
+      "rssi": -90,
+      "channel": 7,
+      "last_seen": 2668,
+      "times_seen": 2
+    },
+    {
+      "mac": "AA:2F:BE:44:34:BB",
+      "rssi": -87,
+      "channel": 7,
+      "last_seen": 2668,
+      "times_seen": 1
+    },
+    {
+      "mac": "F2:64:A8:24:46:C5",
+      "rssi": -86,
+      "channel": 7,
+      "last_seen": 2668,
+      "times_seen": 1
+    },
+    {
+      "mac": "F6:FE:AE:D3:73:3B",
+      "rssi": -75,
+      "channel": 10,
+      "last_seen": 2929,
+      "times_seen": 21
+    },
+    {
+      "mac": "C0:B1:01:F3:D3:84",
+      "rssi": -86,
+      "channel": 1,
+      "last_seen": 2691,
+      "times_seen": 7
+    },
+    {
+      "mac": "3E:7E:AE:79:7D:41",
+      "rssi": -70,
+      "channel": 6,
+      "last_seen": 2769,
+      "times_seen": 14
+    },
+    {
+      "mac": "36:C6:43:4F:28:51",
+      "rssi": -89,
+      "channel": 7,
+      "last_seen": 2668,
+      "times_seen": 1
+    },
+    {
+      "mac": "EA:78:4B:49:7C:7B",
+      "rssi": -87,
+      "channel": 12,
+      "last_seen": 2673,
+      "times_seen": 2
+    },
+    {
+      "mac": "20:3D:BD:31:29:2F",
+      "rssi": -76,
+      "channel": 1,
+      "last_seen": 2676,
+      "times_seen": 1
+    },
+    {
+      "mac": "A6:F7:B0:B4:72:71",
+      "rssi": -83,
+      "channel": 10,
+      "last_seen": 2719,
+      "times_seen": 1
+    },
+    {
+      "mac": "7C:2E:BD:1F:19:1E",
+      "rssi": -89,
+      "channel": 13,
+      "last_seen": 2742,
+      "times_seen": 2
+    },
+    {
+      "mac": "CE:F2:FA:3B:1A:D5",
+      "rssi": -85,
+      "channel": 11,
+      "last_seen": 2774,
+      "times_seen": 1
+    },
+    {
+      "mac": "B8:2C:A0:2A:F0:D6",
+      "rssi": -80,
+      "channel": 5,
+      "last_seen": 2407,
+      "times_seen": 6
+    },
+    {
+      "mac": "36:B4:46:DD:48:C3",
+      "rssi": -85,
+      "channel": 3,
+      "last_seen": 2815,
+      "times_seen": 1
+    },
+    {
+      "mac": "66:F4:B4:4C:18:EF",
+      "rssi": -90,
+      "channel": 3,
+      "last_seen": 2815,
+      "times_seen": 1
+    },
+    {
+      "mac": "12:B4:23:96:57:E5",
+      "rssi": -84,
+      "channel": 5,
+      "last_seen": 2817,
+      "times_seen": 1
+    },
+    {
+      "mac": "A2:7B:D8:9F:E1:1B",
+      "rssi": -83,
+      "channel": 3,
+      "last_seen": 737,
+      "times_seen": 1
+    },
+    {
+      "mac": "A2:5E:1B:5F:6C:19",
+      "rssi": -82,
+      "channel": 6,
+      "last_seen": 773,
+      "times_seen": 1
+    },
+    {
+      "mac": "5E:24:DE:E4:B2:5B",
+      "rssi": -85,
+      "channel": 10,
+      "last_seen": 778,
+      "times_seen": 1
+    },
+    {
+      "mac": "FE:6D:2F:D8:5C:CB",
+      "rssi": -84,
+      "channel": 10,
+      "last_seen": 778,
+      "times_seen": 1
+    },
+    {
+      "mac": "7E:D9:BF:E4:CA:3C",
+      "rssi": -84,
+      "channel": 10,
+      "last_seen": 778,
+      "times_seen": 1
+    },
+    {
+      "mac": "5A:76:3F:4E:7A:52",
+      "rssi": -84,
+      "channel": 10,
+      "last_seen": 778,
+      "times_seen": 1
+    },
+    {
+      "mac": "50:02:91:41:34:A8",
+      "rssi": -88,
+      "channel": 1,
+      "last_seen": 2934,
+      "times_seen": 53
+    },
+    {
+      "mac": "B8:1E:A4:BF:52:81",
+      "rssi": -76,
+      "channel": 5,
+      "last_seen": 1663,
+      "times_seen": 4
+    },
+    {
+      "mac": "2C:F0:EE:2C:DB:0C",
+      "rssi": -35,
+      "channel": 5,
+      "last_seen": 1916,
+      "times_seen": 5
+    },
+    {
+      "mac": "B6:52:59:1C:C6:36",
+      "rssi": -84,
+      "channel": 2,
+      "last_seen": 1020,
+      "times_seen": 1
+    },
+    {
+      "mac": "92:1E:60:9F:0A:61",
+      "rssi": -78,
+      "channel": 2,
+      "last_seen": 1102,
+      "times_seen": 1
+    },
+    {
+      "mac": "1A:62:34:A0:0C:94",
+      "rssi": -83,
+      "channel": 10,
+      "last_seen": 1116,
+      "times_seen": 1
+    },
+    {
+      "mac": "16:0A:15:CA:81:14",
+      "rssi": -79,
+      "channel": 11,
+      "last_seen": 1150,
+      "times_seen": 2
+    },
+    {
+      "mac": "CE:BB:41:CA:26:1B",
+      "rssi": -81,
+      "channel": 6,
+      "last_seen": 1194,
+      "times_seen": 1
+    },
+    {
+      "mac": "EA:98:11:B3:24:82",
+      "rssi": -88,
+      "channel": 5,
+      "last_seen": 1227,
+      "times_seen": 1
+    },
+    {
+      "mac": "1E:F7:AD:65:4F:84",
+      "rssi": -89,
+      "channel": 5,
+      "last_seen": 1227,
+      "times_seen": 1
+    },
+    {
+      "mac": "62:4D:6A:55:1F:1A",
+      "rssi": -89,
+      "channel": 8,
+      "last_seen": 1244,
+      "times_seen": 1
+    },
+    {
+      "mac": "3E:83:43:18:82:D6",
+      "rssi": -89,
+      "channel": 9,
+      "last_seen": 1245,
+      "times_seen": 1
+    },
+    {
+      "mac": "D4:5E:EC:AF:75:6B",
+      "rssi": -83,
+      "channel": 4,
+      "last_seen": 1259,
+      "times_seen": 5
+    },
+    {
+      "mac": "7E:25:44:78:D1:0C",
+      "rssi": -87,
+      "channel": 8,
+      "last_seen": 1263,
+      "times_seen": 2
+    },
+    {
+      "mac": "2E:B0:9F:BE:9A:4A",
+      "rssi": -86,
+      "channel": 9,
+      "last_seen": 1265,
+      "times_seen": 1
+    },
+    {
+      "mac": "86:85:23:ED:7F:35",
+      "rssi": -87,
+      "channel": 7,
+      "last_seen": 1277,
+      "times_seen": 1
+    },
+    {
+      "mac": "7C:A7:B0:2D:86:EE",
+      "rssi": -88,
+      "channel": 1,
+      "last_seen": 2919,
+      "times_seen": 46
+    },
+    {
+      "mac": "BE:A4:5F:20:7D:1F",
+      "rssi": -87,
+      "channel": 3,
+      "last_seen": 1307,
+      "times_seen": 1
+    },
+    {
+      "mac": "EE:31:8D:BE:D6:43",
+      "rssi": -82,
+      "channel": 6,
+      "last_seen": 1310,
+      "times_seen": 2
+    },
+    {
+      "mac": "9A:B9:81:30:E5:D3",
+      "rssi": -86,
+      "channel": 6,
+      "last_seen": 1329,
+      "times_seen": 1
+    },
+    {
+      "mac": "C8:02:10:0D:11:13",
+      "rssi": -89,
+      "channel": 7,
+      "last_seen": 2142,
+      "times_seen": 3
+    },
+    {
+      "mac": "12:73:04:28:49:B5",
+      "rssi": -88,
+      "channel": 3,
+      "last_seen": 1355,
+      "times_seen": 1
+    },
+    {
+      "mac": "16:AA:5A:67:D2:72",
+      "rssi": -84,
+      "channel": 9,
+      "last_seen": 1366,
+      "times_seen": 1
+    },
+    {
+      "mac": "CE:BC:1C:B7:8D:21",
+      "rssi": -81,
+      "channel": 9,
+      "last_seen": 1366,
+      "times_seen": 1
+    },
+    {
+      "mac": "BA:FD:0A:C9:C6:BD",
+      "rssi": -83,
+      "channel": 11,
+      "last_seen": 1368,
+      "times_seen": 1
+    },
+    {
+      "mac": "F6:A2:FF:0A:62:34",
+      "rssi": -76,
+      "channel": 7,
+      "last_seen": 1398,
+      "times_seen": 2
+    },
+    {
+      "mac": "9E:9E:CA:67:BF:90",
+      "rssi": -83,
+      "channel": 12,
+      "last_seen": 1418,
+      "times_seen": 1
+    },
+    {
+      "mac": "C2:32:6C:17:34:00",
+      "rssi": -76,
+      "channel": 6,
+      "last_seen": 1427,
+      "times_seen": 1
+    },
+    {
+      "mac": "78:2B:46:48:3C:F3",
+      "rssi": -52,
+      "channel": 1,
+      "last_seen": 2827,
+      "times_seen": 13
+    },
+    {
+      "mac": "22:10:62:93:60:70",
+      "rssi": -84,
+      "channel": 1,
+      "last_seen": 1475,
+      "times_seen": 1
+    },
+    {
+      "mac": "5C:D0:6E:6B:A3:F2",
+      "rssi": -88,
+      "channel": 10,
+      "last_seen": 1484,
+      "times_seen": 1
+    },
+    {
+      "mac": "2E:27:19:93:49:D0",
+      "rssi": -87,
+      "channel": 10,
+      "last_seen": 2057,
+      "times_seen": 3
+    },
+    {
+      "mac": "92:B9:12:E2:3E:1F",
+      "rssi": -87,
+      "channel": 13,
+      "last_seen": 1521,
+      "times_seen": 1
+    },
+    {
+      "mac": "72:9E:11:2E:8E:BD",
+      "rssi": -88,
+      "channel": 13,
+      "last_seen": 1521,
+      "times_seen": 1
+    },
+    {
+      "mac": "B2:4D:F0:91:B8:03",
+      "rssi": -86,
+      "channel": 13,
+      "last_seen": 1521,
+      "times_seen": 1
+    },
+    {
+      "mac": "EA:78:4B:BA:7C:78",
+      "rssi": -85,
+      "channel": 11,
+      "last_seen": 1553,
+      "times_seen": 1
+    },
+    {
+      "mac": "76:38:55:B1:4B:C5",
+      "rssi": -86,
+      "channel": 3,
+      "last_seen": 1560,
+      "times_seen": 1
+    },
+    {
+      "mac": "6A:13:B5:88:31:54",
+      "rssi": -49,
+      "channel": 5,
+      "last_seen": 1562,
+      "times_seen": 3
+    },
+    {
+      "mac": "C6:A4:FA:9F:B1:EA",
+      "rssi": -82,
+      "channel": 10,
+      "last_seen": 1654,
+      "times_seen": 1
+    },
+    {
+      "mac": "6E:AB:B7:CB:6C:89",
+      "rssi": -83,
+      "channel": 12,
+      "last_seen": 1657,
+      "times_seen": 1
+    },
+    {
+      "mac": "1A:BB:00:2B:0E:DE",
+      "rssi": -90,
+      "channel": 8,
+      "last_seen": 1754,
+      "times_seen": 1
+    },
+    {
+      "mac": "F6:1E:D8:AA:D5:F8",
+      "rssi": -85,
+      "channel": 11,
+      "last_seen": 1805,
+      "times_seen": 1
+    },
+    {
+      "mac": "E2:F0:17:52:CE:43",
+      "rssi": -52,
+      "channel": 6,
+      "last_seen": 1854,
+      "times_seen": 3
+    },
+    {
+      "mac": "4C:79:6E:75:24:A7",
+      "rssi": -89,
+      "channel": 13,
+      "last_seen": 1910,
+      "times_seen": 1
+    },
+    {
+      "mac": "BA:7B:00:58:8D:11",
+      "rssi": -87,
+      "channel": 8,
+      "last_seen": 1939,
+      "times_seen": 1
+    },
+    {
+      "mac": "92:26:E2:FC:60:6E",
+      "rssi": -88,
+      "channel": 7,
+      "last_seen": 2040,
+      "times_seen": 1
+    },
+    {
+      "mac": "02:46:1A:D3:29:0A",
+      "rssi": -87,
+      "channel": 1,
+      "last_seen": 2067,
+      "times_seen": 1
+    },
+    {
+      "mac": "62:A0:AE:C6:8C:EE",
+      "rssi": -79,
+      "channel": 7,
+      "last_seen": 2142,
+      "times_seen": 1
+    },
+    {
+      "mac": "04:E5:98:94:6A:FC",
+      "rssi": -86,
+      "channel": 1,
+      "last_seen": 2151,
+      "times_seen": 2
+    },
+    {
+      "mac": "EA:78:4B:15:4D:D5",
+      "rssi": -84,
+      "channel": 10,
+      "last_seen": 2193,
+      "times_seen": 2
+    },
+    {
+      "mac": "4A:2B:69:3A:C0:25",
+      "rssi": -86,
+      "channel": 9,
+      "last_seen": 2213,
+      "times_seen": 1
+    },
+    {
+      "mac": "C6:04:03:8A:57:21",
+      "rssi": -86,
+      "channel": 9,
+      "last_seen": 2213,
+      "times_seen": 1
+    },
+    {
+      "mac": "0A:B0:EA:43:14:FA",
+      "rssi": -82,
+      "channel": 2,
+      "last_seen": 2268,
+      "times_seen": 1
+    },
+    {
+      "mac": "56:AE:60:08:96:C9",
+      "rssi": -82,
+      "channel": 2,
+      "last_seen": 2268,
+      "times_seen": 1
+    },
+    {
+      "mac": "9E:A3:5D:F8:22:D7",
+      "rssi": -84,
+      "channel": 9,
+      "last_seen": 2363,
+      "times_seen": 1
+    },
+    {
+      "mac": "EA:F3:7C:FC:80:06",
+      "rssi": -84,
+      "channel": 11,
+      "last_seen": 2365,
+      "times_seen": 1
+    },
+    {
+      "mac": "66:C8:AB:51:8D:92",
+      "rssi": -86,
+      "channel": 11,
+      "last_seen": 2365,
+      "times_seen": 1
+    },
+    {
+      "mac": "C2:C8:68:CC:72:B4",
+      "rssi": -81,
+      "channel": 9,
+      "last_seen": 2382,
+      "times_seen": 1
+    },
+    {
+      "mac": "EE:47:7B:E9:B9:EC",
+      "rssi": -87,
+      "channel": 7,
+      "last_seen": 2410,
+      "times_seen": 1
+    },
+    {
+      "mac": "9A:61:F5:6B:31:0A",
+      "rssi": -84,
+      "channel": 11,
+      "last_seen": 2502,
+      "times_seen": 1
+    },
+    {
+      "mac": "82:4D:6D:4B:14:7E",
+      "rssi": -82,
+      "channel": 11,
+      "last_seen": 2502,
+      "times_seen": 1
+    },
+    {
+      "mac": "B6:86:BD:CC:F4:7E",
+      "rssi": -82,
+      "channel": 12,
+      "last_seen": 2502,
+      "times_seen": 1
+    },
+    {
+      "mac": "2E:FB:9E:28:8F:6D",
+      "rssi": -79,
+      "channel": 12,
+      "last_seen": 2503,
+      "times_seen": 2
+    },
+    {
+      "mac": "AA:58:DB:99:30:DE",
+      "rssi": -86,
+      "channel": 2,
+      "last_seen": 2507,
+      "times_seen": 1
+    },
+    {
+      "mac": "AA:4F:90:39:42:D8",
+      "rssi": -88,
+      "channel": 2,
+      "last_seen": 2507,
+      "times_seen": 1
+    },
+    {
+      "mac": "B6:47:15:D1:3E:76",
+      "rssi": -90,
+      "channel": 2,
+      "last_seen": 2507,
+      "times_seen": 1
+    },
+    {
+      "mac": "F2:2C:7B:AE:C0:12",
+      "rssi": -87,
+      "channel": 2,
+      "last_seen": 2507,
+      "times_seen": 1
+    }
+  ],
+  "ssids": [
+    {
+      "ssid": "MiFibra-37F0",
+      "rssi": -84,
+      "channel": 1,
+      "type": "beacon",
+      "last_seen": 2934,
+      "times_seen": 435
+    },
+    {
+      "ssid": "DIGIFIBRA-2fTC",
+      "rssi": -81,
+      "channel": 3,
+      "type": "beacon",
+      "last_seen": 2936,
+      "times_seen": 560
+    },
+    {
+      "ssid": "DIGIFIBRA-e7xA",
+      "rssi": -84,
+      "channel": 3,
+      "type": "beacon",
+      "last_seen": 2815,
+      "times_seen": 518
+    },
+    {
+      "ssid": "MOVISTAR_4566",
+      "rssi": -81,
+      "channel": 7,
+      "type": "beacon",
+      "last_seen": 2926,
+      "times_seen": 411
+    },
+    {
+      "ssid": "vodafoneAAB93N",
+      "rssi": -75,
+      "channel": 7,
+      "type": "beacon",
+      "last_seen": 2925,
+      "times_seen": 842
+    },
+    {
+      "ssid": "Livebox6-5940",
+      "rssi": -37,
+      "channel": 12,
+      "type": "beacon",
+      "last_seen": 2931,
+      "times_seen": 3430
+    },
+    {
+      "ssid": "sagemcomE878",
+      "rssi": -56,
+      "channel": 11,
+      "type": "beacon",
+      "last_seen": 2930,
+      "times_seen": 1990
+    },
+    {
+      "ssid": "MOVISTAR_7B95",
+      "rssi": -84,
+      "channel": 6,
+      "type": "beacon",
+      "last_seen": 2925,
+      "times_seen": 180
+    },
+    {
+      "ssid": "VIRGIN-telco_D384",
+      "rssi": -83,
+      "channel": 1,
+      "type": "beacon",
+      "last_seen": 2934,
+      "times_seen": 518
+    },
+    {
+      "ssid": "MIWIFI_2G_JXga",
+      "rssi": -86,
+      "channel": 10,
+      "type": "probe",
+      "last_seen": 2910,
+      "times_seen": 18
+    },
+    {
+      "ssid": "OPPO DAVID",
+      "rssi": -85,
+      "channel": 3,
+      "type": "probe",
+      "last_seen": 2815,
+      "times_seen": 10
+    },
+    {
+      "ssid": "wifiTorre",
+      "rssi": -87,
+      "channel": 2,
+      "type": "probe",
+      "last_seen": 2507,
+      "times_seen": 4
+    },
+    {
+      "ssid": "Especialistes_tic",
+      "rssi": -90,
+      "channel": 7,
+      "type": "probe",
+      "last_seen": 2668,
+      "times_seen": 10
+    },
+    {
+      "ssid": "WiFi WSD",
+      "rssi": -86,
+      "channel": 7,
+      "type": "probe",
+      "last_seen": 2668,
+      "times_seen": 7
+    },
+    {
+      "ssid": "DIGIFIBRA-GE6N",
+      "rssi": -87,
+      "channel": 4,
+      "type": "beacon",
+      "last_seen": 2923,
+      "times_seen": 58
+    },
+    {
+      "ssid": "MiFibra-8B9E",
+      "rssi": -80,
+      "channel": 11,
+      "type": "probe",
+      "last_seen": 2755,
+      "times_seen": 11
+    },
+    {
+      "ssid": "ZTE Blade V50 Design",
+      "rssi": -83,
+      "channel": 6,
+      "type": "beacon",
+      "last_seen": 2769,
+      "times_seen": 150
+    },
+    {
+      "ssid": "DIGIFIBRA-PLUS-e7xA",
+      "rssi": -70,
+      "channel": 6,
+      "type": "probe",
+      "last_seen": 2769,
+      "times_seen": 14
+    },
+    {
+      "ssid": "MOVISTAR_16CF",
+      "rssi": -89,
+      "channel": 11,
+      "type": "beacon",
+      "last_seen": 2706,
+      "times_seen": 21
+    },
+    {
+      "ssid": "vodafoneB040",
+      "rssi": -85,
+      "channel": 11,
+      "type": "beacon",
+      "last_seen": 2930,
+      "times_seen": 95
+    },
+    {
+      "ssid": "DIGIFIBRA-0852",
+      "rssi": -79,
+      "channel": 8,
+      "type": "beacon",
+      "last_seen": 2926,
+      "times_seen": 374
+    },
+    {
+      "ssid": "MiFibra-19B0",
+      "rssi": -88,
+      "channel": 11,
+      "type": "beacon",
+      "last_seen": 2823,
+      "times_seen": 108
+    },
+    {
+      "ssid": "MOVISTAR_B8A0",
+      "rssi": -88,
+      "channel": 11,
+      "type": "beacon",
+      "last_seen": 2911,
+      "times_seen": 124
+    },
+    {
+      "ssid": "SORIGUE-CORP",
+      "rssi": -81,
+      "channel": 6,
+      "type": "probe",
+      "last_seen": 2838,
+      "times_seen": 4
+    },
+    {
+      "ssid": "devolo-eb7",
+      "rssi": -88,
+      "channel": 1,
+      "type": "probe",
+      "last_seen": 2934,
+      "times_seen": 52
+    },
+    {
+      "ssid": "MOVISTAR_4566_EXT",
+      "rssi": -92,
+      "channel": 6,
+      "type": "beacon",
+      "last_seen": 2924,
+      "times_seen": 119
+    },
+    {
+      "ssid": "MOVISTAR_EDCA",
+      "rssi": -86,
+      "channel": 11,
+      "type": "beacon",
+      "last_seen": 2789,
+      "times_seen": 31
+    },
+    {
+      "ssid": "MOVISTAR_53EF",
+      "rssi": -87,
+      "channel": 1,
+      "type": "beacon",
+      "last_seen": 2935,
+      "times_seen": 194
+    },
+    {
+      "ssid": "TP-Link_BB24",
+      "rssi": -89,
+      "channel": 2,
+      "type": "beacon",
+      "last_seen": 2921,
+      "times_seen": 143
+    },
+    {
+      "ssid": "TP-Link_92B6",
+      "rssi": -84,
+      "channel": 4,
+      "type": "beacon",
+      "last_seen": 2923,
+      "times_seen": 372
+    },
+    {
+      "ssid": "MiFibra-F1B6",
+      "rssi": -87,
+      "channel": 6,
+      "type": "beacon",
+      "last_seen": 2804,
+      "times_seen": 150
+    },
+    {
+      "ssid": "DIGIFIBRA_24_AB9C_EXT",
+      "rssi": -89,
+      "channel": 8,
+      "type": "beacon",
+      "last_seen": 2737,
+      "times_seen": 16
+    },
+    {
+      "ssid": " realme 7 5g Joni",
+      "rssi": -87,
+      "channel": 1,
+      "type": "beacon",
+      "last_seen": 2934,
+      "times_seen": 183
+    },
+    {
+      "ssid": "Livebox6-91FB_EXT",
+      "rssi": -91,
+      "channel": 11,
+      "type": "beacon",
+      "last_seen": 2043,
+      "times_seen": 23
+    },
+    {
+      "ssid": "AndroidAPD7FF",
+      "rssi": -89,
+      "channel": 4,
+      "type": "probe",
+      "last_seen": 2815,
+      "times_seen": 23
+    },
+    {
+      "ssid": "MiFibra-E140",
+      "rssi": -87,
+      "channel": 10,
+      "type": "probe",
+      "last_seen": 2057,
+      "times_seen": 4
+    },
+    {
+      "ssid": "vodafoneBA2937",
+      "rssi": -85,
+      "channel": 11,
+      "type": "beacon",
+      "last_seen": 2929,
+      "times_seen": 68
+    },
+    {
+      "ssid": "MIWIFI_VpQr",
+      "rssi": -88,
+      "channel": 6,
+      "type": "beacon",
+      "last_seen": 2545,
+      "times_seen": 26
+    },
+    {
+      "ssid": "MOVISTAR_90D0",
+      "rssi": -91,
+      "channel": 11,
+      "type": "beacon",
+      "last_seen": 2876,
+      "times_seen": 15
+    },
+    {
+      "ssid": "vodafoneB6E8",
+      "rssi": -89,
+      "channel": 11,
+      "type": "beacon",
+      "last_seen": 2468,
+      "times_seen": 2
+    },
+    {
+      "ssid": "POCO M4 Pro",
+      "rssi": -51,
+      "channel": 13,
+      "type": "beacon",
+      "last_seen": 2932,
+      "times_seen": 708
+    },
+    {
+      "ssid": "DIGIFIBRA-PLUS-A432",
+      "rssi": -90,
+      "channel": 8,
+      "type": "probe",
+      "last_seen": 1754,
+      "times_seen": 1
+    },
+    {
+      "ssid": "MOVISTAR_A546",
+      "rssi": -83,
+      "channel": 1,
+      "type": "probe",
+      "last_seen": 2151,
+      "times_seen": 1
+    },
+    {
+      "ssid": "MOVISTAR_PLUS_A546",
+      "rssi": -86,
+      "channel": 1,
+      "type": "probe",
+      "last_seen": 2151,
+      "times_seen": 1
+    },
+    {
+      "ssid": "MiFibra-9B82",
+      "rssi": -89,
+      "channel": 1,
+      "type": "beacon",
+      "last_seen": 2759,
+      "times_seen": 10
+    },
+    {
+      "ssid": "vodafone6580",
+      "rssi": -90,
+      "channel": 11,
+      "type": "beacon",
+      "last_seen": 2419,
+      "times_seen": 2
+    },
+    {
+      "ssid": "MIWIFI_UUc4",
+      "rssi": -87,
+      "channel": 14,
+      "type": "probe",
+      "last_seen": 2676,
+      "times_seen": 2
+    },
+    {
+      "ssid": "MiFibra-46B8",
+      "rssi": -83,
+      "channel": 10,
+      "type": "probe",
+      "last_seen": 2637,
+      "times_seen": 1
+    }
+  ],
+  "ble_devices": [
+    {
+      "address": "A4:C1:38:32:62:1E",
+      "name": "LYWSD03MMC",
+      "rssi": -55,
+      "last_seen": 2903,
+      "is_public": "true",
+      "times_seen": 72
+    },
+    {
+      "address": "F8:77:B8:1F:B9:7C",
+      "name": "",
+      "rssi": -85,
+      "last_seen": 2797,
+      "is_public": "true",
+      "times_seen": 67
+    },
+    {
+      "address": "A0:76:4E:50:B3:86",
+      "name": "Spyduino C3 (B386)",
+      "rssi": -37,
+      "last_seen": 2902,
+      "is_public": "true",
+      "times_seen": 67
+    },
+    {
+      "address": "FC:F5:C4:0E:34:26",
+      "name": "Spyduino (3426)",
+      "rssi": -47,
+      "last_seen": 2902,
+      "is_public": "true",
+      "times_seen": 43
+    },
+    {
+      "address": "78:02:B7:AF:21:CF",
+      "name": "QX7 Pro(ID-21CF)",
+      "rssi": -76,
+      "last_seen": 2763,
+      "is_public": "true",
+      "times_seen": 2
+    }
+  ],
+  "timestamp": 20,
+  "free_heap": 146156,
+  "min_seens": 2,
+  "stations_count": 100,
+  "ssids_count": 48,
+  "ble_devices_count": 5
+}
