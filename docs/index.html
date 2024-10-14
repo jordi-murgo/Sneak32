@@ -23,7 +23,8 @@
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
 
-        h1, h2 {
+        h1,
+        h2 {
             color: #2c3e50;
         }
 
@@ -31,12 +32,12 @@
             background-color: #3498db;
             color: #fff;
             border: none;
-            padding: 0 15px;  
+            padding: 0 15px;
             border-radius: 3px;
             cursor: pointer;
             transition: background-color 0.3s;
             height: 32px;
-            line-height: 32px; 
+            line-height: 32px;
         }
 
         button:hover {
@@ -45,7 +46,7 @@
 
         .characteristics-grid {
             display: grid;
-            grid-template-columns: 150px 100px 80px;
+            grid-template-columns: 200px 100px;
             gap: 10px;
             align-items: center;
         }
@@ -55,9 +56,11 @@
         }
 
         .characteristics-grid input[type="number"],
-        .characteristics-grid input[type="checkbox"] {
+        .characteristics-grid input[type="checkbox"],
+        .characteristics-grid input[type="text"],
+        .characteristics-grid select {
             grid-column: 2;
-            width: 100%;
+            width: max-content;
             padding: 5px;
             border: 1px solid #ddd;
             border-radius: 3px;
@@ -88,17 +91,42 @@
             max-height: 400px;
             overflow-y: auto;
         }
-        
-        .json-key { color: #881391; }
-        .json-string { color: #1A1AA6; }
-        .json-number { color: #1E90FF; }
-        .json-boolean { color: #228B22; }
-        .json-null { color: #808080; }
+
+        .json-key {
+            color: #881391;
+        }
+
+        .json-string {
+            color: #1A1AA6;
+        }
+
+        .json-number {
+            color: #1E90FF;
+        }
+
+        .json-boolean {
+            color: #228B22;
+        }
+
+        .json-null {
+            color: #808080;
+        }
 
         .button-container {
             display: flex;
             justify-content: space-between;
+            align-items: center;
             margin-bottom: 10px;
+        }
+
+        .left-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .right-buttons {
+            display: flex;
+            gap: 10px;
         }
 
         .progress-container {
@@ -113,19 +141,14 @@
             height: 20px;
             background-color: #4CAF50;
             border-radius: 5px;
-            transition: width 0.5s ease-in-out;
-        }
-
-        #deviceInfo {
-            font-size: 0.9em;
-            color: #666;
-            margin-top: 0;
-            margin-bottom: 15px;
+            transition: width 0.05s ease-in-out;
         }
 
         h1 {
-            font-size: 1.8em; /* Reducir el tamaño de la fuente del título */
-            margin-bottom: 5px; /* Reducir el espacio debajo del título */
+            font-size: 1.8em;
+            /* Reducir el tamaño de la fuente del título */
+            margin-bottom: 5px;
+            /* Reducir el espacio debajo del título */
         }
 
         #logContainer {
@@ -147,39 +170,205 @@
             margin: 0;
             padding: 2px 0;
         }
+
+        #listSizes {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+            margin-bottom: 15px;
+        }
+
+        .characteristics-grid input[type="text"],
+        .characteristics-grid input[type="number"] {
+            width: 100%;
+            /* Asegura que el campo de entrada ocupe todo el ancho disponible */
+            padding: 10px;
+            /* Añade un poco de espacio interno */
+            border: 1px solid #ddd;
+            /* Estilo del borde */
+            border-radius: 5px;
+            /* Bordes redondeados */
+            box-sizing: border-box;
+            /* Asegura que el padding no afecte el ancho total */
+        }
+
+        .characteristics-grid button {
+            background-color: #3498db;
+            /* Color de fondo del botón */
+            color: #fff;
+            /* Color del texto del botón */
+            border: none;
+            /* Sin borde */
+            padding: 10px 15px;
+            /* Espaciado interno */
+            border-radius: 5px;
+            /* Bordes redondeados */
+            cursor: pointer;
+            /* Cambia el cursor al pasar sobre el botón */
+            transition: background-color 0.3s;
+            /* Transición suave para el color de fondo */
+            height: 40px;
+            /* Altura del botón */
+        }
+
+        .characteristics-grid button:hover {
+            background-color: #2980b9;
+            /* Color de fondo al pasar el mouse */
+        }
+
+        #deviceName {
+            width: max-content;
+        }
+
+        #updateSettings {
+            height: 40px;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        #characteristicsContainer,
+        #dataContainer {
+            display: none;
+        }
+
+        #listSizes {
+            display: none;
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+
+        #disconnectButton {
+            background-color: #e74c3c;
+        }
+
+        #disconnectButton:hover {
+            background-color: #c0392b;
+        }
+
+        /* Añade esto a tu sección de estilos */
+        #firmwareInfo {
+            font-family: monospace;
+            font-size: 0.9em;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            resize: vertical;
+            margin-bottom: 10px;
+        }
+
+        .tooltip {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            z-index: 1000;
+        }
+
+        .tooltip.show {
+            opacity: 1;
+        }
+
+        #clearFlashDataButton, #restartDeviceButton {
+            background-color: #f39c12;
+        }
+
+        #clearFlashDataButton:hover, #restartDeviceButton:hover {
+            background-color: #e67e22;
+        }
+
+        .error-log {
+            color: red;
+            font-weight: bold;
+        }
+
+        #saveDataButton, #saveRelevantDataButton {
+            background-color: #2ecc71;
+        }
+
+        #saveDataButton:hover, #saveRelevantDataButton:hover {
+            background-color: #27ae60;
+        }
     </style>
 </head>
 
 <body>
     <div class="container">
         <h1 id="title">BLE WiFi Scanner</h1>
-        <div id="deviceInfo" style="display: none;"></div>
-        <button id="connectButton">Connect to BLE Device</button>
-        <div id="logContainer">
-            <div id="log"></div>
+        <div id="deviceInfoContainer" style="display: none;">
+            <div id="firmwareInfo"></div>
         </div>
-
-        <div id="characteristicsContainer" style="display: none;">
-            <h2>Settings</h2>
-            <div class="characteristics-grid">
-                <label for="onlyManagementFrames">Only Mgmt Frames:</label>
-                <input type="checkbox" id="onlyManagementFrames">
-                <button id="writeOnlyManagementFrames">Update</button>
-
-                <label for="minimalRSSI">Minimal RSSI:</label>
-                <input type="number" id="minimalRSSI" min="-100" max="0">
-                <button id="writeMinimalRSSI">Update</button>
-
-                <label for="loopDelay">Loop Delay (ms):</label>
-                <input type="number" id="loopDelay" min="100" max="10000" step="100">
-                <button id="writeLoopDelay">Update</button>
+        <div class="button-container">
+            <div class="left-buttons">
+                <button id="connectButton">Connect to BLE Device</button>
+                <button id="disconnectButton" style="display: none;">Disconnect from Device</button>
+            </div>
+            <div class="right-buttons">
+                <button id="clearFlashDataButton" style="display: none;">Clear Flash Data</button>
+                <button id="restartDeviceButton" style="display: none;">Restart Device</button>
             </div>
         </div>
 
-        <div id="dataContainer" style="display: none;">
+        <div id="logContainer">
+            <div id="log"></div>
+        </div>
+        <div id="characteristicsContainer">
+            <h2>Settings</h2>
+            <div class="characteristics-grid">
+
+                <label for="deviceName">Device Name:</label>
+                <input type="text" id="deviceName" maxlength="31">
+                <label for="operationMode">Operation Mode:</label>
+                <select id="operationMode">
+                    <option value="0">OFF</option>
+                    <option value="1">SCAN MODE</option>
+                    <option value="2">DETECTION MODE</option>
+                </select>
+
+                <label for="minimalRSSI">Minimal RSSI (dBm):</label>
+                <input type="number" id="minimalRSSI" min="-100" max="0">
+
+                <label for="loopDelay">WiFi Scan (ms):</label>
+                <input type="number" id="loopDelay" min="100" max="60000" step="100">
+
+                <label for="onlyManagementFrames">Only Mgmt Frames:</label>
+                <input type="checkbox" id="onlyManagementFrames">
+
+                <label for="bleScanPeriod">BLE Scan Period (ms):</label>
+                <input type="number" id="bleScanPeriod" min="1000" max="60000" step="1000">
+
+                <label for="bleScanDuration">BLE Scan Duration (s):</label>
+                <input type="number" id="bleScanDuration" min="1" max="30" step="1">
+
+                <label for="ignoreRandomBLE">Ignore Random BLE:</label>
+                <input type="checkbox" id="ignoreRandomBLE">
+
+            </div>
+
+            <div>
+                <button id="updateSettings">Update All Settings</button>
+            </div>
+
+
+        </div>
+
+        <div id="dataContainer">
             <h2>Captured Data</h2>
+            <div id="listSizes"></div>
             <div class="button-container">
-                <button id="getDataButton">Get Data</button>
+                <div class="left-buttons">
+                    <button id="getDataButton">Get Data</button>
+                    <button id="getRelevantDataButton">Get Relevant Data</button>
+                    <button id="saveDataButton">Save Data</button>
+                    <button id="saveRelevantDataButton">Save Relevant Data</button>
+                </div>
                 <button id="copyButton">Copy to Clipboard</button>
             </div>
             <div class="progress-container">
@@ -192,103 +381,137 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const connectButton = document.getElementById('connectButton');
+            const disconnectButton = document.getElementById('disconnectButton');
             const characteristicsContainer = document.getElementById('characteristicsContainer');
             const dataContainer = document.getElementById('dataContainer');
             const getDataButton = document.getElementById('getDataButton');
+            const getRelevantDataButton = document.getElementById('getRelevantDataButton');
             const copyButton = document.getElementById('copyButton');
             const jsonViewer = document.getElementById('jsonViewer');
             const titleElement = document.getElementById('title');
-            const deviceInfoElement = document.getElementById('deviceInfo');
+            const firmwareInfoContainer = document.getElementById('deviceInfoContainer');
             const logElement = document.getElementById('log');
-            const maxLogLines = 5;
+            const maxLogLines = 100;
 
-            let onlyManagementFramesCharacteristic;
-            let minimalRSSICharacteristic;
-            let loopDelayCharacteristic;
+            let settingsCharacteristic;
             let notificationCharacteristic;
-            let deviceInfoService;
-            let manufacturerCharacteristic;
-            let modelCharacteristic;
+            let listSizesCharacteristic;
+            let firmwareInfoCharacteristic;
+            let commandsCharacteristic;
 
             const UART_SERVICE_UUID = "81af4cd7-e091-490a-99ee-caa99032ef4e";
-            const UART_DATATRANSFER_UUID = 0xFFE2;
-            const ONLY_MANAGEMENT_FRAMES_UUID = 0xFFE0;
-            const MINIMAL_RSSI_UUID = 0xFFE1;
-            const LOOP_DELAY_UUID = 0xFFE3;
-
+            const UART_DATATRANSFER_UUID = 0xFFE0;
+            const LIST_SIZES_UUID = 0xFFE1;
+            const SETTINGS_UUID = 0xFFE2;
+            const FIRMWARE_INFO_UUID = 0xFFE3;
+            const COMMANDS_UUID = 0xFFE4;
             let totalPackets = 0;
             let currentPacket = 0;
             let receivedData = '';
             const progressBar = document.getElementById('progressBar');
 
-            connectButton.addEventListener('click', connectToBLEDevice);
-            getDataButton.addEventListener('click', getData);
-            copyButton.addEventListener('click', copyToClipboard);
+            let bluetoothDevice;
 
-            function addLog(message) {
+            const logContainer = document.getElementById('logContainer');
+
+            const clearFlashDataButton = document.getElementById('clearFlashDataButton');
+            const restartDeviceButton = document.getElementById('restartDeviceButton');
+            const saveDataButton = document.getElementById('saveDataButton');
+            const saveRelevantDataButton = document.getElementById('saveRelevantDataButton');
+
+            connectButton.addEventListener('click', connectToBLEDevice);
+            disconnectButton.addEventListener('click', disconnectFromDevice);
+            clearFlashDataButton.addEventListener('click', () => send_command('clear_flash_data'));
+            restartDeviceButton.addEventListener('click', () => send_command('restart'));
+            getDataButton.addEventListener('click', () => getData('0000'));
+            getRelevantDataButton.addEventListener('click', () => getData('0000Y'));
+            copyButton.addEventListener('click', copyToClipboard);
+            saveDataButton.addEventListener('click', () => sendSaveCommand('save_data'));
+            saveRelevantDataButton.addEventListener('click', () => sendSaveCommand('save_relevant_data'));
+
+            function addLog(message, isError = false) {
                 const now = new Date();
                 const timestamp = now.toLocaleTimeString();
                 const logMessage = `[${timestamp}] ${message}`;
 
                 const newLogEntry = document.createElement('p');
                 newLogEntry.textContent = logMessage;
+                if (isError) {
+                    newLogEntry.classList.add('error-log');
+                }
                 logElement.appendChild(newLogEntry);
 
                 while (logElement.childElementCount > maxLogLines) {
                     logElement.removeChild(logElement.firstChild);
                 }
 
-                logElement.scrollTop = logElement.scrollHeight;
+                // Usar setTimeout para asegurar que el DOM se ha actualizado
+                setTimeout(() => {
+                    logContainer.scrollTop = logContainer.scrollHeight;
+                }, 0);
+            }
+
+            // Función para forzar el scroll al final
+            function scrollLogToBottom() {
+                logContainer.scrollTop = logContainer.scrollHeight;
+            }
+
+            // Observador de mutaciones para detectar cambios en el log
+            const observer = new MutationObserver(scrollLogToBottom);
+            observer.observe(logElement, { childList: true });
+
+            function showCommandButtons(show) {
+                const buttons = [clearFlashDataButton, restartDeviceButton];
+                buttons.forEach(button => button.style.display = show ? 'inline-block' : 'none');
+                // The saveDataButton is now always visible when the dataContainer is visible
             }
 
             async function connectToBLEDevice() {
                 try {
                     addLog('Searching for BLE devices...');
 
-                    const device = await navigator.bluetooth.requestDevice({
-                        filters: [{ services: [UART_SERVICE_UUID, 0x180A] }],
-                        optionalServices: [0xFFE0, 0xFFE1, 0xFFE2, 0xFFE3, 0x2A29, 0x2A24]
+                    bluetoothDevice = await navigator.bluetooth.requestDevice({
+                        filters: [{ services: [UART_SERVICE_UUID] }],
+                        optionalServices: [0xFFE0, 0xFFE1, 0xFFE2, 0xFFE3, 0xFFE4]
                     });
 
                     addLog('Connecting...');
-                    const server = await device.gatt.connect();
+                    const server = await bluetoothDevice.gatt.connect();
+
+                    bluetoothDevice.addEventListener('gattserverdisconnected', handleDisconnection);
 
                     const service = await server.getPrimaryService(UART_SERVICE_UUID);
-                    onlyManagementFramesCharacteristic = await service.getCharacteristic(ONLY_MANAGEMENT_FRAMES_UUID);
-                    minimalRSSICharacteristic = await service.getCharacteristic(MINIMAL_RSSI_UUID);
-                    loopDelayCharacteristic = await service.getCharacteristic(LOOP_DELAY_UUID);
+                    settingsCharacteristic = await service.getCharacteristic(SETTINGS_UUID);
                     notificationCharacteristic = await service.getCharacteristic(UART_DATATRANSFER_UUID);
+                    firmwareInfoCharacteristic = await service.getCharacteristic(FIRMWARE_INFO_UUID);
+                    commandsCharacteristic = await service.getCharacteristic(COMMANDS_UUID);
 
-                    // Obtener el servicio de información del dispositivo
-                    deviceInfoService = await server.getPrimaryService(0x180A);
-                    manufacturerCharacteristic = await deviceInfoService.getCharacteristic(0x2A29);
-                    modelCharacteristic = await deviceInfoService.getCharacteristic(0x2A24);
+                    listSizesCharacteristic = await service.getCharacteristic(LIST_SIZES_UUID);
+                    await listSizesCharacteristic.startNotifications();
+                    listSizesCharacteristic.addEventListener('characteristicvaluechanged', handleListSizesNotification);
+                    addLog('List sizes notifications enabled');
 
-                    // Leer y mostrar la información del dispositivo
-                    const manufacturer = await manufacturerCharacteristic.readValue();
-                    const model = await modelCharacteristic.readValue();
-                    const manufacturerName = new TextDecoder().decode(manufacturer);
-                    const modelNumber = new TextDecoder().decode(model);
+                    // Leer el valor inicial de los tamaños de las listas
+                    const initialValue = await listSizesCharacteristic.readValue();
+                    handleListSizesNotification({ target: { value: initialValue } });
 
-                    // Actualizar el título y mostrar la información del dispositivo
-                    titleElement.textContent = `BLE WiFi Scanner :: ${device.name}`;
-                    deviceInfoElement.textContent = `Manufacturer: ${manufacturerName} :: Model: ${modelNumber}`;
-                    deviceInfoElement.style.display = 'block';
+                    titleElement.textContent = `BLE WiFi Scanner :: ${bluetoothDevice.name}`;
 
-                    addLog(`Connected to ${device.name}`);
+                    addLog(`Connected to ${bluetoothDevice.name}`);
                     characteristicsContainer.style.display = 'block';
                     dataContainer.style.display = 'block';
 
-                    await readCharacteristicValue(onlyManagementFramesCharacteristic, 'onlyManagementFrames');
-                    await readCharacteristicValue(minimalRSSICharacteristic, 'minimalRSSI');
-                    await readCharacteristicValue(loopDelayCharacteristic, 'loopDelay');
+                    await readSettings();
+                    await readFirmwareInfo();
 
-                    setupWriteEvent('writeOnlyManagementFrames', onlyManagementFramesCharacteristic, 'onlyManagementFrames');
-                    setupWriteEvent('writeMinimalRSSI', minimalRSSICharacteristic, 'minimalRSSI');
-                    setupWriteEvent('writeLoopDelay', loopDelayCharacteristic, 'loopDelay');
+                    setupWriteEvent('updateSettings');
 
                     await notificationCharacteristic.startNotifications();
                     notificationCharacteristic.addEventListener('characteristicvaluechanged', handleNotification);
+
+                    showCommandButtons(true);
+                    disconnectButton.style.display = 'inline-block';
+                    connectButton.style.display = 'none';
 
                 } catch (error) {
                     console.error('Error:', error);
@@ -296,34 +519,86 @@
                 }
             }
 
-            async function readCharacteristicValue(characteristic, elementId) {
-                const value = await characteristic.readValue();
-                const element = document.getElementById(elementId);
-                if (elementId === 'onlyManagementFrames') {
-                    element.checked = new TextDecoder().decode(value).trim() === 'true';
-                } else {
-                    element.value = new TextDecoder().decode(value);
-                }
+            async function readSettings() {
+                const value = await settingsCharacteristic.readValue();
+                const settingsString = new TextDecoder().decode(value.buffer);
+                const settingsArray = settingsString.split(':');
+
+                document.getElementById('onlyManagementFrames').checked = settingsArray[0] === '1';
+                document.getElementById('minimalRSSI').value = parseInt(settingsArray[1]);
+                document.getElementById('loopDelay').value = parseInt(settingsArray[2]);
+                document.getElementById('bleScanPeriod').value = parseInt(settingsArray[3]);
+                document.getElementById('deviceName').value = settingsArray[4] || '';
+                document.getElementById('ignoreRandomBLE').checked = settingsArray[5] === '1';
+                document.getElementById('bleScanDuration').value = parseInt(settingsArray[6]);
+                document.getElementById('operationMode').value = parseInt(settingsArray[7]);
+
+                addLog('Settings read successfully');
             }
 
-            function setupWriteEvent(buttonId, characteristic, inputId) {
+            function setupWriteEvent(buttonId) {
                 document.getElementById(buttonId).addEventListener('click', async () => {
-                    const element = document.getElementById(inputId);
-                    const value = inputId === 'onlyManagementFrames' ? element.checked.toString() : element.value;
-                    await characteristic.writeValue(new TextEncoder().encode(value));
-                    addLog(`Value updated for ${inputId}`);
+                    const onlyManagementFrames = document.getElementById('onlyManagementFrames').checked ? 1 : 0;
+                    const minimalRSSI = parseInt(document.getElementById('minimalRSSI').value);
+                    const loopDelay = parseInt(document.getElementById('loopDelay').value);
+                    const bleScanPeriod = parseInt(document.getElementById('bleScanPeriod').value);
+                    const deviceName = document.getElementById('deviceName').value;
+                    const ignoreRandomBLE = document.getElementById('ignoreRandomBLE').checked ? 1 : 0;
+                    const bleScanDuration = parseInt(document.getElementById('bleScanDuration').value);
+                    const operationMode = parseInt(document.getElementById('operationMode').value);
+
+                    // Crear la cadena de configuración
+                    const settingsString = `${onlyManagementFrames}:${minimalRSSI}:${loopDelay}:${bleScanPeriod}:${deviceName}:${ignoreRandomBLE}:${bleScanDuration}:${operationMode}`;
+
+                    await settingsCharacteristic.writeValue(new TextEncoder().encode(settingsString));
+                    addLog('Settings updated successfully');
+
+                    // Show tooltip
+                    showTooltip('Settings saved successfully');
                 });
             }
 
-            async function getData() {
+            function showTooltip(message) {
+                const tooltip = document.createElement('div');
+                tooltip.className = 'tooltip';
+                tooltip.textContent = message;
+                document.body.appendChild(tooltip);
+
+                // Force reflow
+                tooltip.offsetHeight;
+
+                // Show tooltip
+                tooltip.classList.add('show');
+
+                // Hide and remove tooltip after 3 seconds
+                setTimeout(() => {
+                    tooltip.classList.remove('show');
+                    setTimeout(() => {
+                        document.body.removeChild(tooltip);
+                    }, 300);
+                }, 3000);
+            }
+
+            async function send_command(command) {
+                try {
+                    await commandsCharacteristic.writeValue(new TextEncoder().encode(command));
+                    addLog(`Command sent: ${command}`);
+                    showTooltip(`Command sent: ${command}`);
+                } catch (error) {
+                    console.error('Error sending command:', error);
+                    addLog(`Error: ${error.message}`);
+                }
+            }
+
+            async function getData(initialPacket) {
                 try {
                     jsonViewer.innerHTML = '';
                     progressBar.style.width = '0%';
                     receivedData = '';
                     currentPacket = 0;
-                    
-                    // Solicitar el paquete inicial (0)
-                    await requestPacket(0);
+
+                    // Solicitar el paquete inicial
+                    await requestPacket(initialPacket);
                     addLog("Data transfer started");
                 } catch (error) {
                     console.error('Error starting data transfer:', error);
@@ -332,7 +607,7 @@
             }
 
             async function requestPacket(packetNumber) {
-                const packetRequestHex = packetNumber.toString(16).padStart(4, '0').toUpperCase();
+                const packetRequestHex = typeof packetNumber === 'string' ? packetNumber : packetNumber.toString(16).padStart(4, '0').toUpperCase();
                 await notificationCharacteristic.writeValue(new TextEncoder().encode(packetRequestHex));
             }
 
@@ -342,14 +617,14 @@
 
                 if (value.startsWith("START:")) {
                     totalPackets = parseInt(value.substring(6), 16);
-                    addLog(`Receiving ${totalPackets} packets`);
+                    addLog(`Transfer length: ${totalPackets} packets`);
                     currentPacket = 1;
                     requestPacket(currentPacket);
                 } else if (value === "END") {
                     showData(receivedData);
                     addLog("Data transfer completed");
                     progressBar.style.width = '100%';
-                    
+
                     // Resetear la barra de progreso después de 1 segundo
                     setTimeout(() => {
                         progressBar.style.width = '0%';
@@ -360,9 +635,7 @@
                         receivedData += value.substring(4);
                         updateProgress();
                         currentPacket++;
-                        if (currentPacket <= totalPackets) {
-                            requestPacket(currentPacket);
-                        }
+                        requestPacket(currentPacket); // Siempre pido más, y allegará el END cuando termine
                     } else {
                         console.error(`Received unexpected packet ${packetNumber}, expected ${currentPacket}`);
                         // Opcionalmente, podrías implementar aquí una lógica de reintento
@@ -418,6 +691,104 @@
                     console.error('Failed to copy text: ', err);
                     alert('Failed to copy text. Please try again.');
                 });
+            }
+
+            function handleListSizesNotification(event) {
+                const value = new TextDecoder().decode(event.target.value);
+                const [ssids, stations, bleDevices] = value.split(':').map(Number);
+
+                addLog(`List sizes updated - SSIDs: ${ssids}, Stations: ${stations}, BLE Devices: ${bleDevices}`);
+                updateListSizesDisplay(ssids, stations, bleDevices);
+            }
+
+            function updateListSizesDisplay(ssids, stations, bleDevices) {
+                const listSizesElement = document.getElementById('listSizes');
+                listSizesElement.textContent = `SSIDs: ${ssids}, Stations: ${stations}, BLE Devices: ${bleDevices}`;
+                listSizesElement.style.display = 'block';
+            }
+
+            async function disconnectFromDevice() {
+                if (bluetoothDevice && bluetoothDevice.gatt.connected) {
+                    bluetoothDevice.removeEventListener('gattserverdisconnected', handleDisconnection);
+                    await bluetoothDevice.gatt.disconnect();
+                    addLog(`Disconnected from ${bluetoothDevice.name}`);
+                }
+                resetUI();
+            }
+
+            function resetUI() {
+                showCommandButtons(false);
+                disconnectButton.style.display = 'none';
+                connectButton.style.display = 'inline-block';
+                characteristicsContainer.style.display = 'none';
+                dataContainer.style.display = 'none';
+                titleElement.textContent = 'BLE WiFi Scanner';
+                jsonViewer.innerHTML = '';
+                progressBar.style.width = '0%';
+                firmwareInfoContainer.style.display = 'none'
+            }
+
+            async function readFirmwareInfo() {
+                const value = await firmwareInfoCharacteristic.readValue();
+                const firmwareInfo = new TextDecoder().decode(value);
+                document.getElementById('firmwareInfo').innerText = firmwareInfo;
+
+                // Make the deviceInfoContainer visible
+                firmwareInfoContainer.style.display = 'block';
+
+                addLog('Firmware info read successfully');
+            }
+
+            clearFlashDataButton.addEventListener('click', async () => {
+                try {
+                    await commandsCharacteristic.writeValue(new TextEncoder().encode('clear_flash_data'));
+                    addLog('Clear flash data command sent');
+                    showTooltip('Clear flash data command sent');
+                } catch (error) {
+                    console.error('Error sending clear flash data command:', error);
+                    addLog(`Error: ${error.message}`);
+                }
+            });
+
+            restartDeviceButton.addEventListener('click', async () => {
+                try {
+                    await commandsCharacteristic.writeValue(new TextEncoder().encode('restart'));
+                    addLog('Restart device command sent');
+                    showTooltip('Restart device command sent');
+                } catch (error) {
+                    console.error('Error sending restart device command:', error);
+                    addLog(`Error: ${error.message}`);
+                }
+            });
+
+            // Añadir el event listener para el nuevo botón
+            saveDataButton.addEventListener('click', async () => {
+                try {
+                    await commandsCharacteristic.writeValue(new TextEncoder().encode('save_data'));
+                    addLog('Save data command sent');
+                    showTooltip('Save data command sent');
+                } catch (error) {
+                    console.error('Error sending save data command:', error);
+                    addLog(`Error: ${error.message}`);
+                }
+            });
+
+            async function sendSaveCommand(command) {
+                try {
+                    await commandsCharacteristic.writeValue(new TextEncoder().encode(command));
+                    addLog(`${command} command sent`);
+                    showTooltip(`${command} command sent`);
+                } catch (error) {
+                    console.error(`Error sending ${command} command:`, error);
+                    addLog(`Error: ${error.message}`);
+                }
+            }
+
+            function handleDisconnection(event) {
+                console.log('Device disconnected', event);
+                addLog('Device disconnected unexpectedly', true);
+                alert('The BLE connection was unexpectedly closed. Please reconnect.');
+                resetUI();
             }
         });
     </script>

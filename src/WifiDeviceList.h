@@ -1,0 +1,39 @@
+#pragma once
+
+#include <Arduino.h>
+#include <vector>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
+#include "MACAddress.h"
+
+struct WifiDevice {
+  MacAddress address;
+  int8_t rssi;
+  uint8_t channel;
+  time_t last_seen;
+  uint32_t times_seen;  // New field
+
+  WifiDevice(const MacAddress& addr, int8_t r, uint8_t ch, time_t seen, uint32_t times_seen = 1)
+    : address(addr), rssi(r), channel(ch), last_seen(seen), times_seen(times_seen) {}
+};
+
+class WifiDeviceList {
+public:
+  explicit WifiDeviceList(size_t maxSize);
+  ~WifiDeviceList();
+
+  WifiDeviceList(const WifiDeviceList&) = delete;
+  WifiDeviceList& operator=(const WifiDeviceList&) = delete;
+
+  void updateOrAddDevice(const MacAddress &address, int8_t rssi, uint8_t channel);
+  size_t size() const;
+  std::vector<WifiDevice> getClonedList() const;
+  void addDevice(const WifiDevice& device);
+  void clear();
+  void remove_irrelevant_stations();
+
+private:
+  std::vector<WifiDevice> deviceList;
+  size_t maxSize;
+  SemaphoreHandle_t mutex;
+};

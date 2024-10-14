@@ -43,888 +43,334 @@
 #include <time.h>
 #include <string>
 #include <Preferences.h>
+#include <BLEScan.h>
+#include <BLEAdvertisedDevice.h>
 
-#ifdef ENABLE_LED
-#include <Adafruit_NeoPixel.h>
-#endif
+#include "LedManager.h"
 
-#define MAX_STATIONS 350
-#define MAX_SSIDS 200
+#include "BLE.h"
+#include "Preferences.h"
+#include "WifiScan.h"
+
+#define MAX_STATIONS 100
+#define MAX_SSIDS 100
+#define MAX_BLE_DEVICES 100
 #define LED_PIN 2
 #define BLE_PACKET_SIZE 100
 #define SSID_MAX_LEN 33
-#define BLE_MTU_SIZE 500 // Adjust this based on your BLE MTU size
-#define PACKET_DELAY 100 // Delay between packets in milliseconds
 
-// Our own Uart Service UUID
-#define UART_SERVICE_UUID "81af4cd7-e091-490a-99ee-caa99032ef4e"
-#define UART_DATATRANSFER_UUID 0xFFE2
-#define ONLY_MANAGEMENT_FRAMES_UUID 0xFFE0
-#define MINIMAL_RSSI_UUID 0xFFE1
-#define LOOP_DELAY_UUID 0xFFE3
 
-// Define specific UUIDs for wearable devices
-#define WEARABLE_SERVICE_UUID 0x180A // Device Information Service
-#define MANUFACTURER_NAME_UUID 0x2A29
-#define MODEL_NUMBER_UUID 0x2A24
+#include "BLEDeviceList.h"
+#include "WifiDeviceList.h"
+#include "WifiNetworkList.h"
+#include "AppPreferences.h"
+#include "FlashStorage.h"
 
-#define DEVICE_NAME "Redmi Watch 3.14C"
-#define DEVICE_APPEARANCE 0x03C0 // SmartWatch
-#define DEVICE_MANUFACTURER "Espressif"
 
-// Nuevas constantes y variables globales
-#define MAX_PACKET_SIZE (BLE_MTU_SIZE - 4) // 4 bytes para el número de paquete
-#define PACKET_HEADER_SIZE 4
-#define PACKET_TIMEOUT 5000 // 5 segundos de timeout
+/**
+ * @brief BLEDeviceList is a list of BLE devices.
+ *
+ * This class is used to store and manage a list of BLE devices.
+ * It uses a mutex to ensure that the list is accessed in a thread-safe manner.
+ */
+BLEDeviceList bleDeviceList(MAX_BLE_DEVICES);
 
-String preparedJsonData;
-uint16_t totalPackets = 0;
-unsigned long lastPacketRequestTime = 0;
+/**
+ * @brief WifiDeviceList is a list of WiFi devices.
+ *
+ * This class is used to store and manage a list of WiFi devices.
+ * It uses a mutex to ensure that the list is accessed in a thread-safe manner.
+ */
+WifiDeviceList stationsList(MAX_STATIONS);
 
-struct WifiDevice
-{
-  std::string address;
-  int8_t rssi;
-  uint8_t channel;
-  time_t last_seen;
-};
+/**
+ * @brief WifiNetworkList is a list of WiFi networks.
+ *
+ * This class is used to store and manage a list of WiFi networks.
+ * It uses a mutex to ensure that the list is accessed in a thread-safe manner.
+ */
+WifiNetworkList ssidList(MAX_SSIDS);
 
-struct WifiNetwork
-{
-  std::string ssid;
-  int8_t rssi;
-  uint8_t channel;
-  std::string type; // New field for frame type
-  time_t last_seen;
-};
+time_t my_universal_time = 0;
 
-std::vector<WifiDevice> stationsList;
-std::vector<WifiNetwork> ssidList;
-BLEServer *pServer = nullptr;
-BLEService *pDeviceInfoService = nullptr;
-BLECharacteristic *pManufacturerNameCharacteristic = nullptr;
-BLECharacteristic *pModelNumberCharacteristic = nullptr;
-BLECharacteristic *pTxCharacteristic = nullptr;
-BLECharacteristic *pOnlyManagementFramesCharacteristic = nullptr;
-BLECharacteristic *pMinimalRSSICharacteristic = nullptr;
-int currentChannel = 1;
-bool deviceConnected = false;
-bool only_management_frames = false;
-int minimal_rssi = -50;
-uint32_t loop_delay = 2000; // Default 2000ms
-char device_name[32];
+extern BLEServer *pServer;
+extern BLECharacteristic *pTxCharacteristic;
+extern BLECharacteristic *pListSizesCharacteristic;
+extern bool deviceConnected;
 
-portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 
-// Constants for packet markers
-const char *PACKET_START_MARKER = "START:";
-const char *PACKET_END_MARKER = "END";
 
+// Function declarations
 static void process_management_frame(const uint8_t *payload, int payload_len, uint8_t subtype, int8_t rssi, uint8_t channel);
 static void process_control_frame(const uint8_t *payload, int payload_len, uint8_t subtype, int8_t rssi, uint8_t channel);
 static void process_data_frame(const uint8_t *payload, int payload_len, uint8_t subtype, int8_t rssi, uint8_t channel);
+String generateJsonString();
+static void parse_ssid(const uint8_t *payload, int payload_len, uint8_t subtype, char ssid[SSID_MAX_LEN]);
+void updateOrAddBTDevice(const String &address, int rssi, const String &name);
+void setupBLE();
+void printSSIDAndBLELists();
 
-#ifdef ENABLE_LED
 #ifndef PIN_NEOPIXEL
-#define PIN_NEOPIXEL 8 // Adjust this number to the correct pin for your board
+#define PIN_NEOPIXEL 8 // Ajusta este número al pin correcto para tu placa
 #endif
-#define NUMPIXELS 1 // Usually there's only one NeoPixel on the board
+#define NUMPIXELS 1 // Normalmente hay solo un NeoPixel en la placa
 
-// Define colors
-#define COLOR_OFF pixels.Color(0, 0, 0)
-#define COLOR_RED pixels.Color(255, 0, 0)
-#define COLOR_GREEN pixels.Color(0, 255, 0)
-#define COLOR_BLUE pixels.Color(0, 0, 255)
-
-Adafruit_NeoPixel pixels(NUMPIXELS, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
-
-void setPixelColor(uint32_t color)
-{
-  pixels.setPixelColor(0, color);
-  pixels.show();
-}
-#else
-// Dummy function when LED is disabled
-void setPixelColor(uint32_t color) {}
-#endif
-
-// Declare the mutex
-SemaphoreHandle_t dataAccessMutex = NULL;
+LedManager ledManager(PIN_NEOPIXEL, NUMPIXELS);
 
 // Add these global variables at the beginning of the file
 unsigned long lastPrintTime = 0;
 const unsigned long printInterval = 30000; // 30 seconds in milliseconds
 
-Preferences preferences;
+// Base time for the last_seen field in the lists
+time_t base_time = 0;
 
-String getChipInfo() {
-    esp_chip_info_t chip_info;
-    esp_chip_info(&chip_info);
-    
-    const char* chip_model;
-    switch (chip_info.model) {
-        case CHIP_ESP32:  chip_model = "ESP32"; break;
-        case CHIP_ESP32S2: chip_model = "ESP32-S2"; break;
-        case CHIP_ESP32S3: chip_model = "ESP32-S3"; break;
-        case CHIP_ESP32C3: chip_model = "ESP32-C3"; break;
-        case CHIP_ESP32H2: chip_model = "ESP32-H2"; break;
-        default: chip_model = "Unknown";
+// Function to update base_time from a list
+template<typename T>
+void updateBaseTime(const std::vector<T>& list) {
+    for (const auto& item : list) {
+        base_time = std::max(base_time, item.last_seen);
     }
-    
-    char buffer[50];
-    snprintf(buffer, sizeof(buffer), "%s (Cores: %d, Rev: %d)", 
-             chip_model, chip_info.cores, chip_info.revision);
-    return String(buffer);
 }
 
-String generateJsonString()
+String getChipInfo()
 {
-  if (xSemaphoreTake(dataAccessMutex, pdMS_TO_TICKS(50)) == pdTRUE)
-  {
-    String jsonString = "{";
-
-    // Add timestamp, counts, and free heap
-    jsonString += "\"timestamp\":" + String(time(nullptr)) + ",";
-    jsonString += "\"stations_count\":" + String(stationsList.size()) + ",";
-    jsonString += "\"ssids_count\":" + String(ssidList.size()) + ",";
-    jsonString += "\"free_heap\":" + String(ESP.getFreeHeap()) + ",";
-    jsonString += "\"only_management_frames\":" + (String)(only_management_frames ? "true" : "false") + ",";
-    jsonString += "\"minimal_rssi\":" + String(minimal_rssi) + ",";
-
-    // Add stations array
-    jsonString += "\"stations\":[";
-    for (size_t i = 0; i < stationsList.size(); ++i)
-    {
-      if (i > 0)
-        jsonString += ",";
-      char station_json[256];
-
-      snprintf(station_json, sizeof(station_json),
-               "{\"mac\":\"%s\",\"rssi\":%d,\"channel\":%d,\"last_seen\":%d}",
-               stationsList[i].address.c_str(),
-               stationsList[i].rssi,
-               stationsList[i].channel,
-               stationsList[i].last_seen);
-
-      jsonString += String(station_json);
-    }
-    jsonString += "],";
-
-    // Add SSIDs array
-    jsonString += "\"ssids\":[";
-    for (size_t i = 0; i < ssidList.size(); ++i)
-    {
-      if (i > 0)
-        jsonString += ",";
-      char ssid_json[256];
-
-      snprintf(ssid_json, sizeof(ssid_json),
-               "{\"ssid\":\"%s\",\"rssi\":%d,\"channel\":%d,\"type\":\"%s\",\"last_seen\":%d}",
-               ssidList[i].ssid.c_str(),
-               ssidList[i].rssi,
-               ssidList[i].channel,
-               ssidList[i].type.c_str(),
-               ssidList[i].last_seen);
-
-      jsonString += ssid_json;
-    }
-    jsonString += "]";
-
-    jsonString += "}";
-
-    xSemaphoreGive(dataAccessMutex);
-    return jsonString;
-  }
-  else
-  {
-    Serial.println("Could not obtain mutex to generate JSON");
-    return "{}";
-  }
+  char buffer[50];
+  snprintf(buffer, sizeof(buffer), "%s (Cores: %d, Rev: %d)",
+           ESP.getChipModel(), ESP.getChipCores(), ESP.getChipRevision());
+  return String(buffer);
 }
 
-/* Parse SSID from the packet with validation */
-static void parse_ssid(const uint8_t *payload, int payload_len, uint8_t subtype, char ssid[SSID_MAX_LEN])
+/**
+ * @brief Callback class for handling list sizes characteristic.
+ *
+ * This class handles the callback for the list sizes characteristic, updating the list sizes.
+ */
+class ListSizesCallbacks : public BLECharacteristicCallbacks
 {
-  int pos = 24;   // Start after the management frame header
-  ssid[0] = '\0'; // Default empty SSID
-
-  // Ensure there are enough bytes for the header and at least one IE
-  if (payload_len < pos + 2)
-  {
-    return;
-  }
-
-  // Determine if it's a Beacon frame or a Probe Request
-  uint16_t frame_control = payload[0] | (payload[1] << 8);
-  uint8_t frame_type = (frame_control & 0x000C) >> 2;
-  uint8_t frame_subtype = (frame_control & 0x00F0) >> 4;
-
-  // For Probe Requests, SSID is immediately after the frame header
-  // For Beacon frames, there are additional fields before the SSID
-  if (frame_type == 0 && frame_subtype == 4)
-  { // Probe Request
-    pos = 24;
-  }
-  else if (frame_type == 0 && frame_subtype == 8)
-  {           // Beacon frame
-    pos = 36; // Skip additional Beacon frame fields
-  }
-  else
-  {
-    return;
-  }
-
-  while (pos < payload_len - 2)
-  {
-    uint8_t id = payload[pos];
-    uint8_t len = payload[pos + 1];
-
-    if (id == 0)
-    { // SSID
-      if (len == 0)
-      {
-        // Probe Request with hidden SSID, do not display, others do
-        if (subtype != 4)
-        {
-        }
-        return; // Hidden SSID, exit function
-      }
-      else if (len > SSID_MAX_LEN - 1)
-      {
-        len = SSID_MAX_LEN - 1;
-      }
-
-      if (len > 0 && pos + 2 + len <= payload_len)
-      {
-        memcpy(ssid, &payload[pos + 2], len);
-        ssid[len] = '\0'; // Null-terminate
-
-        // Validate that SSID contains only printable characters
-        for (int i = 0; i < len; i++)
-        {
-          if (!isprint((unsigned char)ssid[i]))
-          {
-            ssid[i] = '.'; // Replace non-printable characters
-          }
-        }
-        return; // SSID found, exit function
-      }
-      else
-      {
-        return;
-      }
-    }
-
-    pos += 2 + len; // Move to the next IE
-  }
-}
-
-// Enhanced Wi-Fi promiscuous mode callback function
-static void promiscuous_rx_cb(void *buf, wifi_promiscuous_pkt_type_t type)
-{
-  if (type != WIFI_PKT_MGMT && type != WIFI_PKT_CTRL && type != WIFI_PKT_DATA)
-    return;
-
-  wifi_promiscuous_pkt_t *pkt = (wifi_promiscuous_pkt_t *)buf;
-  const uint8_t *payload = pkt->payload;
-  int payload_len = pkt->rx_ctrl.sig_len;
-  int8_t rssi = pkt->rx_ctrl.rssi;
-
-  uint16_t frame_control = payload[0] | (payload[1] << 8);
-  uint8_t frame_type = (frame_control & 0x000C) >> 2;
-  uint8_t frame_subtype = (frame_control & 0x00F0) >> 4;
-
-  uint8_t channel = pkt->rx_ctrl.channel;
-
-  if (rssi >= minimal_rssi)
-  {
-    // Process the packet based on its type
-    switch (frame_type)
-    {
-    case 0: // Management frame
-      process_management_frame(payload, payload_len, frame_subtype, rssi, channel);
-      break;
-    case 1: // Control frame
-      if (!only_management_frames)
-      {
-        process_control_frame(payload, payload_len, frame_subtype, rssi, channel);
-      }
-      break;
-    case 2: // Data frame
-      if (!only_management_frames)
-      {
-        process_data_frame(payload, payload_len, frame_subtype, rssi, channel);
-      }
-      break;
-    default:
-      break;
-    }
-  }
-}
-
-// Update or add SSID to the list
-void updateOrAddSSID(const char *ssid, int8_t rssi, uint8_t channel, const std::string &frameType)
-{
-  if (xSemaphoreTake(dataAccessMutex, pdMS_TO_TICKS(50)) == pdTRUE)
-  {
-    time_t now = time(nullptr);
-    auto it = std::find_if(ssidList.begin(), ssidList.end(),
-                           [&ssid](const WifiNetwork &network)
-                           { return network.ssid == ssid; });
-
-    if (it != ssidList.end())
-    {
-      // Update existing SSID
-      if (rssi > it->rssi)
-      {
-        it->rssi = rssi;
-        it->channel = channel;
-        it->type = frameType;
-      }
-      it->last_seen = now;
-    }
-    else if (ssidList.size() < MAX_SSIDS)
-    {
-      // Add new SSID
-      ssidList.push_back({std::string(ssid), rssi, channel, frameType, now});
-      Serial.printf("New SSID detected: %s (RSSI: %d, Channel: %d, Type: %s)\n",
-                    ssid, rssi, channel, frameType.c_str());
-    }
-    else
-    {
-      // Replace the oldest SSID
-      auto oldest = std::min_element(ssidList.begin(), ssidList.end(),
-                                     [](const WifiNetwork &a, const WifiNetwork &b)
-                                     { return a.last_seen < b.last_seen; });
-      *oldest = {std::string(ssid), rssi, channel, frameType, now};
-      Serial.printf("Replaced oldest SSID with: %s (RSSI: %d, Channel: %d, Type: %s)\n",
-                    ssid, rssi, channel, frameType.c_str());
-    }
-    xSemaphoreGive(dataAccessMutex);
-  }
-  else
-  {
-    Serial.println("Could not obtain mutex to update SSID data");
-  }
-}
-
-// Modificar updateOrAddStation para aceptar un puntero uint8_t en lugar de una cadena
-void updateOrAddStation(const uint8_t *mac, int8_t rssi, uint8_t channel)
-{
-  if (xSemaphoreTake(dataAccessMutex, pdMS_TO_TICKS(50)) == pdTRUE)
-  {
-    char macStr[18];
-    snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
-             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-
-    time_t now = time(nullptr);
-    auto it = std::find_if(stationsList.begin(), stationsList.end(),
-                           [&macStr](const WifiDevice &device)
-                           { return device.address == macStr; });
-
-    if (it != stationsList.end())
-    {
-      // Update existing station
-      if (rssi > it->rssi)
-      {
-        it->rssi = rssi;
-        it->channel = channel;
-      }
-      it->last_seen = now;
-    }
-    else if (stationsList.size() < MAX_STATIONS)
-    {
-      // Add new station
-      stationsList.push_back({std::string(macStr), rssi, channel, now});
-      Serial.printf("New station detected: %s (RSSI: %d, Channel: %d)\n", macStr, rssi, channel);
-    }
-    else
-    {
-      // Replace the oldest station
-      auto oldest = std::min_element(stationsList.begin(), stationsList.end(),
-                                     [](const WifiDevice &a, const WifiDevice &b)
-                                     { return a.last_seen < b.last_seen; });
-      *oldest = {std::string(macStr), rssi, channel, now};
-      Serial.printf("Replaced oldest station with: %s (RSSI: %d, Channel: %d)\n", macStr, rssi, channel);
-    }
-    xSemaphoreGive(dataAccessMutex);
-  }
-  else
-  {
-    Serial.println("Could not obtain mutex to update station data");
-  }
-}
-
-// Actualizar process_management_frame
-static void process_management_frame(const uint8_t *payload, int payload_len, uint8_t subtype, int8_t rssi, uint8_t channel)
-{
-  const uint8_t *src_addr;
-  char ssid[SSID_MAX_LEN] = {0};
-  std::string frameType;
-
-  switch (subtype)
-  {
-  case 0: // Association Request
-  case 2: // Reassociation Request
-    src_addr = &payload[10];
-    parse_ssid(payload, payload_len, subtype, ssid);
-    frameType = "assoc";
-    break;
-  case 4: // Probe Request
-    src_addr = &payload[10];
-    parse_ssid(payload, payload_len, subtype, ssid);
-    frameType = "probe";
-    break;
-  case 8: // Beacon
-    src_addr = &payload[10];
-    parse_ssid(payload, payload_len, subtype, ssid);
-    frameType = "beacon";
-    break;
-  case 10: // Disassociation
-  case 12: // Deauthentication
-    src_addr = &payload[10];
-    break;
-  default:
-    return; // Ignore other subtypes
-  }
-
-  if (ssid[0] != 0)
-  {
-    updateOrAddSSID(ssid, rssi, channel, frameType);
-  }
-
-  if (src_addr)
-  {
-    updateOrAddStation(src_addr, rssi, channel);
-  }
-}
-
-// Actualizar process_control_frame
-static void process_control_frame(const uint8_t *payload, int payload_len, uint8_t subtype, int8_t rssi, uint8_t channel)
-{
-  const uint8_t *src_addr;
-
-  switch (subtype)
-  {
-  case 8:  // Block Ack Request
-  case 9:  // Block Ack
-  case 10: // PS-Poll
-  case 11: // RTS
-  case 13: // Acknowledgement
-    src_addr = &payload[10];
-    break;
-  case 14: // CF-End
-  case 15: // CF-End + CF-Ack
-    src_addr = &payload[4];
-    break;
-  default:
-    return; // Ignore other subtypes
-  }
-
-  updateOrAddStation(src_addr, rssi, channel);
-}
-
-// Actualizar process_data_frame
-static void process_data_frame(const uint8_t *payload, int payload_len, uint8_t subtype, int8_t rssi, uint8_t channel)
-{
-  const uint8_t *src_addr = &payload[10];
-
-  updateOrAddStation(src_addr, rssi, channel);
-}
-
-class MyServerCallbacks : public BLEServerCallbacks
-{
-  void onConnect(BLEServer *pServer)
-  {
-    deviceConnected = true;
-#ifdef ENABLE_LED
-    setPixelColor(COLOR_BLUE); // Blue when a device connects
-#endif
-  };
-
-  void onDisconnect(BLEServer *pServer)
-  {
-    deviceConnected = false;
-#ifdef ENABLE_LED
-    setPixelColor(COLOR_OFF); // Back to off when disconnected
-#endif
-    // Restart advertising
-    pServer->getAdvertising()->start();
-  }
-};
-
-// Función para preparar los datos JSON
-void prepareJsonData()
-{
-  preparedJsonData = generateJsonString();
-  totalPackets = (preparedJsonData.length() / MAX_PACKET_SIZE) + 1;
-}
-
-// Función para enviar un paquete específico
-void sendPacket(uint16_t packetNumber)
-{
-  if (packetNumber == 0)
-  {
-    // Enviar marcador de inicio
-    char packetsHeader[5];
-    snprintf(packetsHeader, sizeof(packetsHeader), "%04X", totalPackets);
-    String startMarker = PACKET_START_MARKER + String(packetsHeader);
-    pTxCharacteristic->setValue(startMarker.c_str());
-    pTxCharacteristic->notify();
-    Serial.println("Sent " + startMarker);
-  }
-  else if (packetNumber <= totalPackets)
-  {
-    // Enviar paquete de datos
-    size_t startIndex = (packetNumber - 1) * MAX_PACKET_SIZE;
-    size_t endIndex = min(startIndex + MAX_PACKET_SIZE, preparedJsonData.length());
-    String chunk = preparedJsonData.substring(startIndex, endIndex);
-
-    char packetHeader[PACKET_HEADER_SIZE + 1];
-    snprintf(packetHeader, sizeof(packetHeader), "%04X", packetNumber);
-    String packetData = String(packetHeader) + chunk;
-
-    pTxCharacteristic->setValue(packetData.c_str());
-    pTxCharacteristic->notify();
-    Serial.println("Sent packet " + String(packetNumber));
-
-    if (packetNumber == totalPackets)
-    {
-      // Limpiar el buffer de datos preparados
-      preparedJsonData.clear();
-
-      // Enviar marcador de fin después del último paquete
-      delay(PACKET_DELAY);
-      pTxCharacteristic->setValue(PACKET_END_MARKER);
-      pTxCharacteristic->notify();
-      Serial.println("Sent " + String(PACKET_END_MARKER));
-    }
-  }
-}
-
-class SendDataOverBLECallbacks : public BLECharacteristicCallbacks
-{
-  void onWrite(BLECharacteristic *pCharacteristic)
-  {
-    std::string value = pCharacteristic->getValue();
-    if (value.length() >= 4)
-    {
-      uint16_t requestedPacket = strtoul(value.substr(0, 4).c_str(), NULL, 16);
-      Serial.printf("Received request for packet %d\n", requestedPacket);
-
-      if (requestedPacket == 0)
-      {
-        // Preparar nuevos datos JSON
-        prepareJsonData();
-      }
-
-      sendPacket(requestedPacket);
-      lastPacketRequestTime = millis();
-    }
-  }
-};
-
-BLEService *pNusService = nullptr;
-BLECharacteristic *pRxCharacteristic = nullptr;
-
-void loadPreferences()
-{
-  preferences.begin("wifi_monitor", false);
-  only_management_frames = preferences.getBool("only_mgmt", false);
-  minimal_rssi = preferences.getInt("min_rssi", -50);
-  loop_delay = preferences.getUInt("loop_delay", 2000);
-  preferences.end();
-  Serial.printf("loadPreferences > Only Management Frames set to: %s\n", only_management_frames ? "true" : "false");
-  Serial.printf("loadPreferences > Minimal RSSI set to: %d\n", minimal_rssi);
-  Serial.printf("loadPreferences > Loop delay set to: %u ms\n", loop_delay);
-}
-
-void savePreferences()
-{
-  preferences.begin("wifi_monitor", false);
-  preferences.putBool("only_mgmt", only_management_frames);
-  preferences.putInt("min_rssi", minimal_rssi);
-  preferences.putUInt("loop_delay", loop_delay);
-  preferences.end();
-}
-
-class OnlyManagementFramesCallbacks : public BLECharacteristicCallbacks
-{
-  void onWrite(BLECharacteristic *pCharacteristic)
-  {
-    std::string value = pCharacteristic->getValue();
-    if (value.length() > 0)
-    {
-      bool new_value = false;
-      if (value == "true" || value == "1")
-      {
-        new_value = true;
-      }
-
-      // Use a critical section to update the shared variable
-      portENTER_CRITICAL(&mux);
-      only_management_frames = new_value;
-      portEXIT_CRITICAL(&mux);
-
-      Serial.printf("Only Management Frames set to: %s\n", only_management_frames ? "true" : "false");
-      savePreferences();
-    }
-  }
-
   void onRead(BLECharacteristic *pCharacteristic)
   {
-    // Use a critical section to read the shared variable
-    portENTER_CRITICAL(&mux);
-    bool current_value = only_management_frames;
-    portEXIT_CRITICAL(&mux);
-
-    pCharacteristic->setValue(current_value ? "true" : "false");
+    updateListSizesCharacteristic();
   }
 };
 
-class MinimalRSSICallbacks : public BLECharacteristicCallbacks
+/**
+ * @brief Prints the list of detected SSIDs and BLE devices.
+ *
+ * This function formats and prints a table of detected WiFi networks and BLE devices
+ * to the serial console, including details such as RSSI, channel, and last seen time.
+ */
+void printSSIDAndBLELists()
 {
-  void onWrite(BLECharacteristic *pCharacteristic)
+  String listString;
+
+  // SSID List
+  listString = "\n---------------------------------------------------------------------------------\n";
+  listString += "SSID                             | RSSI | Channel | Type   | Times | Last seen\n";
+  listString += "---------------------------------|------|---------|--------|-------|------------\n";
+  for (const auto &network : ssidList.getClonedList())
   {
-    std::string value = pCharacteristic->getValue();
-    if (value.length() > 0)
-    {
-      minimal_rssi = std::stoi(value);
-      Serial.printf("Minimal RSSI set to: %d\n", minimal_rssi);
-      savePreferences();
-    }
+    char line[150];
+    snprintf(line, sizeof(line), "%-32s | %4d | %7d | %-6s | %5d | %d\n",
+             network.ssid.c_str(), network.rssi, network.channel, network.type.c_str(), 
+             network.times_seen, network.last_seen);
+    listString += line;
+  }
+  listString += "---------------------------------|------|---------|--------|-------|------------\n";
+  listString += "Total SSIDs: " + String(ssidList.size()) + "\n";
+  listString += "--------------------------------------------------------------------------------\n";
+
+  // BLE Device List
+  listString += "\n----------------------------------------------------------------------\n";
+  listString += "Name                             | Public | RSSI | Times | Last seen\n";
+  listString += "---------------------------------|--------|------|-------|------------\n";
+
+  auto devices = bleDeviceList.getClonedList();
+  for (const auto &device : devices)
+  {
+      char isPublicStr[6];
+      snprintf(isPublicStr, sizeof(isPublicStr), "%s", device.isPublic ? "true" : "false");
+      char line[150];
+      if (device.name.length()) {
+        snprintf(line, sizeof(line), "%-32s | %-6s | %4d | %5d | %d\n",
+                 device.name.substring(0, 32).c_str(), isPublicStr, device.rssi, 
+                 device.times_seen, device.last_seen);
+      } else {
+        // Unnamed (F8:77:B8:1F:B9:7C)
+        snprintf(line, sizeof(line), "Unnamed (%17s)      | %-6s | %4d | %5d | %d\n",
+                 device.address.toString().c_str(), isPublicStr, device.rssi, 
+                 device.times_seen, device.last_seen);
+      }
+      listString += line;
   }
 
-  void onRead(BLECharacteristic *pCharacteristic)
-  {
-    std::string value = std::to_string(minimal_rssi);
-    pCharacteristic->setValue(value);
-  }
-};
+  listString += "---------------------------------|--------|------|-------|------------\n";
+  listString += "Total BLE devices: " + String(bleDeviceList.size()) + "\n";
+  listString += "----------------------------------------------------------------------\n";
 
-class LoopDelayCallbacks : public BLECharacteristicCallbacks
-{
-  void onWrite(BLECharacteristic *pCharacteristic)
-  {
-    std::string value = pCharacteristic->getValue();
-    if (value.length() > 0)
-    {
-      loop_delay = std::stoul(value);
-      Serial.printf("Loop delay set to: %u ms\n", loop_delay);
-      savePreferences();
-    }
-  }
-
-  void onRead(BLECharacteristic *pCharacteristic)
-  {
-    std::string value = std::to_string(loop_delay);
-    pCharacteristic->setValue(value);
-  }
-};
-
-void setupBLE()
-{
-  // Initialize BLE
-  BLEDevice::init(device_name);
-
-  // Reduce BLE transmit power
-  esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT, ESP_PWR_LVL_N12);
-  
-  // Create the BLE Server
-  pServer = BLEDevice::createServer();
-  pServer->setCallbacks(new MyServerCallbacks());
-
-  // Create the Device Information Service
-  pDeviceInfoService = pServer->createService(BLEUUID((uint16_t)0x180A));
-
-  // Create characteristics for the Device Information Service
-  pManufacturerNameCharacteristic = pDeviceInfoService->createCharacteristic(
-      BLEUUID((uint16_t)0x2A29),
-      BLECharacteristic::PROPERTY_READ);
-  pManufacturerNameCharacteristic->setValue(DEVICE_MANUFACTURER);
-
-  pModelNumberCharacteristic = pDeviceInfoService->createCharacteristic(
-      BLEUUID((uint16_t)0x2A24),
-      BLECharacteristic::PROPERTY_READ);
-  pModelNumberCharacteristic->setValue(getChipInfo().c_str());
-
-  // Create the UART Service
-  pNusService = pServer->createService(UART_SERVICE_UUID);
-
-  // Create characteristics for UART
-  pTxCharacteristic = pNusService->createCharacteristic(
-      BLEUUID((uint16_t)UART_DATATRANSFER_UUID),
-      BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_INDICATE);
-  pTxCharacteristic->setCallbacks(new SendDataOverBLECallbacks());
-  pTxCharacteristic->addDescriptor(new BLE2902());
-
-  pOnlyManagementFramesCharacteristic = pNusService->createCharacteristic(
-      BLEUUID((uint16_t)ONLY_MANAGEMENT_FRAMES_UUID),
-      BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
-  pOnlyManagementFramesCharacteristic->setCallbacks(new OnlyManagementFramesCallbacks());
-  pOnlyManagementFramesCharacteristic->addDescriptor(new BLE2902());
-
-  pMinimalRSSICharacteristic = pNusService->createCharacteristic(
-      BLEUUID((uint16_t)MINIMAL_RSSI_UUID),
-      BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
-  pMinimalRSSICharacteristic->setCallbacks(new MinimalRSSICallbacks());
-  pMinimalRSSICharacteristic->addDescriptor(new BLE2902());
-
-  // Add this new characteristic
-  BLECharacteristic *pLoopDelayCharacteristic = pNusService->createCharacteristic(
-      BLEUUID((uint16_t)LOOP_DELAY_UUID),
-      BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
-  pLoopDelayCharacteristic->setCallbacks(new LoopDelayCallbacks());
-  pLoopDelayCharacteristic->addDescriptor(new BLE2902());
-
-  // Initialize the characteristics with the loaded values
-  std::string only_mgmt_str = std::to_string(only_management_frames);
-  pOnlyManagementFramesCharacteristic->setValue(only_mgmt_str);
-  std::string rssi_str = std::to_string(minimal_rssi);
-  pMinimalRSSICharacteristic->setValue(rssi_str);
-  std::string loop_delay_str = std::to_string(loop_delay);
-  pLoopDelayCharacteristic->setValue(loop_delay_str);
-
-  // Start the services
-  pDeviceInfoService->start();
-  pNusService->start();
-
-  // Advertising
-  BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
-  pAdvertising->addServiceUUID(UART_SERVICE_UUID);
-  pAdvertising->addServiceUUID(BLEUUID((uint16_t)0x180A));
-  pAdvertising->setAppearance(DEVICE_APPEARANCE);
-  pAdvertising->setMinPreferred(0x06);
-  pAdvertising->setMaxPreferred(0x12);
-
-  BLEDevice::startAdvertising();
-
-  Serial.println("BLE Advertising started with UART Service");
+  Serial.println(listString);
 }
 
+
+void firmwareInfo()
+{
+  Serial.println("\n\n----------------------------------------------------------------------");
+  Serial.print(getFirmwareInfo());
+  Serial.println("----------------------------------------------------------------------\n");
+}
+
+void checkAndRestartAdvertising() {
+    static unsigned long lastAdvertisingRestart = 0;
+    const unsigned long advertisingRestartInterval = 60 * 60 * 1000; // 1 hora en milisegundos
+
+    if (millis() - lastAdvertisingRestart > advertisingRestartInterval) {
+        Serial.println("Restarting BLE advertising");
+        BLEDevice::stopAdvertising();
+        delay(100);
+        BLEDevice::startAdvertising();
+        lastAdvertisingRestart = millis();
+    }
+}
+
+/**
+ * @brief Setup function that runs once when the device starts.
+ *
+ * This function initializes serial communication, loads preferences,
+ * sets up WiFi in promiscuous mode, and initializes BLE.
+ */
 void setup()
 {
-  delay(1000); // Wait 1 second before starting
-
   Serial.begin(115200);
-  Serial.println("Device Model: " + getChipInfo());
+  Serial.setDebugOutput(true);
 
-  // Get my BT MAC Address
-  uint8_t mac[6];
-  esp_read_mac(mac, ESP_MAC_BT);
-  snprintf(device_name, sizeof(device_name), "%s (%02X%02X)", DEVICE_NAME, mac[4], mac[5]);
-  Serial.println("Device Name : " + String(device_name));
+  ledManager.begin();
+  ledManager.setPixelColor(0, LedManager::COLOR_GREEN);
+  ledManager.show();
+
+  delay(1000); // Espera 1 segundo antes de comenzar
+
+  firmwareInfo();
 
   Serial.println("Loading preferences");
-  loadPreferences();
+  loadAppPreferences();
 
-#ifdef ENABLE_LED
-  pinMode(LED_PIN, OUTPUT);
-  // Initialize NeoPixel
-  pixels.begin();
-  setPixelColor(COLOR_GREEN);
-#endif
+  try {
+    FlashStorage::loadAll();
+  } catch (const std::exception& e) {
+    Serial.printf("Error loading from flash storage: %s\n", e.what());
 
-  // Create the mutex
-  Serial.println("Creating the mutex");
-  dataAccessMutex = xSemaphoreCreateMutex();
-  if (dataAccessMutex == NULL)
-  {
-    Serial.println("Error creating the mutex");
-    // Consider restarting the device or taking another appropriate action
-    ESP.restart();
-  }
-  Serial.println("Mutex created");
-
-  WiFi.mode(WIFI_STA);
-  esp_wifi_set_promiscuous_rx_cb(promiscuous_rx_cb);
-  esp_wifi_set_channel(currentChannel, WIFI_SECOND_CHAN_NONE);
-
-  // Set promiscuous mode with specific filter for management frames
-  if (only_management_frames)
-  {
-    Serial.println("Only Management Frames enabled");
-    wifi_promiscuous_filter_t filter = {.filter_mask = WIFI_PROMIS_FILTER_MASK_MGMT};
-    esp_wifi_set_promiscuous_filter(&filter);
-  }
-  else
-  {
-    Serial.println("All frames enabled");
-    wifi_promiscuous_filter_t filter = {.filter_mask = WIFI_PROMIS_FILTER_MASK_MGMT | WIFI_PROMIS_FILTER_MASK_DATA | WIFI_PROMIS_FILTER_MASK_CTRL};
-    esp_wifi_set_promiscuous_filter(&filter);
+    // Handle the error (e.g., clear the lists, use default values, etc.)
+    stationsList.clear();
+    ssidList.clear();
+    bleDeviceList.clear();
   }
 
-  esp_wifi_set_promiscuous(true);
-
-  Serial.println("WiFi configuration completed");
+  // Update base_time from all lists in one go
+  updateBaseTime(ssidList.getClonedList());
+  updateBaseTime(bleDeviceList.getClonedList());
+  updateBaseTime(stationsList.getClonedList());
+  base_time++;
+  Serial.printf("Base time set to: %ld\n", base_time);
 
   setupBLE();
+  setupWiFi();
 
-#ifdef ENABLE_LED
-  setPixelColor(COLOR_OFF);
-#endif
+  ledManager.setPixelColor(0, LedManager::COLOR_OFF);
+  ledManager.show();
 }
 
-void loop()
+/**
+ * @brief Scan mode loop.
+ *
+ * This function handles the scan mode loop, which is used to scan for WiFi devices.
+ * It sets the WiFi channel, performs a BLE scan, and checks for transmission timeout.
+ */
+void scan_mode_loop()
 {
+  static unsigned long lastSaved = 0;
+  static int currentChannel = 0;
+  
   currentChannel = (currentChannel % 14) + 1;
   esp_wifi_set_channel(currentChannel, WIFI_SECOND_CHAN_NONE);
 
-  // Use a critical section when accessing shared variables
-  portENTER_CRITICAL(&mux);
-  bool current_only_management_frames = only_management_frames;
-  int current_minimal_rssi = minimal_rssi;
-  uint32_t current_loop_delay = loop_delay;
-  portEXIT_CRITICAL(&mux);
+  Serial.printf(">> Time: %lu, WiFi Ch: %2d, St: %zu, SS: %zu, BLE: %zu, Heap: %d, minRSSI: %d, MgmtOnly: %d, WiFiScan: %u, BLEScan: %u, InTx: %d\n",
+                millis() / 1000, currentChannel, stationsList.size(), ssidList.size(), bleDeviceList.size(), ESP.getFreeHeap(),
+                appPrefs.minimal_rssi, appPrefs.only_management_frames, appPrefs.loop_delay, appPrefs.ble_scan_period, preparedJsonData.length() > 0);
 
-  if (xSemaphoreTake(dataAccessMutex, pdMS_TO_TICKS(50)) == pdTRUE)
-  {
-    Serial.printf(">> Time: %lu, WiFi Ch: %2d, St: %zu, SS: %zu, Heap: %d, minRSSI: %d, MgmtOnly: %d, Delay: %u, InTx: %d\n",
-                  millis(), currentChannel, stationsList.size(), ssidList.size(), ESP.getFreeHeap(),
-                  current_minimal_rssi, current_only_management_frames, current_loop_delay,
-                  preparedJsonData.length() > 0);
-    xSemaphoreGive(dataAccessMutex);
-  }
+  delay(appPrefs.loop_delay);
 
-  // Print SSID list every 30 seconds
-  unsigned long currentTime = millis();
-  if (currentTime - lastPrintTime >= printInterval)
+  doBLEScan();
+  
+  checkTransmissionTimeout();
+
+  checkAndRestartAdvertising();
+
+  if (currentChannel == 14)
   {
-    String ssidListString;
-    if (xSemaphoreTake(dataAccessMutex, pdMS_TO_TICKS(50)) == pdTRUE)
-    {
-      ssidListString = "\n--- SSID List ---\n";
-      ssidListString += "SSID                             | RSSI | Channel | Type   | Last seen\n";
-      ssidListString += "---------------------------------|------|---------|--------|------------------\n";
-      for (const auto &network : ssidList)
-      {
-        char line[150];
-        snprintf(line, sizeof(line), "%-32s | %4d | %7d | %-6s | %d\n",
-                 network.ssid.c_str(), network.rssi, network.channel, network.type.c_str(), network.last_seen);
-        ssidListString += line;
-      }
-      ssidListString += "---------------------------------|------|---------|--------|------------------\n";
-      char totalLine[50];
-      snprintf(totalLine, sizeof(totalLine), "Total SSIDs: %zu\n", ssidList.size());
-      ssidListString += totalLine;
-      ssidListString += "----------------------\n";
-      xSemaphoreGive(dataAccessMutex);
+    printSSIDAndBLELists();
+
+    // Save all data to flash storage
+    Serial.println("Saving all data to flash storage");
+    try {
+      Serial.println("All data saved to flash storage successfully");
+    } catch (const std::exception& e) {
+      Serial.printf("Error saving to flash storage: %s\n", e.what());
     }
-    else
-    {
-      ssidListString = "Could not obtain mutex to print SSID list\n";
-    }
-    Serial.println(ssidListString);
-    lastPrintTime = currentTime;
   }
 
-  // Manejar timeout de paquetes enviados
-  if (deviceConnected && preparedJsonData.length() > 0 && (millis() - lastPacketRequestTime > PACKET_TIMEOUT))
-  {
-    Serial.println("Packet request timeout. Resetting transfer.");
-    totalPackets = 0;
-    preparedJsonData = "";
+  // Save all data to flash storage every hour
+  if (millis()/1000 - lastSaved > 60 * 60) {
+    Serial.println("Saving all data to flash storage");
+    FlashStorage::saveAll();
+    lastSaved = millis()/1000;
   }
 
-  delay(current_loop_delay);
+  // Actualiza la característica de tamaños de listas
+  updateListSizesCharacteristic();
+}
+
+/**
+ * @brief Monitor mode loop.
+ *
+ * This function handles the monitor mode loop, which is used to monitor WiFi devices.
+ * It sets the WiFi channel 1, performs a BLE scan, and checks for transmission timeout.
+ */
+void monitor_mode_loop()
+{
+  Serial.println("Monitor mode loop");
+  esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE);
+
+  Serial.printf(">> Monitor Mode >> Time: %lu, St: %zu, SS: %zu, BLE: %zu, minRSSI: %d, MgmtOnly: %d, WiFiScan: %u, BLEScan: %u, InTx: %d\n",
+                millis() / 1000, stationsList.size(), ssidList.size(), bleDeviceList.size(), ESP.getFreeHeap(),
+                appPrefs.minimal_rssi, appPrefs.only_management_frames, appPrefs.loop_delay, appPrefs.ble_scan_period, preparedJsonData.length() > 0);
+
+  doBLEScan();
+
+  checkTransmissionTimeout();
+  checkAndRestartAdvertising();
+
+  delay(appPrefs.loop_delay);
+}
+
+/**
+ * @brief Main loop function that runs repeatedly.
+ *
+ * This function handles WiFi channel hopping, periodic BLE scanning,
+ * and manages the transmission of collected data over BLE.
+ */
+void loop()
+{
+  if (appPrefs.operation_mode == OPERATION_MODE_SCAN) {
+    scan_mode_loop();
+  } else if (appPrefs.operation_mode == OPERATION_MODE_DETECTION) {
+    monitor_mode_loop();
+  } else {
+    Serial.println("Operation mode == OFF");
+    ledManager.setPixelColor(0, LedManager::COLOR_RED);
+    ledManager.show();
+    delay(appPrefs.loop_delay);
+    ledManager.setPixelColor(0, LedManager::COLOR_OFF);
+    ledManager.show();
+    delay(appPrefs.loop_delay);
+  }
+
 }
