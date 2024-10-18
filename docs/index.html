@@ -628,13 +628,11 @@
             const detectionContainer = document.getElementById('detectionContainer');
             const offContainer = document.getElementById('offContainer');
 
+            const logContainer = document.getElementById('logContainer');
+
             let totalPackets = 0;
             let currentPacket = 0;
             let receivedData = '';
-
-
-            const logContainer = document.getElementById('logContainer');
-
             let statusInterval;
 
             function formatDate(date) {
@@ -729,6 +727,13 @@
                 }
             }
 
+            detectionSwitchCaptureButton.addEventListener('click', () => updateStatusMode(CAPTURE_MODE));
+            captureSwitchOffButton.addEventListener('click', () => updateStatusMode(OFF_MODE));
+            captureSwitchDetectionButton.addEventListener('click', () => updateStatusMode(DETECTION_MODE));
+            detectionSwitchOffButton.addEventListener('click', () => updateStatusMode(OFF_MODE));
+            offSwitchDetectionButton.addEventListener('click', () => updateStatusMode(DETECTION_MODE));
+            offSwitchCaptureButton.addEventListener('click', () => updateStatusMode(CAPTURE_MODE));
+
             // Default settings, overwritten by the device settings
             const settings = {
                 onlyManagementFrames: false,
@@ -742,6 +747,28 @@
                 stealthMode: false,
                 autosaveInterval: 10,
                 deviceName: "Sneak32",
+            }
+
+            function updateStatusMode(mode) {
+                settings.operationMode = mode;
+                updateSettingsForm();
+                updateSettings();
+            }
+
+            function updateSettingsForm() {
+                document.getElementById('onlyManagementFrames').checked = settings.onlyManagementFrames;
+                document.getElementById('minimalRSSI').value = settings.minimalRSSI;
+                document.getElementById('loopDelay').value = settings.loopDelay;
+                document.getElementById('bleScanPeriod').value = settings.bleScanPeriod;
+                document.getElementById('ignoreRandomBLE').checked = settings.ignoreRandomBLE;
+                document.getElementById('bleScanDuration').value = settings.bleScanDuration;
+                document.getElementById('operationMode').value = settings.operationMode;
+                document.getElementById('passiveScan').checked = settings.passiveScan;
+                document.getElementById('stealthMode').checked = settings.stealthMode;
+                document.getElementById('autosaveInterval').value = settings.autosaveInterval;
+                document.getElementById('deviceName').value = settings.deviceName;
+
+                updateOperationModeDisplay();
             }
 
             async function readSettings() {
@@ -763,20 +790,8 @@
                     settings.autosaveInterval = parseInt(parts[9]);
                     settings.deviceName = parts.slice(10).join(':');
 
-                    document.getElementById('onlyManagementFrames').checked = settings.onlyManagementFrames;
-                    document.getElementById('minimalRSSI').value = settings.minimalRSSI;
-                    document.getElementById('loopDelay').value = settings.loopDelay;
-                    document.getElementById('bleScanPeriod').value = settings.bleScanPeriod;
-                    document.getElementById('ignoreRandomBLE').checked = settings.ignoreRandomBLE;
-                    document.getElementById('bleScanDuration').value = settings.bleScanDuration;
-                    document.getElementById('operationMode').value = settings.operationMode;
-                    document.getElementById('passiveScan').checked = settings.passiveScan;
-                    document.getElementById('stealthMode').checked = settings.stealthMode;
-                    document.getElementById('autosaveInterval').value = settings.autosaveInterval;
-                    document.getElementById('deviceName').value = settings.deviceName;
-
-                    updateOperationModeDisplay();
-
+                    updateSettingsForm();
+                    
                     addLog('Settings read successfully');
                 } catch (error) {
                     console.error('Error reading settings:', error);
@@ -792,7 +807,7 @@
                 if(settings.operationMode == OFF_MODE) {
                     document.getElementById('status-mode').textContent = "❌ OFF";
                 } else if(settings.operationMode == CAPTURE_MODE) {
-                    document.getElementById('status-mode').textContent = "🎥 CAPTURE";
+                    document.getElementById('status-mode').textContent = "💾 CAPTURE";
                 } else if(settings.operationMode == DETECTION_MODE) {
                     document.getElementById('status-mode').textContent = "🔍 DETECTION";
                 }
@@ -802,14 +817,23 @@
                     offContainer.classList.remove('hidden');
                     captureContainer.classList.add('hidden');
                     detectionContainer.classList.add('hidden');
+                    Array.from(document.getElementsByClassName('alarm')).forEach(element => {
+                        element.classList.add('hidden');
+                    });
                 } else if(settings.operationMode == CAPTURE_MODE) {
                     offContainer.classList.add('hidden');
                     captureContainer.classList.remove('hidden');
                     detectionContainer.classList.add('hidden');
+                    Array.from(document.getElementsByClassName('alarm')).forEach(element => {
+                        element.classList.add('hidden');
+                    });
                 } else if(settings.operationMode == DETECTION_MODE) {
                     offContainer.classList.add('hidden');
                     captureContainer.classList.add('hidden');
                     detectionContainer.classList.remove('hidden');
+                    Array.from(document.getElementsByClassName('alarm')).forEach(element => {
+                        element.classList.remove('hidden');
+                    });
                 }
 
             }
