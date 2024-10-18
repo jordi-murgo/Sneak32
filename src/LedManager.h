@@ -9,7 +9,7 @@
 
 class LedManager {
 public:
-    LedManager(uint8_t pin, uint16_t numPixels);
+    LedManager(uint8_t pin, uint16_t numPixels = 0);
     void begin();
     void setPixelColor(uint16_t n, uint32_t color);
     void show();

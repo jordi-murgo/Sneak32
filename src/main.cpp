@@ -55,17 +55,16 @@
 #define MAX_STATIONS 100
 #define MAX_SSIDS 100
 #define MAX_BLE_DEVICES 100
-#define LED_PIN 2
-#define BLE_PACKET_SIZE 100
-#define SSID_MAX_LEN 33
-
 
 #include "BLEDeviceList.h"
 #include "WifiDeviceList.h"
 #include "WifiNetworkList.h"
+#include "WifiScan.h"
+#include "WifiDetect.h"
+#include "BLEDetect.h"
+#include "BLEScan.h"
 #include "AppPreferences.h"
 #include "FlashStorage.h"
-
 
 /**
  * @brief BLEDeviceList is a list of BLE devices.
@@ -93,29 +92,15 @@ WifiNetworkList ssidList(MAX_SSIDS);
 
 time_t my_universal_time = 0;
 
-extern BLEServer *pServer;
-extern BLECharacteristic *pTxCharacteristic;
-extern BLECharacteristic *pListSizesCharacteristic;
 extern bool deviceConnected;
 
-
-
-// Function declarations
-static void process_management_frame(const uint8_t *payload, int payload_len, uint8_t subtype, int8_t rssi, uint8_t channel);
-static void process_control_frame(const uint8_t *payload, int payload_len, uint8_t subtype, int8_t rssi, uint8_t channel);
-static void process_data_frame(const uint8_t *payload, int payload_len, uint8_t subtype, int8_t rssi, uint8_t channel);
-String generateJsonString();
-static void parse_ssid(const uint8_t *payload, int payload_len, uint8_t subtype, char ssid[SSID_MAX_LEN]);
-void updateOrAddBTDevice(const String &address, int rssi, const String &name);
-void setupBLE();
 void printSSIDAndBLELists();
 
-#ifndef PIN_NEOPIXEL
-#define PIN_NEOPIXEL 8 // Ajusta este número al pin correcto para tu placa
+#ifdef PIN_NEOPIXEL
+LedManager ledManager(PIN_NEOPIXEL, 1);
+#else
+LedManager ledManager(LED_BUILTIN);
 #endif
-#define NUMPIXELS 1 // Normalmente hay solo un NeoPixel en la placa
-
-LedManager ledManager(PIN_NEOPIXEL, NUMPIXELS);
 
 // Add these global variables at the beginning of the file
 unsigned long lastPrintTime = 0;
@@ -125,11 +110,13 @@ const unsigned long printInterval = 30000; // 30 seconds in milliseconds
 time_t base_time = 0;
 
 // Function to update base_time from a list
-template<typename T>
-void updateBaseTime(const std::vector<T>& list) {
-    for (const auto& item : list) {
-        base_time = std::max(base_time, item.last_seen);
-    }
+template <typename T>
+void updateBaseTime(const std::vector<T> &list)
+{
+  for (const auto &item : list)
+  {
+    base_time = std::max(base_time, item.last_seen);
+  }
 }
 
 String getChipInfo()
@@ -171,7 +158,7 @@ void printSSIDAndBLELists()
   {
     char line[150];
     snprintf(line, sizeof(line), "%-32s | %4d | %7d | %-6s | %5d | %d\n",
-             network.ssid.c_str(), network.rssi, network.channel, network.type.c_str(), 
+             network.ssid.c_str(), network.rssi, network.channel, network.type.c_str(),
              network.times_seen, network.last_seen);
     listString += line;
   }
@@ -187,20 +174,23 @@ void printSSIDAndBLELists()
   auto devices = bleDeviceList.getClonedList();
   for (const auto &device : devices)
   {
-      char isPublicStr[6];
-      snprintf(isPublicStr, sizeof(isPublicStr), "%s", device.isPublic ? "true" : "false");
-      char line[150];
-      if (device.name.length()) {
-        snprintf(line, sizeof(line), "%-32s | %-6s | %4d | %5d | %d\n",
-                 device.name.substring(0, 32).c_str(), isPublicStr, device.rssi, 
-                 device.times_seen, device.last_seen);
-      } else {
-        // Unnamed (F8:77:B8:1F:B9:7C)
-        snprintf(line, sizeof(line), "Unnamed (%17s)      | %-6s | %4d | %5d | %d\n",
-                 device.address.toString().c_str(), isPublicStr, device.rssi, 
-                 device.times_seen, device.last_seen);
-      }
-      listString += line;
+    char isPublicStr[6];
+    snprintf(isPublicStr, sizeof(isPublicStr), "%s", device.isPublic ? "true" : "false");
+    char line[150];
+    if (device.name.length())
+    {
+      snprintf(line, sizeof(line), "%-32s | %-6s | %4d | %5d | %d\n",
+               device.name.substring(0, 32).c_str(), isPublicStr, device.rssi,
+               device.times_seen, device.last_seen);
+    }
+    else
+    {
+      // Unnamed (F8:77:B8:1F:B9:7C)
+      snprintf(line, sizeof(line), "Unnamed (%17s)      | %-6s | %4d | %5d | %d\n",
+               device.address.toString().c_str(), isPublicStr, device.rssi,
+               device.times_seen, device.last_seen);
+    }
+    listString += line;
   }
 
   listString += "---------------------------------|--------|------|-------|------------\n";
@@ -210,7 +200,6 @@ void printSSIDAndBLELists()
   Serial.println(listString);
 }
 
-
 void firmwareInfo()
 {
   Serial.println("\n\n----------------------------------------------------------------------");
@@ -218,17 +207,19 @@ void firmwareInfo()
   Serial.println("----------------------------------------------------------------------\n");
 }
 
-void checkAndRestartAdvertising() {
-    static unsigned long lastAdvertisingRestart = 0;
-    const unsigned long advertisingRestartInterval = 60 * 60 * 1000; // 1 hora en milisegundos
+void checkAndRestartAdvertising()
+{
+  static unsigned long lastAdvertisingRestart = 0;
+  const unsigned long advertisingRestartInterval = 60 * 60 * 1000; // 1 hora en milisegundos
 
-    if (millis() - lastAdvertisingRestart > advertisingRestartInterval) {
-        Serial.println("Restarting BLE advertising");
-        BLEDevice::stopAdvertising();
-        delay(100);
-        BLEDevice::startAdvertising();
-        lastAdvertisingRestart = millis();
-    }
+  if (millis() - lastAdvertisingRestart > advertisingRestartInterval)
+  {
+    Serial.println("Restarting BLE advertising");
+    BLEDevice::stopAdvertising();
+    delay(100);
+    BLEDevice::startAdvertising();
+    lastAdvertisingRestart = millis();
+  }
 }
 
 /**
@@ -242,6 +233,8 @@ void setup()
   Serial.begin(115200);
   Serial.setDebugOutput(true);
 
+  Serial.println("Starting serial ...");
+
   ledManager.begin();
   ledManager.setPixelColor(0, LedManager::COLOR_GREEN);
   ledManager.show();
@@ -253,9 +246,12 @@ void setup()
   Serial.println("Loading preferences");
   loadAppPreferences();
 
-  try {
+  try
+  {
     FlashStorage::loadAll();
-  } catch (const std::exception& e) {
+  }
+  catch (const std::exception &e)
+  {
     Serial.printf("Error loading from flash storage: %s\n", e.what());
 
     // Handle the error (e.g., clear the lists, use default values, etc.)
@@ -271,8 +267,22 @@ void setup()
   base_time++;
   Serial.printf("Base time set to: %ld\n", base_time);
 
+  // Setup BLE Core (Advertising and Service Characteristics)
   setupBLE();
-  setupWiFi();
+
+  if (appPrefs.operation_mode == OPERATION_MODE_DETECTION)
+  {
+    WifiDetector.setup();
+    BLEDetector.setup();
+  }
+  else if (appPrefs.operation_mode == OPERATION_MODE_SCAN)
+  {
+    WifiScanner.setup();
+    BLEScanner.setup();
+  }
+  
+  // Add a delay after setting up detectors
+  delay(1000);
 
   ledManager.setPixelColor(0, LedManager::COLOR_OFF);
   ledManager.show();
@@ -288,7 +298,7 @@ void scan_mode_loop()
 {
   static unsigned long lastSaved = 0;
   static int currentChannel = 0;
-  
+
   currentChannel = (currentChannel % 14) + 1;
   esp_wifi_set_channel(currentChannel, WIFI_SECOND_CHAN_NONE);
 
@@ -298,8 +308,6 @@ void scan_mode_loop()
 
   delay(appPrefs.loop_delay);
 
-  doBLEScan();
-  
   checkTransmissionTimeout();
 
   checkAndRestartAdvertising();
@@ -310,18 +318,22 @@ void scan_mode_loop()
 
     // Save all data to flash storage
     Serial.println("Saving all data to flash storage");
-    try {
+    try
+    {
       Serial.println("All data saved to flash storage successfully");
-    } catch (const std::exception& e) {
+    }
+    catch (const std::exception &e)
+    {
       Serial.printf("Error saving to flash storage: %s\n", e.what());
     }
   }
 
   // Save all data to flash storage every hour
-  if (millis()/1000 - lastSaved > 60 * 60) {
+  if (millis() / 1000 - lastSaved > 60 * 60)
+  {
     Serial.println("Saving all data to flash storage");
     FlashStorage::saveAll();
-    lastSaved = millis()/1000;
+    lastSaved = millis() / 1000;
   }
 
   // Actualiza la característica de tamaños de listas
@@ -334,16 +346,34 @@ void scan_mode_loop()
  * This function handles the monitor mode loop, which is used to monitor WiFi devices.
  * It sets the WiFi channel 1, performs a BLE scan, and checks for transmission timeout.
  */
-void monitor_mode_loop()
+
+void detection_mode_loop()
 {
-  Serial.println("Monitor mode loop");
-  esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE);
+  static auto clonedList = ssidList.getClonedList();
+  static size_t currentSSIDIndex = 0;
 
-  Serial.printf(">> Monitor Mode >> Time: %lu, St: %zu, SS: %zu, BLE: %zu, minRSSI: %d, MgmtOnly: %d, WiFiScan: %u, BLEScan: %u, InTx: %d\n",
-                millis() / 1000, stationsList.size(), ssidList.size(), bleDeviceList.size(), ESP.getFreeHeap(),
-                appPrefs.minimal_rssi, appPrefs.only_management_frames, appPrefs.loop_delay, appPrefs.ble_scan_period, preparedJsonData.length() > 0);
+  if (appPrefs.passive_scan)
+  {
+    WifiDetector.setChannel(1);
+    Serial.println(">> Passive WiFi scan");
+  }
+  else
+  {
+    // Add bounds checking for currentSSIDIndex
+    if (currentSSIDIndex >= clonedList.size()) {
+      currentSSIDIndex = 0;
+    }
 
-  doBLEScan();
+    const auto &currentNetwork = clonedList[currentSSIDIndex];
+    // Configure ESP32 to broadcast the selected SSID
+    WifiDetector.setupAP(currentNetwork.ssid.c_str(), nullptr, 1);
+
+    Serial.printf(">> Detection Mode (%02d/%02d) >> Alarm: %d, Broadcasting SSID: \"%s\", Last detection: %d\n",
+                  currentSSIDIndex + 1, clonedList.size(), WifiDetector.isSomethingDetected(), currentNetwork.ssid.c_str(),
+                  millis() / 1000 - WifiDetector.getLastDetectionTime());
+
+    currentSSIDIndex++;
+  }
 
   checkTransmissionTimeout();
   checkAndRestartAdvertising();
@@ -359,11 +389,17 @@ void monitor_mode_loop()
  */
 void loop()
 {
-  if (appPrefs.operation_mode == OPERATION_MODE_SCAN) {
+  if (appPrefs.operation_mode == OPERATION_MODE_SCAN)
+  {
     scan_mode_loop();
-  } else if (appPrefs.operation_mode == OPERATION_MODE_DETECTION) {
-    monitor_mode_loop();
-  } else {
+  }
+  else if (appPrefs.operation_mode == OPERATION_MODE_DETECTION)
+  {
+    detection_mode_loop();
+  }
+  else
+  {
+    // ON / OFF Red LED
     Serial.println("Operation mode == OFF");
     ledManager.setPixelColor(0, LedManager::COLOR_RED);
     ledManager.show();
@@ -372,5 +408,4 @@ void loop()
     ledManager.show();
     delay(appPrefs.loop_delay);
   }
-
 }

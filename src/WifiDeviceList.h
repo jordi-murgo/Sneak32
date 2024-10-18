@@ -2,8 +2,7 @@
 
 #include <Arduino.h>
 #include <vector>
-#include <freertos/FreeRTOS.h>
-#include <freertos/semphr.h>
+#include <mutex>
 #include "MACAddress.h"
 
 struct WifiDevice {
@@ -31,9 +30,10 @@ public:
   void addDevice(const WifiDevice& device);
   void clear();
   void remove_irrelevant_stations();
+  bool is_device_in_list(const MacAddress& address);
 
 private:
   std::vector<WifiDevice> deviceList;
   size_t maxSize;
-  SemaphoreHandle_t mutex;
+  mutable std::mutex deviceMutex;
 };

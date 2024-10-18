@@ -6,12 +6,15 @@
 
 // Estructura para almacenar las preferencias
 struct AppPreferencesData {
-    char device_name[32];
-    int8_t operation_mode;             // 0-OFF, 1-SCAN_MODE, 2-DETECTION_MODE
     // General
+    char device_name[32];
+    uint8_t operation_mode;             // 0-OFF, 1-SCAN_MODE, 2-DETECTION_MODE
+    uint32_t autosave_interval;
     int8_t minimal_rssi;
+    bool passive_scan;
+    bool stealth_mode;
     // Wifi
-    uint8_t only_management_frames;
+    bool only_management_frames;
     uint32_t loop_delay;
     // BLE
     uint32_t ble_scan_period;

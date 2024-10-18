@@ -4,92 +4,319 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BLE WiFi Scanner</title>
+    <title>Snake32 Manager</title>
     <style>
+        /* Estilos base */
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2ecc71;
+            --background-color: #f4f4f4;
+            --text-color: #333;
+            --error-color: #e74c3c;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f4f4f4;
+            font-family: 'Arial', sans-serif;
+            line-height: 1.2;
+            color: var(--text-color);
+            background-color: var(--background-color);
+            padding-top: 10px;
         }
 
         .container {
-            background-color: #fff;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px 20px;
+        }
+
+        /* Estilos de navegación */
+        nav {
+            padding: 0;
+        }
+
+        nav ul {
+            display: flex;
+            list-style-type: none;
+            padding: 0;
+            margin: 0 10px 0 0;
+        }
+
+        nav ul li {
+            margin: 1px;
+        }
+
+        nav ul li a {
+            display: block;
+            padding: 10px 20px;
+            text-decoration: none;
+            color: var(--text-color);
+            background-color: #e0e0e0;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+            transition: background-color 0.3s;
+        }
+
+        nav ul li a:hover {
+            background-color: #d0d0d0;
+        }
+
+        nav ul li a.active {
+            background-color: white;
+            font-weight: bold;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Estilos de página */
+        .page {
+            display: none;
             padding: 20px;
+            background-color: #f0f0f0;
             border-radius: 5px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            margin-top: -1px;
+            border: 1px solid #ddd;
         }
 
-        h1,
-        h2 {
-            color: #2c3e50;
+        .page.active {
+            display: grid;
+            gap: 10px;
+            background-color: white;
         }
 
+        /* Estilos específicos para la página de logon */
+        #logon.active {
+            border-radius: 5px;
+            margin-top: 10px;
+            border-top: 1px solid #ddd;
+        }
+
+        /* Ajuste para las otras páginas */
+        .page.active:not(#logon) {
+            border-top: none;
+        }
+
+        /* Estilos específicos de página */
+        #logon {
+            text-align: center;
+            align-items: center;
+        }
+
+        #logon .logo {
+            width: 330px;
+            margin: 20px auto 0 auto;
+            padding-left: 5px;
+        }
+
+        #searchDeviceBtn {
+            display: inline-block;
+            width: fit-content;
+            margin: 0 auto;
+        }
+
+
+        /* Estilos de componentes */
         button {
-            background-color: #3498db;
-            color: #fff;
+            background-color: var(--primary-color);
+            color: white;
             border: none;
-            padding: 0 15px;
-            border-radius: 3px;
+            padding: 10px 20px;
+            border-radius: 5px;
             cursor: pointer;
             transition: background-color 0.3s;
-            height: 32px;
-            line-height: 32px;
         }
 
         button:hover {
             background-color: #2980b9;
         }
 
-        .characteristics-grid {
+        /* Add this new style for save buttons */
+        button.save-button {
+            background-color: var(--secondary-color);
+        }
+
+        button.save-button:hover {
+            background-color: #27ae60;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        /* Estilos responsivos */
+        @media (max-width: 300px) {
+            nav ul {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            nav ul li {
+                margin: 5px 0;
+            }
+
+            .page {
+                padding: 10px;
+            }
+        }
+
+        /* Estilos para el modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .modal-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #firmwareInfo {
+            font-family: monospace;
+            white-space: pre-wrap;
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            margin-top: 0px;
+        }
+
+        h3 {
+            margin-top: 0px;
+            margin-bottom: 0px;
+            color: var(--primary-color);
+            margin-block-start: 0em;
+            margin-block-end: 0em;
+        }
+
+        #header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0px;
+        }
+
+        .app-title {
+            color: var(--primary-color);
+            font-size: 1.5em;
+            margin: 0;
+        }
+
+        nav {
+            flex-grow: 1;
+            text-align: right;
+        }
+
+        nav ul {
+            justify-content: flex-end;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .settings-grid {
             display: grid;
-            grid-template-columns: 200px 100px;
-            gap: 10px;
+            grid-template-columns: auto 1fr;
+            gap: 5px 10px;
+            margin-bottom: 20px;
+
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+
+        .settings-grid label {
+            display: flex;
             align-items: center;
         }
 
-        .characteristics-grid label {
-            grid-column: 1;
+        .settings-grid input,
+        .settings-grid select {
+            display: flex;
+            align-items: center;
+            width: fit-content;
         }
 
-        .characteristics-grid input[type="number"],
-        .characteristics-grid input[type="checkbox"],
-        .characteristics-grid input[type="text"],
-        .characteristics-grid select {
-            grid-column: 2;
-            width: max-content;
-            padding: 5px;
-            border: 1px solid #ddd;
-            border-radius: 3px;
-            height: 32px;
-            box-sizing: border-box;
-        }
-
-        .characteristics-grid input[type="checkbox"] {
-            width: 20px;
+        .settings-grid input[type="checkbox"] {
+            width: auto;
+            margin-right: 10px;
             height: 20px;
-            justify-self: start;
+            width: 20px;
         }
 
-        .characteristics-grid button {
-            grid-column: 3;
+        #updateSettings {
+            width: fit-content;
+            margin-top: 10px;
+        }
+
+
+
+        .button-container {
             width: 100%;
-            height: 32px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .left-buttons {
+            display: inline;
+            gap: 10px;
+            align-self: flex-start;
+        }
+
+        .right-buttons {
+            display: flex;
+            gap: 10px;
+            align-self: flex-end;
         }
 
         #jsonViewer {
             clear: both;
             white-space: pre-wrap;
-            background-color: #f8f8f8;
+            background-color: #fff;
             border: 1px solid #ddd;
-            padding: 10px;
-            border-radius: 3px;
+            border-radius: 5px;
+            padding: 15px;
             font-family: monospace;
+            font-size: 14px;
+            line-height: 1.5;
             max-height: 400px;
             overflow-y: auto;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            margin-top: 0px;
         }
 
         .json-key {
@@ -112,28 +339,13 @@
             color: #808080;
         }
 
-        .button-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .left-buttons {
-            display: flex;
-            gap: 10px;
-        }
-
-        .right-buttons {
-            display: flex;
-            gap: 10px;
-        }
-
         .progress-container {
             width: 100%;
             background-color: #f0f0f0;
             border-radius: 5px;
             margin-top: 10px;
+            display: none;
+            /* Hide the progress bar container by default */
         }
 
         .progress-bar {
@@ -144,125 +356,11 @@
             transition: width 0.05s ease-in-out;
         }
 
-        h1 {
-            font-size: 1.8em;
-            /* Reducir el tamaño de la fuente del título */
-            margin-bottom: 5px;
-            /* Reducir el espacio debajo del título */
-        }
-
-        #logContainer {
-            height: 100px;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-            padding: 5px;
-            margin-top: 10px;
-            background-color: #f8f8f8;
-        }
-
-        #log {
-            font-family: monospace;
-            font-size: 0.9em;
-            line-height: 1.4;
-        }
-
-        #log p {
-            margin: 0;
-            padding: 2px 0;
-        }
-
-        #listSizes {
-            font-size: 0.9em;
-            color: #666;
-            margin-top: 5px;
-            margin-bottom: 15px;
-        }
-
-        .characteristics-grid input[type="text"],
-        .characteristics-grid input[type="number"] {
-            width: 100%;
-            /* Asegura que el campo de entrada ocupe todo el ancho disponible */
-            padding: 10px;
-            /* Añade un poco de espacio interno */
-            border: 1px solid #ddd;
-            /* Estilo del borde */
-            border-radius: 5px;
-            /* Bordes redondeados */
-            box-sizing: border-box;
-            /* Asegura que el padding no afecte el ancho total */
-        }
-
-        .characteristics-grid button {
-            background-color: #3498db;
-            /* Color de fondo del botón */
-            color: #fff;
-            /* Color del texto del botón */
-            border: none;
-            /* Sin borde */
-            padding: 10px 15px;
-            /* Espaciado interno */
-            border-radius: 5px;
-            /* Bordes redondeados */
-            cursor: pointer;
-            /* Cambia el cursor al pasar sobre el botón */
-            transition: background-color 0.3s;
-            /* Transición suave para el color de fondo */
-            height: 40px;
-            /* Altura del botón */
-        }
-
-        .characteristics-grid button:hover {
-            background-color: #2980b9;
-            /* Color de fondo al pasar el mouse */
-        }
-
-        #deviceName {
-            width: max-content;
-        }
-
-        #updateSettings {
-            height: 40px;
-            width: 100%;
-            margin-top: 10px;
-        }
-
-        #characteristicsContainer,
-        #dataContainer {
-            display: none;
-        }
-
-        #listSizes {
-            display: none;
-            font-size: 0.9em;
-            color: #666;
-            margin-top: 0;
-            margin-bottom: 15px;
-        }
-
-        #disconnectButton {
-            background-color: #e74c3c;
-        }
-
-        #disconnectButton:hover {
-            background-color: #c0392b;
-        }
-
-        /* Añade esto a tu sección de estilos */
-        #firmwareInfo {
-            font-family: monospace;
-            font-size: 0.9em;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            resize: vertical;
-            margin-bottom: 10px;
-        }
-
         .tooltip {
             position: fixed;
-            bottom: 20px;
+            top: 50%;
             left: 50%;
-            transform: translateX(-50%);
+            transform: translate(-50%, -50%);
             background-color: #333;
             color: white;
             padding: 10px 20px;
@@ -270,77 +368,170 @@
             opacity: 0;
             transition: opacity 0.3s ease-in-out;
             z-index: 1000;
+            text-align: center;
+            pointer-events: none;
         }
 
         .tooltip.show {
             opacity: 1;
         }
 
-        #clearFlashDataButton, #restartDeviceButton {
-            background-color: #f39c12;
+        #logContainer {
+            font-family: monospace;
+            white-space: pre-wrap;
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            margin-top: 0px;
+
+            height: fit-content;
+            max-height: 300px;
+            overflow-y: auto;
         }
 
-        #clearFlashDataButton:hover, #restartDeviceButton:hover {
-            background-color: #e67e22;
+        #log {
+            font-family: monospace;
+            white-space: pre-wrap;
+            margin: 0;
         }
 
-        .error-log {
-            color: red;
+        footer {
+            text-align: center;
+            padding: 10px;
+            font-size: 0.8em;
+        }
+
+        #statusContainer {
+            display: ruby;
+            flex-direction: column;
+            gap: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f0f0f0;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        #status-alarm,
+        #status-mode,
+        #status-wifi-networks,
+        #status-wifi-devices,
+        #status-ble-devices {
             font-weight: bold;
+            margin-right: 10px;
         }
 
-        #saveDataButton, #saveRelevantDataButton {
-            background-color: #2ecc71;
-        }
-
-        #saveDataButton:hover, #saveRelevantDataButton:hover {
-            background-color: #27ae60;
+        #operationContainer,
+        #captureContainer,
+        #detectionContainer {
+            display: ruby;
+            gap: 10px;
+            margin-bottom: 10px;
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <h1 id="title">BLE WiFi Scanner</h1>
-        <div id="deviceInfoContainer" style="display: none;">
+        <div id="header" class="hidden">
+            <h1 class="app-title">🕵️‍♂️ Sneak32 Manager</h1>
+            <nav>
+                <ul>
+                    <li><a href="#status">Status</a></li>
+                    <li><a href="#setup">Setup</a></li>
+                    <li><a href="#data-transfer">Data</a></li>
+                </ul>
+            </nav>
+        </div>
+
+        <div id="logon" class="page active">
+            <h1>🕵️‍♂️ Sneak32 Manager</h1>
+            <img src="logo-esp32.png" alt="ESP32 Logo" class="logo">
+            <button id="searchDeviceBtn">Search for Device</button>
+        </div>
+
+        <div id="status" class="page">
+            <h3 id="statusTitle">Firmware Information:</h3>
             <div id="firmwareInfo"></div>
-        </div>
-        <div class="button-container">
-            <div class="left-buttons">
-                <button id="connectButton">Connect to BLE Device</button>
-                <button id="disconnectButton" style="display: none;">Disconnect from Device</button>
+
+            <h3>Status:</h3>
+            <div id="statusContainer">
+                <label>Mode:</label>
+                <div id="status-mode"></div>
+                <label>Networks:</label>
+                <div id="status-wifi-networks"></div>
+                <label>Devices:</label>
+                <div id="status-wifi-devices"></div>
+                <label>BLE Devices:</label>
+                <div id="status-ble-devices"></div>
+                <label class="alarm">Alarm:</label>
+                <div class="alarm" id="status-alarm"></div>
             </div>
-            <div class="right-buttons">
-                <button id="clearFlashDataButton" style="display: none;">Clear Flash Data</button>
-                <button id="restartDeviceButton" style="display: none;">Restart Device</button>
+
+            <div id="operationContainer">
+                <button id="operationResetButton">Reset</button>
+                <div id="captureContainer" class="hidden">
+                    <button id="captureSwitchOffButton">Switch to OFF</button>
+                    <button id="captureSwitchDetectionButton">Switch to Detection</button>
+                    <button id="captureCleanSaveDataButton" class="save-button">Clean Capture</button>
+                    <button id="captureSaveDataButton" class="save-button">Save Capture</button>
+                </div>
+                <div id="detectionContainer" class="hidden">
+                    <button id="detectionSwitchOffButton">Switch to OFF</button>
+                    <button id="detectionSwitchCaptureButton">Switch to Capture</button>
+                    <button id="detectionCleanDataButton" class="save-button">Clean Detection</button>
+                </div>
+                <div id="offContainer" class="hidden">
+                    <button id="offSwitchDetectionButton">Switch to Detection</button>
+                    <button id="offSwitchCaptureButton">Switch to Capture</button>
+                </div>
             </div>
+
+            <h3>Event Log:</h3>
+            <div id="logContainer"></div>
         </div>
 
-        <div id="logContainer">
-            <div id="log"></div>
-        </div>
-        <div id="characteristicsContainer">
-            <h2>Settings</h2>
-            <div class="characteristics-grid">
+        <div id="setup" class="page">
+            <h2>Device Setup</h2>
 
+            <h3>General</h3>
+            <div class="settings-grid">
                 <label for="deviceName">Device Name:</label>
                 <input type="text" id="deviceName" maxlength="31">
+
                 <label for="operationMode">Operation Mode:</label>
                 <select id="operationMode">
                     <option value="0">OFF</option>
-                    <option value="1">SCAN MODE</option>
-                    <option value="2">DETECTION MODE</option>
+                    <option value="1">CAPTURE</option>
+                    <option value="2">DETECTION</option>
                 </select>
+
+                <label for="autosaveInterval">Autosave Scanned Data (min):</label>
+                <input type="number" id="autosaveInterval" min="0" max="9999">
 
                 <label for="minimalRSSI">Minimal RSSI (dBm):</label>
                 <input type="number" id="minimalRSSI" min="-100" max="0">
 
+                <label for="passiveScan">Passive Scan:</label>
+                <input type="checkbox" id="passiveScan">
+
+                <label for="stealthMode">Stealth Mode:</label>
+                <input type="checkbox" id="stealthMode">
+
+            </div>
+
+            <h3>WiFi</h3>
+            <div class="settings-grid">
                 <label for="loopDelay">WiFi Scan (ms):</label>
                 <input type="number" id="loopDelay" min="100" max="60000" step="100">
 
                 <label for="onlyManagementFrames">Only Mgmt Frames:</label>
                 <input type="checkbox" id="onlyManagementFrames">
+            </div>
 
+            <h3>BLE</h3>
+            <div class="settings-grid">
                 <label for="bleScanPeriod">BLE Scan Period (ms):</label>
                 <input type="number" id="bleScanPeriod" min="1000" max="60000" step="1000">
 
@@ -349,27 +540,24 @@
 
                 <label for="ignoreRandomBLE">Ignore Random BLE:</label>
                 <input type="checkbox" id="ignoreRandomBLE">
-
             </div>
 
-            <div>
-                <button id="updateSettings">Update All Settings</button>
-            </div>
-
-
+            <button id="updateSettingsButton" class="save-button">Update Settings</button>
         </div>
 
-        <div id="dataContainer">
-            <h2>Captured Data</h2>
+        <div id="data-transfer" class="page">
+            <h2>Data Transfer</h2>
             <div id="listSizes"></div>
             <div class="button-container">
                 <div class="left-buttons">
                     <button id="getDataButton">Get Data</button>
                     <button id="getRelevantDataButton">Get Relevant Data</button>
-                    <button id="saveDataButton">Save Data</button>
-                    <button id="saveRelevantDataButton">Save Relevant Data</button>
+                    <button id="saveDataButton" class="save-button">Save Data</button>
+                    <button id="saveRelevantDataButton" class="save-button">Save Relevant Data</button>
                 </div>
-                <button id="copyButton">Copy to Clipboard</button>
+                <div class="right-buttons">
+                    <button id="copyButton">Copy to Clipboard</button>
+                </div>
             </div>
             <div class="progress-container">
                 <div id="progressBar" class="progress-bar"></div>
@@ -378,72 +566,99 @@
         </div>
     </div>
 
+    <div id="disconnectionModal" class="modal">
+        <div class="modal-content">
+            <p>The BLE connection was unexpectedly closed. Please reconnect.</p>
+            <button class="modal-button" onclick="closeModal()">OK</button>
+        </div>
+    </div>
+
+    <footer>
+        &copy; 2024 Jordi Murgo. All rights reserved.
+    </footer>
+
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const connectButton = document.getElementById('connectButton');
-            const disconnectButton = document.getElementById('disconnectButton');
-            const characteristicsContainer = document.getElementById('characteristicsContainer');
-            const dataContainer = document.getElementById('dataContainer');
+            const SNEAK32_SERVICE_UUID = "81af4cd7-e091-490a-99ee-caa99032ef4e";
+            const FIRMWARE_INFO_UUID = 0xFFE3;
+            const SETTINGS_UUID = 0xFFE2;
+            const DATATRANSFER_UUID = 0xFFE0;
+            const COMMANDS_UUID = 0xFFE4;
+            const STATUS_UUID = 0xFFE1;
+            const searchDeviceBtn = document.getElementById('searchDeviceBtn');
+            const headerElement = document.getElementById('header');
+            const firmwareInfoElement = document.getElementById('firmwareInfo');
+            const statusTitleElement = document.getElementById('statusTitle');
+
+            let bluetoothDevice;
+            let bluetoothServer;
+            let firmwareInfoCharacteristic;
+            let settingsCharacteristic;
+            let dataTransferCharacteristic;
+            let commandsCharacteristic;
+            let statusCharacteristic;
+            const updateSettingsButton = document.getElementById('updateSettingsButton');
+
             const getDataButton = document.getElementById('getDataButton');
             const getRelevantDataButton = document.getElementById('getRelevantDataButton');
-            const copyButton = document.getElementById('copyButton');
             const jsonViewer = document.getElementById('jsonViewer');
-            const titleElement = document.getElementById('title');
-            const firmwareInfoContainer = document.getElementById('deviceInfoContainer');
-            const logElement = document.getElementById('log');
-            const maxLogLines = 100;
 
-            let settingsCharacteristic;
-            let notificationCharacteristic;
-            let listSizesCharacteristic;
-            let firmwareInfoCharacteristic;
-            let commandsCharacteristic;
+            const saveDataButton = document.getElementById('saveDataButton');
+            const copyButton = document.getElementById('copyButton');
+            const saveRelevantDataButton = document.getElementById('saveRelevantDataButton');
+            const progressBar = document.getElementById('progressBar');
+            const progressContainer = document.querySelector('.progress-container');
 
-            const UART_SERVICE_UUID = "81af4cd7-e091-490a-99ee-caa99032ef4e";
-            const UART_DATATRANSFER_UUID = 0xFFE0;
-            const LIST_SIZES_UUID = 0xFFE1;
-            const SETTINGS_UUID = 0xFFE2;
-            const FIRMWARE_INFO_UUID = 0xFFE3;
-            const COMMANDS_UUID = 0xFFE4;
+            const offSwitchDetectionButton = document.getElementById('offSwitchDetectionButton');
+            const offSwitchCaptureButton = document.getElementById('offSwitchCaptureButton');   
+            const captureCleanSaveDataButton = document.getElementById('captureCleanSaveDataButton');
+            const captureSaveDataButton = document.getElementById('captureSaveDataButton');
+            const captureSwitchDetectionButton = document.getElementById('captureSwitchDetectionButton');
+            const captureSwitchOffButton = document.getElementById('captureSwitchOffButton');
+        
+            const detectionCleanDataButton = document.getElementById('detectionCleanDataButton');
+            const detectionSwitchCaptureButton = document.getElementById('detectionSwitchCaptureButton');
+            const detectionSwitchOffButton = document.getElementById('detectionSwitchOffButton');
+        
+            const resetButton = document.getElementById('resetButton');
+
+            const operationContainer = document.getElementById('operationContainer');
+            const captureContainer = document.getElementById('captureContainer');
+            const detectionContainer = document.getElementById('detectionContainer');
+            const offContainer = document.getElementById('offContainer');
+
             let totalPackets = 0;
             let currentPacket = 0;
             let receivedData = '';
-            const progressBar = document.getElementById('progressBar');
 
-            let bluetoothDevice;
 
             const logContainer = document.getElementById('logContainer');
 
-            const clearFlashDataButton = document.getElementById('clearFlashDataButton');
-            const restartDeviceButton = document.getElementById('restartDeviceButton');
-            const saveDataButton = document.getElementById('saveDataButton');
-            const saveRelevantDataButton = document.getElementById('saveRelevantDataButton');
+            let statusInterval;
 
-            connectButton.addEventListener('click', connectToBLEDevice);
-            disconnectButton.addEventListener('click', disconnectFromDevice);
-            clearFlashDataButton.addEventListener('click', () => send_command('clear_flash_data'));
-            restartDeviceButton.addEventListener('click', () => send_command('restart'));
-            getDataButton.addEventListener('click', () => getData('0000'));
-            getRelevantDataButton.addEventListener('click', () => getData('0000Y'));
-            copyButton.addEventListener('click', copyToClipboard);
-            saveDataButton.addEventListener('click', () => sendSaveCommand('save_data'));
-            saveRelevantDataButton.addEventListener('click', () => sendSaveCommand('save_relevant_data'));
+            function formatDate(date) {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                const seconds = String(date.getSeconds()).padStart(2, '0');
+
+                return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+            }
 
             function addLog(message, isError = false) {
                 const now = new Date();
                 const timestamp = now.toLocaleTimeString();
                 const logMessage = `[${timestamp}] ${message}`;
 
-                const newLogEntry = document.createElement('p');
+                const newLogEntry = document.createElement('div');
                 newLogEntry.textContent = logMessage;
                 if (isError) {
                     newLogEntry.classList.add('error-log');
                 }
-                logElement.appendChild(newLogEntry);
-
-                while (logElement.childElementCount > maxLogLines) {
-                    logElement.removeChild(logElement.firstChild);
-                }
+                logContainer.appendChild(newLogEntry);
 
                 // Usar setTimeout para asegurar que el DOM se ha actualizado
                 setTimeout(() => {
@@ -451,167 +666,272 @@
                 }, 0);
             }
 
-            // Función para forzar el scroll al final
-            function scrollLogToBottom() {
-                logContainer.scrollTop = logContainer.scrollHeight;
-            }
-
-            // Observador de mutaciones para detectar cambios en el log
-            const observer = new MutationObserver(scrollLogToBottom);
-            observer.observe(logElement, { childList: true });
-
-            function showCommandButtons(show) {
-                const buttons = [clearFlashDataButton, restartDeviceButton];
-                buttons.forEach(button => button.style.display = show ? 'inline-block' : 'none');
-                // The saveDataButton is now always visible when the dataContainer is visible
-            }
-
             async function connectToBLEDevice() {
                 try {
                     addLog('Searching for BLE devices...');
 
                     bluetoothDevice = await navigator.bluetooth.requestDevice({
-                        filters: [{ services: [UART_SERVICE_UUID] }],
-                        optionalServices: [0xFFE0, 0xFFE1, 0xFFE2, 0xFFE3, 0xFFE4]
+                        filters: [{ services: [SNEAK32_SERVICE_UUID] }],
+                        optionalServices: [FIRMWARE_INFO_UUID, SETTINGS_UUID, DATATRANSFER_UUID, COMMANDS_UUID, STATUS_UUID]
                     });
 
                     addLog('Connecting...');
-                    const server = await bluetoothDevice.gatt.connect();
+                    showPage('#status');
+                    updateStatusTitle(`${bluetoothDevice.name}`);
+                    addLog(`Connected to ${bluetoothDevice.name}`);
+                    showTooltip(`Retrieving data from ${bluetoothDevice.name}`);
+
+                    bluetoothServer = await bluetoothDevice.gatt.connect();
 
                     bluetoothDevice.addEventListener('gattserverdisconnected', handleDisconnection);
 
-                    const service = await server.getPrimaryService(UART_SERVICE_UUID);
-                    settingsCharacteristic = await service.getCharacteristic(SETTINGS_UUID);
-                    notificationCharacteristic = await service.getCharacteristic(UART_DATATRANSFER_UUID);
+
+                    const service = await bluetoothServer.getPrimaryService(SNEAK32_SERVICE_UUID);
                     firmwareInfoCharacteristic = await service.getCharacteristic(FIRMWARE_INFO_UUID);
+                    settingsCharacteristic = await service.getCharacteristic(SETTINGS_UUID);
+                    dataTransferCharacteristic = await service.getCharacteristic(DATATRANSFER_UUID);
                     commandsCharacteristic = await service.getCharacteristic(COMMANDS_UUID);
+                    statusCharacteristic = await service.getCharacteristic(STATUS_UUID);
 
-                    listSizesCharacteristic = await service.getCharacteristic(LIST_SIZES_UUID);
-                    await listSizesCharacteristic.startNotifications();
-                    listSizesCharacteristic.addEventListener('characteristicvaluechanged', handleListSizesNotification);
-                    addLog('List sizes notifications enabled');
-
-                    // Leer el valor inicial de los tamaños de las listas
-                    const initialValue = await listSizesCharacteristic.readValue();
-                    handleListSizesNotification({ target: { value: initialValue } });
-
-                    titleElement.textContent = `BLE WiFi Scanner :: ${bluetoothDevice.name}`;
-
-                    addLog(`Connected to ${bluetoothDevice.name}`);
-                    characteristicsContainer.style.display = 'block';
-                    dataContainer.style.display = 'block';
-
-                    await readSettings();
                     await readFirmwareInfo();
+                    await readSettings();
+                    await readStatus();
 
-                    setupWriteEvent('updateSettings');
+                    // Start periodic status updates
+                    statusInterval = setInterval(readStatus, 30000);
 
-                    await notificationCharacteristic.startNotifications();
-                    notificationCharacteristic.addEventListener('characteristicvaluechanged', handleNotification);
+                    searchDeviceBtn.style.display = 'none';
+                    headerElement.classList.remove('hidden');
 
-                    showCommandButtons(true);
-                    disconnectButton.style.display = 'inline-block';
-                    connectButton.style.display = 'none';
+                    await dataTransferCharacteristic.startNotifications();
+                    dataTransferCharacteristic.addEventListener('characteristicvaluechanged', handleDataTransferNotification);
+
+                    await statusCharacteristic.startNotifications();
+                    statusCharacteristic.addEventListener('characteristicvaluechanged', handleStatusNotification);
 
                 } catch (error) {
                     console.error('Error:', error);
-                    addLog(`Error: ${error.message}`);
+                    addLog(`Error: ${error.message}`, true);
+                    showPage('#logon');
                 }
             }
 
-            async function readSettings() {
-                const value = await settingsCharacteristic.readValue();
-                const settingsString = new TextDecoder().decode(value.buffer);
-                const settingsArray = settingsString.split(':');
-
-                document.getElementById('onlyManagementFrames').checked = settingsArray[0] === '1';
-                document.getElementById('minimalRSSI').value = parseInt(settingsArray[1]);
-                document.getElementById('loopDelay').value = parseInt(settingsArray[2]);
-                document.getElementById('bleScanPeriod').value = parseInt(settingsArray[3]);
-                document.getElementById('deviceName').value = settingsArray[4] || '';
-                document.getElementById('ignoreRandomBLE').checked = settingsArray[5] === '1';
-                document.getElementById('bleScanDuration').value = parseInt(settingsArray[6]);
-                document.getElementById('operationMode').value = parseInt(settingsArray[7]);
-
-                addLog('Settings read successfully');
+            async function readFirmwareInfo() {
+                try {
+                    const value = await firmwareInfoCharacteristic.readValue();
+                    const decoder = new TextDecoder('utf-8');
+                    const firmwareInfo = decoder.decode(value);
+                    firmwareInfoElement.textContent = firmwareInfo;
+                    addLog('Firmware info read successfully');
+                } catch (error) {
+                    console.error('Error reading firmware info:', error);
+                    addLog(`Error reading firmware info: ${error.message}`, true);
+                }
             }
 
-            function setupWriteEvent(buttonId) {
-                document.getElementById(buttonId).addEventListener('click', async () => {
+            // Default settings, overwritten by the device settings
+            const settings = {
+                onlyManagementFrames: false,
+                minimalRSSI: -60,
+                loopDelay: 100,
+                bleScanPeriod: 1000,
+                ignoreRandomBLE: false,
+                bleScanDuration: 10,
+                operationMode: 0,
+                passiveScan: false,
+                stealthMode: false,
+                autosaveInterval: 10,
+                deviceName: "Sneak32",
+            }
+
+            async function readSettings() {
+                try {
+                    const value = await settingsCharacteristic.readValue();
+                    const settingsString = new TextDecoder().decode(value);
+
+                    const parts = settingsString.split(':');
+
+                    settings.onlyManagementFrames = parts[0] === '1';
+                    settings.minimalRSSI = parseInt(parts[1]);
+                    settings.loopDelay = parseInt(parts[2]);
+                    settings.bleScanPeriod = parseInt(parts[3]);
+                    settings.ignoreRandomBLE = parts[4] === '1';
+                    settings.bleScanDuration = parseInt(parts[5]);
+                    settings.operationMode = parseInt(parts[6]);
+                    settings.passiveScan = parts[7] === '1';
+                    settings.stealthMode = parts[8] === '1';
+                    settings.autosaveInterval = parseInt(parts[9]);
+                    settings.deviceName = parts.slice(10).join(':');
+
+                    document.getElementById('onlyManagementFrames').checked = settings.onlyManagementFrames;
+                    document.getElementById('minimalRSSI').value = settings.minimalRSSI;
+                    document.getElementById('loopDelay').value = settings.loopDelay;
+                    document.getElementById('bleScanPeriod').value = settings.bleScanPeriod;
+                    document.getElementById('ignoreRandomBLE').checked = settings.ignoreRandomBLE;
+                    document.getElementById('bleScanDuration').value = settings.bleScanDuration;
+                    document.getElementById('operationMode').value = settings.operationMode;
+                    document.getElementById('passiveScan').checked = settings.passiveScan;
+                    document.getElementById('stealthMode').checked = settings.stealthMode;
+                    document.getElementById('autosaveInterval').value = settings.autosaveInterval;
+                    document.getElementById('deviceName').value = settings.deviceName;
+
+                    updateOperationModeDisplay();
+
+                    addLog('Settings read successfully');
+                } catch (error) {
+                    console.error('Error reading settings:', error);
+                    addLog(`Error reading settings: ${error.message}`, true);
+                }
+            }
+
+            const OFF_MODE = 0;
+            const CAPTURE_MODE = 1;
+            const DETECTION_MODE = 2;
+
+            function updateOperationModeDisplay() {
+                if(settings.operationMode == OFF_MODE) {
+                    document.getElementById('status-mode').textContent = "❌ OFF";
+                } else if(settings.operationMode == CAPTURE_MODE) {
+                    document.getElementById('status-mode').textContent = "🎥 CAPTURE";
+                } else if(settings.operationMode == DETECTION_MODE) {
+                    document.getElementById('status-mode').textContent = "🔍 DETECTION";
+                }
+                
+                // Update the operation buttons visibility
+                if(settings.operationMode == OFF_MODE) {
+                    offContainer.classList.remove('hidden');
+                    captureContainer.classList.add('hidden');
+                    detectionContainer.classList.add('hidden');
+                } else if(settings.operationMode == CAPTURE_MODE) {
+                    offContainer.classList.add('hidden');
+                    captureContainer.classList.remove('hidden');
+                    detectionContainer.classList.add('hidden');
+                } else if(settings.operationMode == DETECTION_MODE) {
+                    offContainer.classList.add('hidden');
+                    captureContainer.classList.add('hidden');
+                    detectionContainer.classList.remove('hidden');
+                }
+
+            }
+
+            async function updateSettings() {
+                try {
                     const onlyManagementFrames = document.getElementById('onlyManagementFrames').checked ? 1 : 0;
                     const minimalRSSI = parseInt(document.getElementById('minimalRSSI').value);
                     const loopDelay = parseInt(document.getElementById('loopDelay').value);
                     const bleScanPeriod = parseInt(document.getElementById('bleScanPeriod').value);
-                    const deviceName = document.getElementById('deviceName').value;
                     const ignoreRandomBLE = document.getElementById('ignoreRandomBLE').checked ? 1 : 0;
                     const bleScanDuration = parseInt(document.getElementById('bleScanDuration').value);
                     const operationMode = parseInt(document.getElementById('operationMode').value);
+                    const passiveScan = document.getElementById('passiveScan').checked ? 1 : 0;
+                    const stealthMode = document.getElementById('stealthMode').checked ? 1 : 0;
+                    const autosaveInterval = parseInt(document.getElementById('autosaveInterval').value);
+                    const deviceName = document.getElementById('deviceName').value;
 
-                    // Crear la cadena de configuración
-                    const settingsString = `${onlyManagementFrames}:${minimalRSSI}:${loopDelay}:${bleScanPeriod}:${deviceName}:${ignoreRandomBLE}:${bleScanDuration}:${operationMode}`;
+                    const settingsString = `${onlyManagementFrames}:${minimalRSSI}:${loopDelay}:${bleScanPeriod}:${ignoreRandomBLE}:${bleScanDuration}:${operationMode}:${passiveScan}:${stealthMode}:${autosaveInterval}:${deviceName}`;
 
                     await settingsCharacteristic.writeValue(new TextEncoder().encode(settingsString));
                     addLog('Settings updated successfully');
 
-                    // Show tooltip
-                    showTooltip('Settings saved successfully');
+                    await readSettings();
+                } catch (error) {
+                    console.error('Error updating settings:', error);
+                    addLog(`Error updating settings: ${error.message}`, true);
+                }
+            }
+
+            function handleDisconnection(event) {
+                console.log('Device disconnected', event);
+                addLog('Device disconnected unexpectedly', true);
+                showDisconnectionModal();
+                
+                // Clear the status update interval
+                clearInterval(statusInterval);
+            }
+
+            function showDisconnectionModal() {
+                document.getElementById('disconnectionModal').style.display = 'block';
+            }
+
+            function closeModal() {
+                document.getElementById('disconnectionModal').style.display = 'none';
+                resetUI();
+                showPage('#logon');
+            }
+
+            function showPage(pageId) {
+                document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+                document.querySelector(pageId).classList.add('active');
+
+                // Ocultar o mostrar la navegación dependiendo de la página
+                if (pageId === '#logon') {
+                    headerElement.classList.add('hidden');
+                } else {
+                    headerElement.classList.remove('hidden');
+                }
+
+                // Actualizar el enlace activo en la navegación
+                document.querySelectorAll('nav a').forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href') === pageId) {
+                        link.classList.add('active');
+                    }
                 });
             }
 
-            function showTooltip(message) {
-                const tooltip = document.createElement('div');
-                tooltip.className = 'tooltip';
-                tooltip.textContent = message;
-                document.body.appendChild(tooltip);
-
-                // Force reflow
-                tooltip.offsetHeight;
-
-                // Show tooltip
-                tooltip.classList.add('show');
-
-                // Hide and remove tooltip after 3 seconds
-                setTimeout(() => {
-                    tooltip.classList.remove('show');
-                    setTimeout(() => {
-                        document.body.removeChild(tooltip);
-                    }, 300);
-                }, 3000);
+            function resetUI() {
+                searchDeviceBtn.style.display = 'inline-block';
+                headerElement.classList.add('hidden');
+                firmwareInfoElement.textContent = '';
+                statusTitleElement.textContent = 'Current Status';
+                
+                // Clear the status update interval
+                clearInterval(statusInterval);
             }
 
-            async function send_command(command) {
-                try {
-                    await commandsCharacteristic.writeValue(new TextEncoder().encode(command));
-                    addLog(`Command sent: ${command}`);
-                    showTooltip(`Command sent: ${command}`);
-                } catch (error) {
-                    console.error('Error sending command:', error);
-                    addLog(`Error: ${error.message}`);
-                }
+            function updateStatusTitle(deviceName) {
+                statusTitleElement.textContent = `Firmware Information for ${deviceName}`;
             }
+
+            // Vincular el botón de búsqueda a la función de conexión
+            searchDeviceBtn.addEventListener('click', connectToBLEDevice);
+
+            // Agregar la navegación
+            document.querySelectorAll('nav a').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    showPage(link.getAttribute('href'));
+                });
+            });
+
+            getDataButton.addEventListener('click', () => getData('0000'));
+            getRelevantDataButton.addEventListener('click', () => getData('0000Y'));
+            copyButton.addEventListener('click', copyToClipboard);
+            saveDataButton.addEventListener('click', () => sendCommand('save_data'));
+            saveRelevantDataButton.addEventListener('click', () => sendCommand('save_relevant_data'));
 
             async function getData(initialPacket) {
                 try {
                     jsonViewer.innerHTML = '';
                     progressBar.style.width = '0%';
+                    progressContainer.style.display = 'block'; // Show the progress bar
                     receivedData = '';
                     currentPacket = 0;
 
-                    // Solicitar el paquete inicial
                     await requestPacket(initialPacket);
                     addLog("Data transfer started");
                 } catch (error) {
                     console.error('Error starting data transfer:', error);
-                    addLog(`Error: ${error.message}`);
+                    addLog(`Error: ${error.message}`, true);
                 }
             }
 
             async function requestPacket(packetNumber) {
                 const packetRequestHex = typeof packetNumber === 'string' ? packetNumber : packetNumber.toString(16).padStart(4, '0').toUpperCase();
-                await notificationCharacteristic.writeValue(new TextEncoder().encode(packetRequestHex));
+                await dataTransferCharacteristic.writeValue(new TextEncoder().encode(packetRequestHex));
             }
 
-            function handleNotification(event) {
+            function handleDataTransferNotification(event) {
                 const value = new TextDecoder().decode(event.target.value);
                 console.log("Received:", value);
 
@@ -625,9 +945,9 @@
                     addLog("Data transfer completed");
                     progressBar.style.width = '100%';
 
-                    // Resetear la barra de progreso después de 1 segundo
                     setTimeout(() => {
                         progressBar.style.width = '0%';
+                        progressContainer.style.display = 'none'; // Hide the progress bar after completion
                     }, 1000);
                 } else {
                     const packetNumber = parseInt(value.substring(0, 4), 16);
@@ -635,10 +955,9 @@
                         receivedData += value.substring(4);
                         updateProgress();
                         currentPacket++;
-                        requestPacket(currentPacket); // Siempre pido más, y allegará el END cuando termine
+                        requestPacket(currentPacket);
                     } else {
                         console.error(`Received unexpected packet ${packetNumber}, expected ${currentPacket}`);
-                        // Opcionalmente, podrías implementar aquí una lógica de reintento
                     }
                 }
             }
@@ -707,89 +1026,94 @@
                 listSizesElement.style.display = 'block';
             }
 
-            async function disconnectFromDevice() {
-                if (bluetoothDevice && bluetoothDevice.gatt.connected) {
-                    bluetoothDevice.removeEventListener('gattserverdisconnected', handleDisconnection);
-                    await bluetoothDevice.gatt.disconnect();
-                    addLog(`Disconnected from ${bluetoothDevice.name}`);
-                }
-                resetUI();
-            }
-
-            function resetUI() {
-                showCommandButtons(false);
-                disconnectButton.style.display = 'none';
-                connectButton.style.display = 'inline-block';
-                characteristicsContainer.style.display = 'none';
-                dataContainer.style.display = 'none';
-                titleElement.textContent = 'BLE WiFi Scanner';
-                jsonViewer.innerHTML = '';
-                progressBar.style.width = '0%';
-                firmwareInfoContainer.style.display = 'none'
-            }
-
-            async function readFirmwareInfo() {
-                const value = await firmwareInfoCharacteristic.readValue();
-                const firmwareInfo = new TextDecoder().decode(value);
-                document.getElementById('firmwareInfo').innerText = firmwareInfo;
-
-                // Make the deviceInfoContainer visible
-                firmwareInfoContainer.style.display = 'block';
-
-                addLog('Firmware info read successfully');
-            }
-
-            clearFlashDataButton.addEventListener('click', async () => {
-                try {
-                    await commandsCharacteristic.writeValue(new TextEncoder().encode('clear_flash_data'));
-                    addLog('Clear flash data command sent');
-                    showTooltip('Clear flash data command sent');
-                } catch (error) {
-                    console.error('Error sending clear flash data command:', error);
-                    addLog(`Error: ${error.message}`);
-                }
-            });
-
-            restartDeviceButton.addEventListener('click', async () => {
-                try {
-                    await commandsCharacteristic.writeValue(new TextEncoder().encode('restart'));
-                    addLog('Restart device command sent');
-                    showTooltip('Restart device command sent');
-                } catch (error) {
-                    console.error('Error sending restart device command:', error);
-                    addLog(`Error: ${error.message}`);
-                }
-            });
-
-            // Añadir el event listener para el nuevo botón
-            saveDataButton.addEventListener('click', async () => {
-                try {
-                    await commandsCharacteristic.writeValue(new TextEncoder().encode('save_data'));
-                    addLog('Save data command sent');
-                    showTooltip('Save data command sent');
-                } catch (error) {
-                    console.error('Error sending save data command:', error);
-                    addLog(`Error: ${error.message}`);
-                }
-            });
-
-            async function sendSaveCommand(command) {
+            async function sendCommand(command) {
                 try {
                     await commandsCharacteristic.writeValue(new TextEncoder().encode(command));
                     addLog(`${command} command sent`);
                     showTooltip(`${command} command sent`);
                 } catch (error) {
                     console.error(`Error sending ${command} command:`, error);
-                    addLog(`Error: ${error.message}`);
+                    addLog(`Error: ${error.message}`, true);
                 }
             }
 
-            function handleDisconnection(event) {
-                console.log('Device disconnected', event);
-                addLog('Device disconnected unexpectedly', true);
-                alert('The BLE connection was unexpectedly closed. Please reconnect.');
-                resetUI();
+            function showTooltip(message) {
+                const tooltip = document.createElement('div');
+                tooltip.className = 'tooltip';
+                tooltip.textContent = message;
+                document.body.appendChild(tooltip);
+
+                // Force reflow
+                tooltip.offsetHeight;
+
+                // Show tooltip
+                tooltip.classList.add('show');
+
+                // Hide and remove tooltip after 3 seconds
+                setTimeout(() => {
+                    tooltip.classList.remove('show');
+                    setTimeout(() => {
+                        document.body.removeChild(tooltip);
+                    }, 300);
+                }, 3000);
             }
+
+            updateSettingsButton.addEventListener('click', async () => {
+                try {
+                    await updateSettings();
+                    addLog("Settings updated successfully");
+                    showTooltip("Settings updated successfully");
+                } catch (error) {
+                    console.error('Error updating settings:', error);
+                    addLog(`Error updating settings: ${error.message}`, true);
+                    showTooltip("Error updating settings");
+                }
+            });
+
+            async function readStatus() {
+                try {
+                    const value = await statusCharacteristic.readValue();
+                    handleStatusUpdate(new TextDecoder().decode(value));
+                    addLog('Status read successfully');
+                } catch (error) {
+                    console.error('Error reading status:', error);
+                    addLog(`Error reading status: ${error.message}`, true);
+                }
+            }
+
+            function handleStatusNotification(event) {
+                const value = new TextDecoder().decode(event.target.value);
+                handleStatusUpdate(value);
+            }
+
+            function handleStatusUpdate(statusString) {
+                const [wifiNetworks, wifiDevices, bleDevices, alarm] = statusString.split(':');
+
+                const operationMode = parseInt(document.getElementById('operationMode').value);
+                const mode = operationMode == 0 ? "❌ OFF" : operationMode == 1 ? "🎥 CAPTURE" : "🔍 DETECTION";
+                document.getElementById('status-mode').textContent = mode;
+
+                document.getElementById('status-wifi-networks').textContent = wifiNetworks;
+                document.getElementById('status-wifi-devices').textContent = wifiDevices;
+                document.getElementById('status-ble-devices').textContent = bleDevices;
+
+                document.getElementById('status-alarm').textContent = alarm ? "🔥" : "🟢";
+
+
+                addLog(`Status updated - WiFi Networks: ${wifiNetworks}, WiFi Devices: ${wifiDevices}, BLE Devices: ${bleDevices}${alarm ? `, Alarm: ${alarm}` : ''}`);
+            }
+
+            window.closeModal = closeModal;
+            window.showPage = showPage;
+            window.updateStatusTitle = updateStatusTitle;
+            window.addLog = addLog;
+            window.readFirmwareInfo = readFirmwareInfo;
+            window.handleDisconnection = handleDisconnection;
+            window.connectToBLEDevice = connectToBLEDevice;
+            window.resetUI = resetUI;
+
+            // Inicializar la UI
+            resetUI();
         });
     </script>
 </body>

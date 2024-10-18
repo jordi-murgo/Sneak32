@@ -2,8 +2,7 @@
 
 #include <Arduino.h>
 #include <vector>
-#include <freertos/FreeRTOS.h>
-#include <freertos/semphr.h>
+#include <mutex>
 #include "MACAddress.h"
 
 // Estructura para dispositivos BLE encontrados
@@ -35,11 +34,15 @@ public:
   std::vector<BLEFoundDevice> getClonedList() const;
   void addDevice(const BLEFoundDevice& device);
   void clear();
+  void remove_irrelevant_devices();
+  bool is_device_in_list(const MacAddress& address);
 
 private:
   std::vector<BLEFoundDevice> deviceList;
   size_t maxSize;
 
-  // Handle del mutex de FreeRTOS
-  SemaphoreHandle_t mutex;
+  // Mutex de C++
+  mutable std::mutex deviceMutex;
 };
+
+extern BLEDeviceList bleDeviceList;

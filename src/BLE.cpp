@@ -1,13 +1,19 @@
+#include <sstream>
+#include <esp_gap_ble_api.h>
+
 #include "BLE.h"
 #include "WifiDeviceList.h"
 #include "WifiNetworkList.h"
 #include "AppPreferences.h"
 #include "MACAddress.h"
 #include "WifiScan.h"
+#include "WifiDetect.h"
+#include "BLEScan.h"
+#include "BLEDetect.h"
 #include "sdkconfig.h" // For CONFIG_SPIRAM
 #include "FlashStorage.h"
-#include <sstream>
-#include <esp_gap_ble_api.h>
+
+#include "BLECommands.h"
 
 // External variables
 extern BLEDeviceList bleDeviceList;
@@ -50,7 +56,11 @@ class ListSizesCallbacks : public BLECharacteristicCallbacks
 {
     void onRead(BLECharacteristic *pCharacteristic) override
     {
-        updateListSizesCharacteristic();
+        if (appPrefs.operation_mode == OPERATION_MODE_DETECTION) {
+            updateDetectedDevicesCharacteristic();
+        } else {
+            updateListSizesCharacteristic();
+        }
     }
 };
 
@@ -83,16 +93,13 @@ class SettingsCallbacks : public BLECharacteristicCallbacks
         std::istringstream ss(value);
         std::string token;
 
+        uint8_t operation_mode = appPrefs.operation_mode;
+
+        Serial.printf("SettingsCallbacks::onWrite -> %s\n", value.c_str());
+
         // Leer los valores
         if (std::getline(ss, token, ':'))
-        {
-            bool old_only_management_frames = appPrefs.only_management_frames;
-            appPrefs.only_management_frames = std::stoi(token);
-            if (old_only_management_frames != appPrefs.only_management_frames)
-            {
-                setWiFiFilter(appPrefs.only_management_frames);
-            }
-        }
+            appPrefs.only_management_frames = std::stoi(token) ? true : false;
         if (std::getline(ss, token, ':'))
             appPrefs.minimal_rssi = std::stoi(token);
         if (std::getline(ss, token, ':'))
@@ -100,6 +107,20 @@ class SettingsCallbacks : public BLECharacteristicCallbacks
         if (std::getline(ss, token, ':'))
             appPrefs.ble_scan_period = std::stoul(token);
         if (std::getline(ss, token, ':'))
+            appPrefs.ignore_random_ble_addresses = std::stoi(token) ? true : false;
+        if (std::getline(ss, token, ':'))
+            appPrefs.ble_scan_duration = std::stoul(token);
+        if (std::getline(ss, token, ':'))
+            appPrefs.operation_mode = std::stoi(token);
+        if (std::getline(ss, token, ':'))
+            appPrefs.passive_scan = std::stoi(token) ? true : false;
+        if (std::getline(ss, token, ':'))
+            appPrefs.stealth_mode = std::stoi(token) ? true : false;
+        if (std::getline(ss, token, ':'))
+            appPrefs.autosave_interval = std::stoul(token);
+        
+        // El deviceName ahora es el último elemento
+        if (std::getline(ss, token))
         {
             char olddevice_name[32];
             strncpy(olddevice_name, appPrefs.device_name, sizeof(olddevice_name) - 1);
@@ -113,12 +134,38 @@ class SettingsCallbacks : public BLECharacteristicCallbacks
                 updateBLEDeviceName(appPrefs.device_name);
             }
         }
-        if (std::getline(ss, token, ':'))
-            appPrefs.ignore_random_ble_addresses = std::stoi(token);
-        if (std::getline(ss, token, ':'))
-            appPrefs.ble_scan_duration = std::stoul(token);
-        if (std::getline(ss, token, ':'))
-            appPrefs.operation_mode = std::stoi(token);
+
+        if (operation_mode != appPrefs.operation_mode) {
+            switch (appPrefs.operation_mode) {
+                case OPERATION_MODE_SCAN:
+                    // Deinicializar WifiDetect y BLEDetect
+                    WifiDetector.stop();
+                    BLEDetector.stop();
+
+                    // Inicializar WifiScan y BLE Scan
+                    WifiScanner.setup();
+                    BLEScanner.setup();
+                    break;
+
+                case OPERATION_MODE_DETECTION:
+                    // Deinicializar WifiScan y BLE Scan
+                    WifiScanner.stop();
+                    BLEScanner.stop();
+                    // Inicializar WifiDetection y BLE Detect
+                    WifiDetector.setup();
+                    BLEDetector.setup();
+                    break;
+
+                default: // OPERATION_MODE_OFF
+                    // Deinicializar WifiScan
+                    WifiScanner.stop();
+                    BLEScanner.stop();
+                    // Deinicializar WifiDetection
+                    WifiDetector.stop();
+                    BLEDetector.stop();
+                    break;
+            }
+        }
 
         saveAppPreferences();
     }
@@ -130,55 +177,14 @@ class SettingsCallbacks : public BLECharacteristicCallbacks
                                 String(appPrefs.minimal_rssi) + ":" +
                                 String(appPrefs.loop_delay) + ":" +
                                 String(appPrefs.ble_scan_period) + ":" +
-                                String(appPrefs.device_name) + ":" +
                                 String(appPrefs.ignore_random_ble_addresses) + ":" +
                                 String(appPrefs.ble_scan_duration) + ":" +
-                                String(appPrefs.operation_mode);
+                                String(appPrefs.operation_mode) + ":" +
+                                String(appPrefs.passive_scan) + ":" +
+                                String(appPrefs.stealth_mode) + ":" +
+                                String(appPrefs.autosave_interval) + ":" +
+                                String(appPrefs.device_name);
         pCharacteristic->setValue(settingsString.c_str());
-    }
-};
-
-// Add this new class for handling command callbacks
-class CommandsCallbacks : public BLECharacteristicCallbacks
-{
-    void onWrite(BLECharacteristic *pCharacteristic) override
-    {
-        std::string value = pCharacteristic->getValue();
-        if (value.length() > 0)
-        {
-            Serial.println("Received command: " + String(value.c_str()));
-
-            if (value == "restart")
-            {
-                ESP.restart();
-            }
-            else if (value == "clear_data")
-            {
-                // Clear all collected data
-                stationsList.clear();
-                ssidList.clear();
-                bleDeviceList.clear();
-                updateListSizesCharacteristic();
-            }
-            else if (value == "clear_flash_data")
-            {
-                // Clear all saved data
-                stationsList.clear();
-                ssidList.clear();
-                bleDeviceList.clear();
-                FlashStorage::saveAll();
-                updateListSizesCharacteristic();
-            }
-            else if (value == "save_data")
-            {
-                FlashStorage::saveAll();
-            }
-            else if (value == "save_relevant_data")
-            {
-                stationsList.remove_irrelevant_stations();
-                FlashStorage::saveAll();
-            }
-        }
     }
 };
 
@@ -311,6 +317,14 @@ void setupBLE()
     pListSizesCharacteristic->setCallbacks(new ListSizesCallbacks());
     pListSizesCharacteristic->addDescriptor(new BLE2902());
 
+    if (appPrefs.operation_mode == OPERATION_MODE_DETECTION) {
+        updateDetectedDevicesCharacteristic();
+    } else if (appPrefs.operation_mode == OPERATION_MODE_SCAN) {
+        updateListSizesCharacteristic();
+    } else {
+        pListSizesCharacteristic->setValue("0:0:0:0");
+    }
+
     pTxCharacteristic = pScannerService->createCharacteristic(
         BLEUUID((uint16_t)SCANNER_DATATRANSFER_UUID),
         BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_INDICATE);
@@ -345,7 +359,12 @@ void setupBLE()
     pAdvertising->setAppearance(ESP_BLE_APPEARANCE_SPORTS_WATCH);
     pAdvertising->setMinPreferred(0x06);
     pAdvertising->setMaxPreferred(0x12);
-    pAdvertising->setAdvertisementType(ADV_TYPE_IND);
+
+    // if(appPrefs.stealth_mode) {
+    //     pAdvertising->setAdvertisementType(ADV_TYPE_DIRECT_IND_LOW);
+    // } else {
+        pAdvertising->setAdvertisementType(ADV_TYPE_IND);
+    // }
 
     Serial.println("Starting BLE advertising");
     BLEDevice::startAdvertising();
@@ -353,6 +372,45 @@ void setupBLE()
     Serial.println("BLE Initialized");
 }
 
+
+void updateDetectedDevicesCharacteristic()
+{
+    Serial.println("Updating detected devices characteristic");
+    static size_t last_ssids_size = 0;
+    static size_t last_stations_size = 0;
+    static size_t last_ble_devices_size = 0;
+    static bool alarm_detected = false;
+    
+    bool alarm = BLEDetector.isSomethingDetected() | WifiDetector.isSomethingDetected();
+    if (pListSizesCharacteristic != nullptr)
+    {
+        // Crear la cadena de texto con los tamaños de las listas
+        String sizeString = String(WifiDetector.getDetectedNetworksCount()) + ":" +
+                            String(WifiDetector.getDetectedDevicesCount()) + ":" +
+                            String(BLEDetector.getDetectedDevicesCount()) + ":" +
+                            String(alarm);
+
+        Serial.printf("List sizes updated -> %s\n", sizeString.c_str());
+        pListSizesCharacteristic->setValue(sizeString.c_str());
+        if (deviceConnected)
+        {
+            Serial.println("Notifying list sizes");
+            pListSizesCharacteristic->notify();
+        }
+        last_ssids_size = ssidList.size();
+        last_stations_size = stationsList.size();
+        last_ble_devices_size = bleDeviceList.size();
+    }
+    Serial.println("End of updateDetectedDevicesCharacteristic");
+}
+
+
+/**
+ * @brief Updates the list sizes characteristic with the current sizes of the lists.
+ *
+ * This function checks if the sizes of the lists have changed and updates the characteristic accordingly.
+ * It also notifies the clients if the device is connected.
+ */
 void updateListSizesCharacteristic()
 {
     static size_t last_ssids_size = 0;
@@ -367,7 +425,7 @@ void updateListSizesCharacteristic()
         // Crear la cadena de texto con los tamaños de las listas
         String sizeString = String(ssidList.size()) + ":" +
                             String(stationsList.size()) + ":" +
-                            String(bleDeviceList.size());
+                            String(bleDeviceList.size()) + ":0";
 
         Serial.printf("List sizes updated -> %s\n", sizeString.c_str());
         pListSizesCharacteristic->setValue(sizeString.c_str());
@@ -379,33 +437,6 @@ void updateListSizesCharacteristic()
         last_ssids_size = ssidList.size();
         last_stations_size = stationsList.size();
         last_ble_devices_size = bleDeviceList.size();
-    }
-}
-
-void doBLEScan()
-{
-    static unsigned long lastBLEScan = 0;
-    if (millis() - lastBLEScan > appPrefs.ble_scan_period)
-    {
-        try
-        {
-            Serial.println("Starting BLE scan");
-
-            BLEScan *pBLEScan = BLEDevice::getScan();
-            pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
-            pBLEScan->setActiveScan(true);                                             // Escaneo activo
-            BLEScanResults foundDevices = pBLEScan->start(appPrefs.ble_scan_duration); // Escanea durante 5 segundos
-            Serial.printf("Dispositivos encontrados: %d\n", foundDevices.getCount());
-            pBLEScan->clearResults(); // Limpia los resultados para el próximo escaneo
-
-            Serial.println("BLE scan completed");
-        }
-        catch (const std::exception &e)
-        {
-            Serial.print("BLE scan error: ");
-            Serial.println(e.what());
-        }
-        lastBLEScan = millis();
     }
 }
 
@@ -440,7 +471,8 @@ String generateJsonString(boolean only_relevant_stations = false)
     {
         total_seens += device.times_seen;
     }
-    uint32_t min_seens = (int)round(total_seens / (stationsClonedList.size() > 0 ? stationsClonedList.size() : 1) / 2.0 );
+    uint32_t min_seens = static_cast<uint32_t>(round(total_seens / static_cast<double>(stationsClonedList.size()) / 3.0));
+
     Serial.printf("total_seens: %u, total_stations: %u, min_seens: %u, only_relevant_stations: %d\n", total_seens, stationsClonedList.size(), min_seens, only_relevant_stations);
 
     int stationItems = 0;
@@ -451,6 +483,14 @@ String generateJsonString(boolean only_relevant_stations = false)
             Serial.printf("Skipping station %s with times_seen %u (min_seens: %u)\n",
                           stationsClonedList[i].address.toString().c_str(),
                           stationsClonedList[i].times_seen, min_seens);
+            continue;
+        }
+
+        if (only_relevant_stations && stationsClonedList[i].rssi < appPrefs.minimal_rssi)
+        {
+            Serial.printf("Skipping station %s with RSSI %d (minimal_rssi: %d)\n",
+                          stationsClonedList[i].address.toString().c_str(),
+                          stationsClonedList[i].rssi, appPrefs.minimal_rssi);
             continue;
         }
 
@@ -475,6 +515,15 @@ String generateJsonString(boolean only_relevant_stations = false)
     jsonString += "\"ssids\":[";
     for (size_t i = 0; i < ssidsClonedList.size(); ++i)
     {
+        if (only_relevant_stations && ssidsClonedList[i].rssi < appPrefs.minimal_rssi)
+        {
+            Serial.printf("Skipping SSID %s with RSSI %d (minimal_rssi: %d)\n",
+                          ssidsClonedList[i].ssid.c_str(),
+                          ssidsClonedList[i].rssi, appPrefs.minimal_rssi);
+            continue;
+        }
+
+
         if (i > 0)
             jsonString += ",";
         char ssid_json[256];
@@ -495,6 +544,14 @@ String generateJsonString(boolean only_relevant_stations = false)
     jsonString += "\"ble_devices\":[";
     for (size_t i = 0; i < bleDevicesClonedList.size(); ++i)
     {
+        if (only_relevant_stations && bleDevicesClonedList[i].rssi < appPrefs.minimal_rssi)
+        {
+            Serial.printf("Skipping BLE device %s with RSSI %d (minimal_rssi: %d)\n",
+                          bleDevicesClonedList[i].address.toString().c_str(),
+                          bleDevicesClonedList[i].rssi, appPrefs.minimal_rssi);
+            continue;
+        }
+
         if (i > 0)
             jsonString += ",";
         char ble_json[256];
@@ -514,6 +571,7 @@ String generateJsonString(boolean only_relevant_stations = false)
     jsonString += "\"timestamp\":" + String((millis() / 1000) + base_time) + ",";
     jsonString += "\"free_heap\":" + String(ESP.getFreeHeap()) + ",";
     jsonString += "\"min_seens\":" + String(min_seens) + ",";
+    jsonString += "\"minimal_rssi\":" + String(appPrefs.minimal_rssi) + ",";
     jsonString += "\"stations_count\":" + String(stationItems) + ",";
     jsonString += "\"ssids_count\":" + String(ssidsClonedList.size()) + ",";
     jsonString += "\"ble_devices_count\":" + String(bleDevicesClonedList.size());

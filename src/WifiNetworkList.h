@@ -2,8 +2,7 @@
 
 #include <Arduino.h>
 #include <vector>
-#include <freertos/FreeRTOS.h>
-#include <freertos/semphr.h>
+#include <mutex>
 
 struct WifiNetwork {
   String ssid;
@@ -32,9 +31,11 @@ public:
   std::vector<WifiNetwork> getClonedList() const;
   void addNetwork(const WifiNetwork& network);
   void clear();
+  void remove_irrelevant_networks();
+  bool is_ssid_in_list(const String& ssid);
 
 private:
   std::vector<WifiNetwork> networkList;
   size_t maxSize;
-  SemaphoreHandle_t mutex;
+  mutable std::mutex networkMutex;
 };

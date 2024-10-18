@@ -8,41 +8,47 @@
 extern WifiDeviceList stationsList;
 extern WifiNetworkList ssidList;
 
+WifiScanClass WifiScanner;
+
 #define SSID_MAX_LEN 33
 
-static void process_management_frame(const uint8_t *payload, int payload_len, uint8_t subtype, int8_t rssi, uint8_t channel);
-static void process_control_frame(const uint8_t *payload, int payload_len, uint8_t subtype, int8_t rssi, uint8_t channel);
-static void process_data_frame(const uint8_t *payload, int payload_len, uint8_t subtype, int8_t rssi, uint8_t channel);
-static void parse_ssid(const uint8_t *payload, int payload_len, uint8_t subtype, char ssid[SSID_MAX_LEN]);
-static void promiscuous_rx_cb(void *buf, wifi_promiscuous_pkt_type_t type);
+WifiScanClass* WifiScanClass::instance = nullptr;
 
-void setupWiFi()
+WifiScanClass::WifiScanClass() {
+    instance = this;
+}
+
+void WifiScanClass::setup()
 {
   WiFi.mode(WIFI_STA);
-  // Set promiscuous mode with specific filter for management frames
-  setWiFiFilter(appPrefs.only_management_frames);
-  startWiFiScan();
-  Serial.println("WiFi configuration completed");
+  WiFi.setTxPower(WIFI_POWER_8_5dBm); // Super Mini se calienta con más potencia.
+  start();
+  Serial.println("WifiScanClass: Setup completed");
 }
 
-void startWiFiScan()
+void WifiScanClass::start()
 {
-  esp_wifi_set_promiscuous_rx_cb(promiscuous_rx_cb);
+  setFilter(appPrefs.only_management_frames);
+  Serial.println("WifiScanClass: Starting");
+  esp_wifi_set_promiscuous_rx_cb(&WifiScanClass::promiscuous_rx_cb);
   esp_wifi_set_promiscuous(true);
+  Serial.println("WifiScanClass: Started");
 }
 
-void stopWiFiScan()
+void WifiScanClass::stop()
 {
+  Serial.println("WifiScanClass: Stopping");
   esp_wifi_set_promiscuous_rx_cb(NULL);
   esp_wifi_set_promiscuous(false);
+  Serial.println("WifiScanClass: Stopped");
 }
 
-void setWiFiChannel(int channel)
+void WifiScanClass::setChannel(int channel)
 {
   esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
 }
 
-void setWiFiFilter(bool onlyManagementFrames)
+void WifiScanClass::setFilter(bool onlyManagementFrames)
 {
   wifi_promiscuous_filter_t filter;
   if (onlyManagementFrames)
@@ -56,8 +62,7 @@ void setWiFiFilter(bool onlyManagementFrames)
   esp_wifi_set_promiscuous_filter(&filter);
 }
 
-// Move these functions outside of any class
-static void process_management_frame(const uint8_t *payload, int payload_len, uint8_t subtype, int8_t rssi, uint8_t channel)
+void WifiScanClass::process_management_frame(const uint8_t *payload, int payload_len, uint8_t subtype, int8_t rssi, uint8_t channel)
 {
   const uint8_t *src_addr = nullptr;
   char ssid[SSID_MAX_LEN] = {0};
@@ -100,7 +105,7 @@ static void process_management_frame(const uint8_t *payload, int payload_len, ui
   }
 }
 
-static void process_control_frame(const uint8_t *payload, int payload_len, uint8_t subtype, int8_t rssi, uint8_t channel)
+void WifiScanClass::process_control_frame(const uint8_t *payload, int payload_len, uint8_t subtype, int8_t rssi, uint8_t channel)
 {
   const uint8_t *src_addr;
 
@@ -124,7 +129,7 @@ static void process_control_frame(const uint8_t *payload, int payload_len, uint8
   stationsList.updateOrAddDevice(MacAddress(src_addr), rssi, channel);
 }
 
-static void process_data_frame(const uint8_t *payload, int payload_len, uint8_t subtype, int8_t rssi, uint8_t channel)
+void WifiScanClass::process_data_frame(const uint8_t *payload, int payload_len, uint8_t subtype, int8_t rssi, uint8_t channel)
 {
   const uint8_t *src_addr = &payload[10];
 
@@ -142,7 +147,7 @@ static void process_data_frame(const uint8_t *payload, int payload_len, uint8_t 
  * @param subtype Subtype of the management frame.
  * @param ssid Buffer to store the extracted SSID.
  */
-static void parse_ssid(const uint8_t *payload, int payload_len, uint8_t subtype, char ssid[SSID_MAX_LEN])
+void WifiScanClass::parse_ssid(const uint8_t *payload, int payload_len, uint8_t subtype, char ssid[SSID_MAX_LEN])
 {
   int pos = 24;   // Start after the management frame header
   ssid[0] = '\0'; // Default empty SSID
@@ -228,7 +233,14 @@ static void parse_ssid(const uint8_t *payload, int payload_len, uint8_t subtype,
  * @param buf Pointer to the received packet buffer.
  * @param type Type of the WiFi packet.
  */
-static void promiscuous_rx_cb(void *buf, wifi_promiscuous_pkt_type_t type)
+void WifiScanClass::promiscuous_rx_cb(void *buf, wifi_promiscuous_pkt_type_t type)
+{
+  if (instance) {
+    instance->handle_rx(buf, type);
+  }
+}
+
+void WifiScanClass::handle_rx(void *buf, wifi_promiscuous_pkt_type_t type)
 {
   if (type != WIFI_PKT_MGMT && type != WIFI_PKT_CTRL && type != WIFI_PKT_DATA)
     return;
@@ -246,7 +258,6 @@ static void promiscuous_rx_cb(void *buf, wifi_promiscuous_pkt_type_t type)
 
   if (rssi >= appPrefs.minimal_rssi)
   {
-    // Process the packet based on its type
     switch (frame_type)
     {
     case 0: // Management frame

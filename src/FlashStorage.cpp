@@ -74,6 +74,10 @@ void FlashStorage::saveWifiNetworks(const WifiNetworkList &list)
         const auto &network = networks[i];
         auto &networkStruct = networkStructs[i];
 
+        if(!network.ssid.length()){
+            continue;
+        }
+
         memset(networkStruct.ssid, 0, sizeof(networkStruct.ssid));
         strncpy(networkStruct.ssid, network.ssid.c_str(), sizeof(networkStruct.ssid) - 1);
         networkStruct.ssid[sizeof(networkStruct.ssid) - 1] = '\0';
@@ -173,6 +177,9 @@ void FlashStorage::loadWifiNetworks(WifiNetworkList &list)
         preferences.getBytes(WIFI_NETWORKS_KEY, networkStructs.data(), serializedSize);
         for (const auto &networkStruct : networkStructs)
         {
+            if(!networkStruct.ssid[0]){
+                continue;
+            }
             WifiNetwork network(String(networkStruct.ssid), networkStruct.rssi, networkStruct.channel, 
             String(networkStruct.type), networkStruct.last_seen, networkStruct.times_seen);
             list.addNetwork(network);
