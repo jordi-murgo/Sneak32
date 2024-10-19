@@ -58,9 +58,9 @@ Sneak32 is an advanced WiFi and Bluetooth Low Energy (BLE) scanning and detectio
 
 1. **Clone the repository:**
 
-```bash
-git clone https://github.com/jordi-murgo/Sneak32.git
-```
+  ```bash
+  git clone https://github.com/jordi-murgo/Sneak32.git
+  ```
 
 2. **Install necessary dependencies** through Arduino IDE's Library Manager or PlatformIO.
 
@@ -96,7 +96,8 @@ Sneak32 provides detailed JSON output including:
   - Names (if available), MAC addresses, public/private status, signal strength, times seen, last seen time.
 
 - **Example format:**
-  ```json
+
+```json
   {
     "wifi_networks": [
       {
@@ -160,7 +161,7 @@ Contact: [jordi.murgo@gmail.com](mailto:jordi.murgo@gmail.com)
 - **v0.2** (2024-08-15): Improvements in detection and web interface configuration.
 - **v0.1** (2024-07-28): Initial release.
 
-## 📞 Contact and Support
+## 📧 Contact and Support
 
 If you have questions or need assistance, feel free to open an **issue** in the repository or contact the author directly.
 

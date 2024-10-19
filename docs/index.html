@@ -470,7 +470,7 @@
             </div>
 
             <div id="operationContainer">
-                <button id="operationResetButton">Reset</button>
+                <button id="restartButton">Restart</button>
                 <div id="captureContainer" class="hidden">
                     <button id="captureSwitchOffButton">Switch to OFF</button>
                     <button id="captureSwitchDetectionButton">Switch to Detection</button>
@@ -502,9 +502,9 @@
 
                 <label for="operationMode">Operation Mode:</label>
                 <select id="operationMode">
-                    <option value="0">OFF</option>
-                    <option value="1">CAPTURE</option>
-                    <option value="2">DETECTION</option>
+                    <option value="0">❌ OFF</option>
+                    <option value="1">💾 CAPTURE</option>
+                    <option value="2">🔍 DETECTION</option>
                 </select>
 
                 <label for="autosaveInterval">Autosave Scanned Data (min):</label>
@@ -621,7 +621,7 @@
             const detectionSwitchCaptureButton = document.getElementById('detectionSwitchCaptureButton');
             const detectionSwitchOffButton = document.getElementById('detectionSwitchOffButton');
         
-            const resetButton = document.getElementById('resetButton');
+            const restartButton = document.getElementById('restartButton');
 
             const operationContainer = document.getElementById('operationContainer');
             const captureContainer = document.getElementById('captureContainer');
@@ -733,6 +733,11 @@
             detectionSwitchOffButton.addEventListener('click', () => updateStatusMode(OFF_MODE));
             offSwitchDetectionButton.addEventListener('click', () => updateStatusMode(DETECTION_MODE));
             offSwitchCaptureButton.addEventListener('click', () => updateStatusMode(CAPTURE_MODE));
+
+            restartButton.addEventListener('click', () => sendCommand('restart'));
+            captureCleanSaveDataButton.addEventListener('click', () => sendCommand('clear_flash_data'));
+            captureSaveDataButton.addEventListener('click', () => sendCommand('save_capture'));
+            detectionCleanDataButton.addEventListener('click', () => sendCommand('clean_detection_data'));
 
             // Default settings, overwritten by the device settings
             const settings = {
@@ -1052,9 +1057,9 @@
 
             async function sendCommand(command) {
                 try {
+                    showTooltip(`Sending ${command} command...`);
                     await commandsCharacteristic.writeValue(new TextEncoder().encode(command));
                     addLog(`${command} command sent`);
-                    showTooltip(`${command} command sent`);
                 } catch (error) {
                     console.error(`Error sending ${command} command:`, error);
                     addLog(`Error: ${error.message}`, true);
@@ -1113,15 +1118,13 @@
             function handleStatusUpdate(statusString) {
                 const [wifiNetworks, wifiDevices, bleDevices, alarm] = statusString.split(':');
 
-                const operationMode = parseInt(document.getElementById('operationMode').value);
-                const mode = operationMode == 0 ? "❌ OFF" : operationMode == 1 ? "🎥 CAPTURE" : "🔍 DETECTION";
-                document.getElementById('status-mode').textContent = mode;
+                updateOperationModeDisplay();
 
                 document.getElementById('status-wifi-networks').textContent = wifiNetworks;
                 document.getElementById('status-wifi-devices').textContent = wifiDevices;
                 document.getElementById('status-ble-devices').textContent = bleDevices;
 
-                document.getElementById('status-alarm').textContent = alarm ? "🔥" : "🟢";
+                document.getElementById('status-alarm').textContent = alarm === '1' ? "🔥" : "🟢";
 
 
                 addLog(`Status updated - WiFi Networks: ${wifiNetworks}, WiFi Devices: ${wifiDevices}, BLE Devices: ${bleDevices}${alarm ? `, Alarm: ${alarm}` : ''}`);

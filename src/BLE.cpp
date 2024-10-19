@@ -56,9 +56,12 @@ class ListSizesCallbacks : public BLECharacteristicCallbacks
 {
     void onRead(BLECharacteristic *pCharacteristic) override
     {
-        if (appPrefs.operation_mode == OPERATION_MODE_DETECTION) {
+        if (appPrefs.operation_mode == OPERATION_MODE_DETECTION)
+        {
             updateDetectedDevicesCharacteristic();
-        } else {
+        }
+        else
+        {
             updateListSizesCharacteristic();
         }
     }
@@ -118,7 +121,7 @@ class SettingsCallbacks : public BLECharacteristicCallbacks
             appPrefs.stealth_mode = std::stoi(token) ? true : false;
         if (std::getline(ss, token, ':'))
             appPrefs.autosave_interval = std::stoul(token);
-        
+
         // El deviceName ahora es el último elemento
         if (std::getline(ss, token))
         {
@@ -135,35 +138,37 @@ class SettingsCallbacks : public BLECharacteristicCallbacks
             }
         }
 
-        if (operation_mode != appPrefs.operation_mode) {
-            switch (appPrefs.operation_mode) {
-                case OPERATION_MODE_SCAN:
-                    // Deinicializar WifiDetect y BLEDetect
-                    WifiDetector.stop();
-                    BLEDetector.stop();
+        if (operation_mode != appPrefs.operation_mode)
+        {
+            switch (appPrefs.operation_mode)
+            {
+            case OPERATION_MODE_SCAN:
+                // Deinicializar WifiDetect y BLEDetect
+                WifiDetector.stop();
+                BLEDetector.stop();
 
-                    // Inicializar WifiScan y BLE Scan
-                    WifiScanner.setup();
-                    BLEScanner.setup();
-                    break;
+                // Inicializar WifiScan y BLE Scan
+                WifiScanner.setup();
+                BLEScanner.setup();
+                break;
 
-                case OPERATION_MODE_DETECTION:
-                    // Deinicializar WifiScan y BLE Scan
-                    WifiScanner.stop();
-                    BLEScanner.stop();
-                    // Inicializar WifiDetection y BLE Detect
-                    WifiDetector.setup();
-                    BLEDetector.setup();
-                    break;
+            case OPERATION_MODE_DETECTION:
+                // Deinicializar WifiScan y BLE Scan
+                WifiScanner.stop();
+                BLEScanner.stop();
+                // Inicializar WifiDetection y BLE Detect
+                WifiDetector.setup();
+                BLEDetector.setup();
+                break;
 
-                default: // OPERATION_MODE_OFF
-                    // Deinicializar WifiScan
-                    WifiScanner.stop();
-                    BLEScanner.stop();
-                    // Deinicializar WifiDetection
-                    WifiDetector.stop();
-                    BLEDetector.stop();
-                    break;
+            default: // OPERATION_MODE_OFF
+                // Deinicializar WifiScan
+                WifiScanner.stop();
+                BLEScanner.stop();
+                // Deinicializar WifiDetection
+                WifiDetector.stop();
+                BLEDetector.stop();
+                break;
             }
         }
 
@@ -317,11 +322,16 @@ void setupBLE()
     pListSizesCharacteristic->setCallbacks(new ListSizesCallbacks());
     pListSizesCharacteristic->addDescriptor(new BLE2902());
 
-    if (appPrefs.operation_mode == OPERATION_MODE_DETECTION) {
+    if (appPrefs.operation_mode == OPERATION_MODE_DETECTION)
+    {
         updateDetectedDevicesCharacteristic();
-    } else if (appPrefs.operation_mode == OPERATION_MODE_SCAN) {
+    }
+    else if (appPrefs.operation_mode == OPERATION_MODE_SCAN)
+    {
         updateListSizesCharacteristic();
-    } else {
+    }
+    else
+    {
         pListSizesCharacteristic->setValue("0:0:0:0");
     }
 
@@ -363,7 +373,7 @@ void setupBLE()
     // if(appPrefs.stealth_mode) {
     //     pAdvertising->setAdvertisementType(ADV_TYPE_DIRECT_IND_LOW);
     // } else {
-        pAdvertising->setAdvertisementType(ADV_TYPE_IND);
+    pAdvertising->setAdvertisementType(ADV_TYPE_IND);
     // }
 
     Serial.println("Starting BLE advertising");
@@ -372,38 +382,44 @@ void setupBLE()
     Serial.println("BLE Initialized");
 }
 
-
 void updateDetectedDevicesCharacteristic()
 {
     Serial.println("Updating detected devices characteristic");
     static size_t last_ssids_size = 0;
     static size_t last_stations_size = 0;
     static size_t last_ble_devices_size = 0;
-    static bool alarm_detected = false;
-    
-    bool alarm = BLEDetector.isSomethingDetected() | WifiDetector.isSomethingDetected();
-    if (pListSizesCharacteristic != nullptr)
-    {
-        // Crear la cadena de texto con los tamaños de las listas
-        String sizeString = String(WifiDetector.getDetectedNetworksCount()) + ":" +
-                            String(WifiDetector.getDetectedDevicesCount()) + ":" +
-                            String(BLEDetector.getDetectedDevicesCount()) + ":" +
-                            String(alarm);
+    static bool last_alarm_detected = false;
 
-        Serial.printf("List sizes updated -> %s\n", sizeString.c_str());
-        pListSizesCharacteristic->setValue(sizeString.c_str());
-        if (deviceConnected)
+    size_t ssids_size = WifiDetector.getDetectedNetworksCount();
+    size_t stations_size = WifiDetector.getDetectedDevicesCount();
+    size_t ble_devices_size = BLEDetector.getDetectedDevicesCount();
+    bool alarm = BLEDetector.isSomethingDetected() | WifiDetector.isSomethingDetected();
+
+    // Crear la cadena de texto con los tamaños de las listas
+    String sizeString = String(ssids_size) + ":" +
+                        String(stations_size) + ":" +
+                        String(ble_devices_size) + ":" +
+                        String(alarm);
+
+    pListSizesCharacteristic->setValue(sizeString.c_str());
+    Serial.printf("List sizes updated -> %s\n", sizeString.c_str());
+
+    if (deviceConnected)
+    {
+        if (alarm != last_alarm_detected || ssidList.size() != last_ssids_size ||
+            stationsList.size() != last_stations_size || bleDeviceList.size() != last_ble_devices_size)
         {
             Serial.println("Notifying list sizes");
             pListSizesCharacteristic->notify();
+
+            last_ssids_size = ssidList.size();
+            last_stations_size = stationsList.size();
+            last_ble_devices_size = bleDeviceList.size();
+            last_alarm_detected = alarm;
         }
-        last_ssids_size = ssidList.size();
-        last_stations_size = stationsList.size();
-        last_ble_devices_size = bleDeviceList.size();
     }
     Serial.println("End of updateDetectedDevicesCharacteristic");
 }
-
 
 /**
  * @brief Updates the list sizes characteristic with the current sizes of the lists.
@@ -413,9 +429,12 @@ void updateDetectedDevicesCharacteristic()
  */
 void updateListSizesCharacteristic()
 {
+    Serial.println("Updating list sizes characteristic");
     static size_t last_ssids_size = 0;
     static size_t last_stations_size = 0;
     static size_t last_ble_devices_size = 0;
+
+    boolean alarm_detected = BLEDetector.isSomethingDetected() | WifiDetector.isSomethingDetected();
 
     if (pListSizesCharacteristic != nullptr &&
         (ssidList.size() != last_ssids_size ||
@@ -438,6 +457,7 @@ void updateListSizesCharacteristic()
         last_stations_size = stationsList.size();
         last_ble_devices_size = bleDeviceList.size();
     }
+    Serial.println("End of updateListSizesCharacteristic");
 }
 
 // To large to be a local variable
@@ -522,7 +542,6 @@ String generateJsonString(boolean only_relevant_stations = false)
                           ssidsClonedList[i].rssi, appPrefs.minimal_rssi);
             continue;
         }
-
 
         if (i > 0)
             jsonString += ",";
