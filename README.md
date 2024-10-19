@@ -4,6 +4,20 @@
 
 Sneak32 is an advanced WiFi and Bluetooth Low Energy (BLE) scanning and detection tool built on the ESP32 platform. It offers powerful capabilities for network analysis, device tracking, and security research.
 
+## 🎯 Application in Infiltrator Detection
+
+Sneak32 is ideal for detecting devices that may be associated with surveillance or infiltration in social movements or sensitive environments. The tool allows you to capture WiFi and BLE device data in one location (RECON phase) and then analyze connections in your secure space (DETECTION phase) to identify suspicious presences.
+
+## 🔍 Operation Modes
+
+- **RECON Phase:**
+  - Captures SSIDs, WiFi client MAC addresses, and BLE device advertisements in hostile or unsecured terrains.
+  - Ideal for collecting data without drawing attention (passive mode) or forcing device association (active mode).
+
+- **DETECTION Phase:**
+  - Once data is collected in the RECON phase, Sneak32 can be used in your secure space to monitor for the presence of suspicious devices.
+  - Uses passive or active scans to simulate networks and prompt devices to connect.
+
 ## 🚀 Features
 
 - **Dual-Mode Operation:**
@@ -40,14 +54,21 @@ Sneak32 is an advanced WiFi and Bluetooth Low Energy (BLE) scanning and detectio
   - Event logging for monitoring device activities.
   - Bluetooth LE connection with specific characteristics for commands, data transfer, and settings.
 
+## 💻 Hardware and Software Compatibility
+
+Sneak32 has been tested with the **ESP32-C3** board, a low-cost RISC-V microcontroller (less than $3), which offers:
+- WiFi 802.11 b/g/n (2.4 GHz) and Bluetooth 5.0 LE.
+- 4MB Flash memory and 400KB SRAM.
+- Support for **Arduino IDE**, **PlatformIO**, and **Espressif IDF**, facilitating programming and customization of the device according to each project's needs.
+
 ## 🛠 Hardware Requirements
 
-- ESP32 development board (tested on ESP32-C3)
+- ESP32 development board (tested on ESP32, ESP32-C3, ESP32-S3)
 - (Optional) NeoPixel LED for status indication
-- (Optional) Button for reset or additional functions
+- (Optional) Button for additional functions
 
 ## 📚 Software Dependencies
-
+- PlatformIO
 - Arduino core for ESP32
 - ESP32 BLE library
 - WiFi library
@@ -130,6 +151,17 @@ Sneak32 provides detailed JSON output including:
     ]
   }
   ```
+
+## ⚔️ Usage Strategies in Sensitive Environments
+
+- **Public Environment Monitoring**: Install Sneak32 in public meeting places to capture data from unknown devices and analyze connection patterns.
+- **Social Movement Protection**: Use Sneak32 to detect devices attempting to connect to known networks or making suspicious probe requests, helping to identify potential infiltrators.
+- **Research Applications**: Sneak32 allows security researchers to collect device data without being detected, thanks to its passive mode.
+
+## 🕶️ Operating Modes
+
+- **Passive Mode**: Does not perform active scans or announce networks, simply listens to communications without being detected.
+- **Active Mode**: Announces fake networks (SSIDs) to entice devices to connect, or performs "active scans" to obtain information from nearby BLE devices.
 
 ## 🔐 Security Considerations
 
