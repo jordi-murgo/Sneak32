@@ -470,6 +470,7 @@
             </div>
 
             <div id="operationContainer">
+                <button id="disconnectButton">Disconnect</button>
                 <button id="restartButton">Restart</button>
                 <div id="captureContainer" class="hidden">
                     <button id="captureSwitchOffButton">Switch to OFF</button>
@@ -635,6 +636,10 @@
             let receivedData = '';
             let statusInterval;
 
+            const disconnectButton = document.getElementById('disconnectButton');
+
+            let isIntentionalDisconnect = false;
+
             function formatDate(date) {
                 const year = date.getFullYear();
                 const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -648,7 +653,7 @@
 
             function addLog(message, isError = false) {
                 const now = new Date();
-                const timestamp = now.toLocaleTimeString();
+                const timestamp = formatDate(now);
                 const logMessage = `[${timestamp}] ${message}`;
 
                 const newLogEntry = document.createElement('div');
@@ -871,11 +876,19 @@
 
             function handleDisconnection(event) {
                 console.log('Device disconnected', event);
-                addLog('Device disconnected unexpectedly', true);
-                showDisconnectionModal();
+                
+                if (!isIntentionalDisconnect) {
+                    addLog('Device disconnected unexpectedly', true);
+                    showDisconnectionModal();
+                } else {
+                    addLog('Device disconnected');
+                }
                 
                 // Clear the status update interval
                 clearInterval(statusInterval);
+                
+                // Reset the flag
+                isIntentionalDisconnect = false;
             }
 
             function showDisconnectionModal() {
@@ -916,6 +929,15 @@
                 
                 // Clear the status update interval
                 clearInterval(statusInterval);
+
+                // Reset bluetooth-related variables
+                bluetoothDevice = null;
+                bluetoothServer = null;
+                firmwareInfoCharacteristic = null;
+                settingsCharacteristic = null;
+                dataTransferCharacteristic = null;
+                commandsCharacteristic = null;
+                statusCharacteristic = null;
             }
 
             function updateStatusTitle(deviceName) {
@@ -1129,6 +1151,27 @@
 
                 addLog(`Status updated - WiFi Networks: ${wifiNetworks}, WiFi Devices: ${wifiDevices}, BLE Devices: ${bleDevices}${alarm ? `, Alarm: ${alarm}` : ''}`);
             }
+
+            async function disconnectFromDevice() {
+                try {
+                    if (bluetoothDevice && bluetoothDevice.gatt.connected) {
+                        isIntentionalDisconnect = true;
+                        await bluetoothDevice.gatt.disconnect();
+                        addLog('Disconnected from device');
+                        resetUI();
+                        showPage('#logon');
+                    } else {
+                        addLog('No device connected');
+                    }
+                } catch (error) {
+                    console.error('Error disconnecting:', error);
+                    addLog(`Error disconnecting: ${error.message}`, true);
+                } finally {
+                    isIntentionalDisconnect = false;
+                }
+            }
+
+            disconnectButton.addEventListener('click', disconnectFromDevice);
 
             window.closeModal = closeModal;
             window.showPage = showPage;
