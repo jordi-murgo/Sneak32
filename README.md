@@ -91,13 +91,34 @@ Sneak32 has been tested with the **ESP32-C3** board, a low-cost RISC-V microcont
 
 ## 🖥️ Hardware Requirements
 
-- ESP32 development board (recommended: ESP32-C3-SuperMini)
+- ESP32 development board (recommended: ESP32-C3-SuperMini or other ESP32 variants with PCB antenna or external antenna)
 - (Optional) RGB LED for visual status indication
 - (Optional) Battery for portable operation
 
 ![ESP32-C3-SuperMini](images/esp32-c3-supermini.png)
 
-The ESP32-C3-SuperMini is an excellent choice for this project due to its compact size, low cost, and low power consumption. Other ESP32 variants are compatible with the program by specifying the appropriate board in the `platformio.ini` file.
+The ESP32-C3-SuperMini is a good choice for this project due to its compact size, low cost, and low power consumption. However, it's important to note that this model uses a ceramic chip antenna, which may limit its range and data capture capabilities compared to models with PCB antennas or external antennas.
+
+For optimal performance and range:
+- Consider ESP32 variants with PCB antennas or external antenna connectors.
+- Models with external antennas generally offer the best range and data capture capabilities.
+
+Other ESP32 variants are compatible with the program by specifying the appropriate board in the `platformio.ini` file.
+
+### Antenna Considerations:
+1. **Ceramic Chip Antenna (e.g., ESP32-C3-SuperMini):**
+   - Pros: Compact, low cost
+   - Cons: Limited range, may capture fewer data points
+
+2. **PCB Antenna:**
+   - Pros: Better range than ceramic chip antennas, still relatively compact
+   - Cons: May not match the range of external antennas
+
+3. **External Antenna:**
+   - Pros: Best range and data capture capabilities
+   - Cons: Larger form factor, may require additional components
+
+Choose the antenna type based on your specific needs for range, data capture, and form factor.
 
 ## 📚 Software Dependencies
 - [PlatformIO](https://platformio.org/)
