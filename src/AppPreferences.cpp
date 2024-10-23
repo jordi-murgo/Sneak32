@@ -19,6 +19,8 @@ void printPreferences() {
     Serial.printf(" - minimal_rssi: %d dBm\n", appPrefs.minimal_rssi);
     Serial.printf(" - passive_scan: %s\n", appPrefs.passive_scan ? "true" : "false");
     Serial.printf(" - stealth_mode: %s\n", appPrefs.stealth_mode ? "true" : "false");
+    Serial.printf(" - authorized_address: %s\n", appPrefs.authorized_address);
+
     Serial.printf(" - loop_delay: %u ms\n", appPrefs.loop_delay);
     Serial.printf(" - only_mgmt: %s\n", appPrefs.only_management_frames ? "true" : "false");
     Serial.printf(" - ble_scan_period: %u ms\n", appPrefs.ble_scan_period);
@@ -56,6 +58,11 @@ void loadAppPreferences() {
     appPrefs.autosave_interval = preferences.getUInt("autosave_interval", 60);
     appPrefs.passive_scan = preferences.getBool("passive_scan", false);
     appPrefs.stealth_mode = preferences.getBool("stealth_mode", false);
+
+    String savedAddress = preferences.getString("authorized_address", "");
+    strncpy(appPrefs.authorized_address, savedAddress.c_str(), sizeof(appPrefs.authorized_address) - 1);
+    appPrefs.authorized_address[sizeof(appPrefs.authorized_address) - 1] = '\0';
+    
     preferences.end();
 
     Serial.println("App Preferences loaded");
@@ -77,6 +84,7 @@ void saveAppPreferences() {
     preferences.putUInt("autosave_interval", appPrefs.autosave_interval);
     preferences.putBool("passive_scan", appPrefs.passive_scan);
     preferences.putBool("stealth_mode", appPrefs.stealth_mode);
+    preferences.putString("authorized_address", appPrefs.authorized_address);
     preferences.end();
 
     Serial.println("App Preferences saved");

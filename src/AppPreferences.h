@@ -19,7 +19,8 @@ struct AppPreferencesData {
     // BLE
     uint32_t ble_scan_period;
     bool ignore_random_ble_addresses;  
-    uint32_t ble_scan_duration;        
+    uint32_t ble_scan_duration;   
+    char authorized_address[18];
 };
 
 const int8_t OPERATION_MODE_OFF = 0;

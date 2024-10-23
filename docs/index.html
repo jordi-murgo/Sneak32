@@ -520,6 +520,9 @@
                 <label for="stealthMode">Stealth Mode:</label>
                 <input type="checkbox" id="stealthMode">
 
+                <label for="authorizedMAC">Authorized MAC:</label>
+                <input type="text" id="authorizedMAC" maxlength="17" pattern="([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})">
+
             </div>
 
             <h3>WiFi</h3>
@@ -756,6 +759,7 @@
                 passiveScan: false,
                 stealthMode: false,
                 autosaveInterval: 10,
+                authorizedMAC: "",
                 deviceName: "Sneak32",
             }
 
@@ -775,6 +779,7 @@
                 document.getElementById('operationMode').value = settings.operationMode;
                 document.getElementById('passiveScan').checked = settings.passiveScan;
                 document.getElementById('stealthMode').checked = settings.stealthMode;
+                document.getElementById('authorizedMAC').value = settings.authorizedMAC;
                 document.getElementById('autosaveInterval').value = settings.autosaveInterval;
                 document.getElementById('deviceName').value = settings.deviceName;
 
@@ -786,7 +791,7 @@
                     const value = await settingsCharacteristic.readValue();
                     const settingsString = new TextDecoder().decode(value);
 
-                    const parts = settingsString.split(':');
+                    const parts = settingsString.split('|');
 
                     settings.onlyManagementFrames = parts[0] === '1';
                     settings.minimalRSSI = parseInt(parts[1]);
@@ -798,7 +803,8 @@
                     settings.passiveScan = parts[7] === '1';
                     settings.stealthMode = parts[8] === '1';
                     settings.autosaveInterval = parseInt(parts[9]);
-                    settings.deviceName = parts.slice(10).join(':');
+                    settings.authorizedMAC = parts[10];
+                    settings.deviceName = parts.slice(11).join('|');
 
                     updateSettingsForm();
                     
@@ -860,9 +866,10 @@
                     const passiveScan = document.getElementById('passiveScan').checked ? 1 : 0;
                     const stealthMode = document.getElementById('stealthMode').checked ? 1 : 0;
                     const autosaveInterval = parseInt(document.getElementById('autosaveInterval').value);
+                    const authorizedMAC = document.getElementById('authorizedMAC').value;
                     const deviceName = document.getElementById('deviceName').value;
 
-                    const settingsString = `${onlyManagementFrames}:${minimalRSSI}:${loopDelay}:${bleScanPeriod}:${ignoreRandomBLE}:${bleScanDuration}:${operationMode}:${passiveScan}:${stealthMode}:${autosaveInterval}:${deviceName}`;
+                    const settingsString = `${onlyManagementFrames}|${minimalRSSI}|${loopDelay}|${bleScanPeriod}|${ignoreRandomBLE}|${bleScanDuration}|${operationMode}|${passiveScan}|${stealthMode}|${autosaveInterval}|${authorizedMAC}|${deviceName}`;
 
                     await settingsCharacteristic.writeValue(new TextEncoder().encode(settingsString));
                     addLog('Settings updated successfully');
