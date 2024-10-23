@@ -1,6 +1,6 @@
 /**
  * @file main.cpp
- * @author Jordi Murgo (savage@apostols.org)
+ * @author Jordi Murgo (jordi.murgo@gmail.com
  * @brief Main file for the WiFi monitoring and analysis project
  * @version 0.1
  * @date 2024-07-28
@@ -65,6 +65,10 @@
 #include "BLEScan.h"
 #include "AppPreferences.h"
 #include "FlashStorage.h"
+#include "BLEAdvertisingManager.h"
+
+// Define the boot button pin (adjust if necessary)
+#define BOOT_BUTTON_PIN 0
 
 /**
  * @brief BLEDeviceList is a list of BLE devices.
@@ -233,6 +237,8 @@ void setup()
   Serial.begin(115200);
   Serial.setDebugOutput(true);
 
+  delay(5000);
+
   Serial.println("Starting serial ...");
 
   ledManager.begin();
@@ -286,6 +292,8 @@ void setup()
 
   ledManager.setPixelColor(0, LedManager::COLOR_OFF);
   ledManager.show();
+
+  pinMode(BOOT_BUTTON_PIN, INPUT_PULLUP);
 }
 
 /**
@@ -315,25 +323,33 @@ void scan_mode_loop()
   if (currentChannel == 14)
   {
     printSSIDAndBLELists();
+  }
 
-    // Save all data to flash storage
+  // Save all data to flash storage every autosave_interval minutes
+  if (millis() - lastSaved >= appPrefs.autosave_interval * 60 * 1000)
+  {
     Serial.println("Saving all data to flash storage");
     try
     {
-      Serial.println("All data saved to flash storage successfully");
+      FlashStorage::saveAll();
+      lastSaved = millis(); // Update lastSaved only if save was successful
+      Serial.println("Data saved successfully");
     }
-    catch (const std::exception &e)
+    catch (const std::exception& e)
     {
       Serial.printf("Error saving to flash storage: %s\n", e.what());
     }
   }
 
-  // Save all data to flash storage every hour
-  if (millis() / 1000 - lastSaved > 60 * 60)
-  {
-    Serial.println("Saving all data to flash storage");
-    FlashStorage::saveAll();
-    lastSaved = millis() / 1000;
+  bool bootButtonPressed = digitalRead(BOOT_BUTTON_PIN) == LOW;
+
+  if (bootButtonPressed || !appPrefs.stealth_mode) {
+    if(bootButtonPressed && appPrefs.stealth_mode) {
+      Serial.println(">>> Boot button pressed, disabling stealth mode");
+    }
+    BLEAdvertisingManager::configureNormalMode();
+  } else {
+    BLEAdvertisingManager::configureStealthMode();
   }
 
   // Actualiza la característica de tamaños de listas

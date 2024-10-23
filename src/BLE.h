@@ -25,7 +25,6 @@ void updateDetectedDevicesCharacteristic();
 void sendPacket(uint16_t packetNumber, boolean only_relevant_stations);
 void prepareJsonData(boolean only_relevant_stations);
 void doBLEScan();
-void updateBLEDeviceName(const char* newName);
 void checkTransmissionTimeout();
 String getFirmwareInfo();
 
