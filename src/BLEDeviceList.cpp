@@ -25,31 +25,38 @@ void BLEDeviceList::updateOrAddDevice(const MacAddress &address, int rssi, const
   time_t now = millis() / 1000 + base_time;
 
   if (it != deviceList.end()) {
+    // Update existing device
     it->rssi = rssi;
     it->last_seen = now;
     it->times_seen++;
     if (name.length() > 0) {
       it->name = name;
     }
+    it->isPublic = isPublic;  // Update isPublic flag
   } else {
-    BLEFoundDevice newDevice(address, rssi, name, isPublic, now);
-
-    if (deviceList.size() < maxSize) {
-      deviceList.emplace_back(newDevice);
-      Serial.printf("Added new BLE device: %s %s\n", newDevice.address.toString().c_str(), newDevice.name.c_str());
-    } else {
+    // Add new device
+    if (deviceList.size() >= maxSize) {
+      // Remove the oldest device
       auto oldest = std::min_element(deviceList.begin(), deviceList.end(),
                                      [](const BLEFoundDevice &a, const BLEFoundDevice &b) {
                                        return a.last_seen < b.last_seen;
                                      });
-      if (oldest != deviceList.end()) {
-        Serial.printf("Replacing BLE device: %s %s (seen %u times) with new device: %s %s\n", 
-                      oldest->address.toString().c_str(), oldest->name.c_str(), oldest->times_seen, 
-                      newDevice.address.toString().c_str(), newDevice.name.c_str());
-        *oldest = std::move(newDevice);
-      }
+      *oldest = BLEFoundDevice(address, rssi, name, isPublic, now);
+    } else {
+      deviceList.emplace_back(address, rssi, name, isPublic, now);
     }
+    Serial.printf("Added new BLE device: %s %s\n", address.toString().c_str(), name.c_str());
   }
+
+  // Remove devices with invalid MAC addresses
+  deviceList.erase(
+    std::remove_if(deviceList.begin(), deviceList.end(),
+      [](const BLEFoundDevice &device) {
+        uint8_t invalid_mac[6] = {0,0,0,0,0,0};
+        return memcmp(device.address.getBytes(), invalid_mac, 6) == 0;
+      }),
+    deviceList.end()
+  );
 }
 
 // Mètode per obtenir la mida de la llista
@@ -107,3 +114,4 @@ bool BLEDeviceList::is_device_in_list(const MacAddress& address) {
 
   return it != deviceListCopy.end();
 }
+

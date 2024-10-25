@@ -1,6 +1,6 @@
 /**
  * @file main.cpp
- * @author Jordi Murgo (jordi.murgo@gmail.com
+ * @author Jordi Murgo (jordi.murgo@gmail.com)
  * @brief Main file for the WiFi monitoring and analysis project
  * @version 0.1
  * @date 2024-07-28
@@ -343,13 +343,17 @@ void scan_mode_loop()
 
   bool bootButtonPressed = digitalRead(BOOT_BUTTON_PIN) == LOW;
 
-  if (bootButtonPressed || !appPrefs.stealth_mode) {
-    if(bootButtonPressed && appPrefs.stealth_mode) {
-      Serial.println(">>> Boot button pressed, disabling stealth mode");
+  if (!deviceConnected) {
+    if(appPrefs.stealth_mode) {
+      if(bootButtonPressed) {
+        Serial.println(">>> Boot button pressed, disabling stealth mode");
+        BLEAdvertisingManager::configureNormalMode();
+      } else {
+        BLEAdvertisingManager::configureStealthMode();
+      }
+    } else {
+      BLEAdvertisingManager::configureNormalMode();
     }
-    BLEAdvertisingManager::configureNormalMode();
-  } else {
-    BLEAdvertisingManager::configureStealthMode();
   }
 
   // Actualiza la característica de tamaños de listas
@@ -424,4 +428,5 @@ void loop()
     ledManager.show();
     delay(appPrefs.loop_delay);
   }
+
 }

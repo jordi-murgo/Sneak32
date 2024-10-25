@@ -10,7 +10,7 @@ void BLEAdvertisingManager::setup() {
     pAdvertising = BLEDevice::getAdvertising();
 
     pAdvertising->addServiceUUID(SCANNER_SERVICE_UUID);
-    pAdvertising->setAppearance(ESP_BLE_APPEARANCE_SPORTS_WATCH);
+    pAdvertising->setAppearance(ESP_BLE_APPEARANCE_GENERIC_WATCH);
     pAdvertising->setMinPreferred(0x06);
     pAdvertising->setMaxPreferred(0x12);
 

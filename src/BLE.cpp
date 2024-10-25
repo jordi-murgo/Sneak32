@@ -32,10 +32,16 @@ BLEServer *pServer = nullptr;
 BLECharacteristic *pTxCharacteristic = nullptr;
 BLECharacteristic *pSettingsCharacteristic = nullptr;
 BLECharacteristic *pListSizesCharacteristic = nullptr;
+
 BLEScan *pBLEScan = nullptr;
 bool deviceConnected = false;
 
+// Add this near the top of the file, after other includes
+#include <Preferences.h>
 
+// Add these global variables
+Preferences securityPreferences;
+BLEAddress *authorizedClientAddress = nullptr;
 
 // Callback implementations
 class MyServerCallbacks : public BLEServerCallbacks
@@ -57,7 +63,20 @@ class MyServerCallbacks : public BLEServerCallbacks
                 
                 if (status.peer_device != nullptr) {
                     BLEClient *client = (BLEClient *)status.peer_device;
-                    Serial.printf(">>> Device connected: %s\n", client->getPeerAddress().toString().c_str());
+                    BLEAddress clientAddress = client->getPeerAddress();
+                    Serial.printf(">>> Device connected: %s\n", clientAddress.toString().c_str());
+
+                    // Check if the connected device is the authorized client
+                    if (authorizedClientAddress != nullptr && clientAddress.equals(*authorizedClientAddress)) {
+                        Serial.println("Authorized client reconnected. Skipping pairing.");
+                        // You might want to set a flag or perform any specific actions for an authorized client
+                    } else {
+                        Serial.println("New client connected. Initiating pairing.");
+                        // Initiate pairing process
+                        uint8_t address[6];
+                        memcpy(address, clientAddress.getNative(), 6);
+                        esp_ble_set_encryption(address, ESP_BLE_SEC_ENCRYPT_NO_MITM);
+                    }
                 } else {
                     Serial.println(">>> Device connected but peer_device is null");
                 }
@@ -157,9 +176,18 @@ String getFirmwareInfo()
 
 class MySecurity : public BLESecurityCallbacks {
 public:
+    MySecurity() {
+        securityPreferences.begin("ble_auth", false);
+        String savedAddress = securityPreferences.getString("client_addr", "");
+        if (!savedAddress.isEmpty()) {
+            authorizedClientAddress = new BLEAddress(savedAddress.c_str());
+        }
+        securityPreferences.end();
+    }
+
     uint32_t onPassKeyRequest(){
         Serial.println("Solicitud de código de acceso");
-        return 0; // Si no usas códigos de acceso, retorna 0
+        return 123456; // Si no usas códigos de acceso, retorna 0
     }
 
     void onPassKeyNotify(uint32_t pass_key){
@@ -180,19 +208,23 @@ public:
 
     void onAuthenticationComplete(esp_ble_auth_cmpl_t auth_cmpl){
         if(auth_cmpl.success){
-            Serial.println("Emparejamiento exitoso");
-            // Obtener la dirección MAC del cliente
+            Serial.println("Pairing successful");
             BLEAddress clientAddress = BLEAddress(auth_cmpl.bd_addr);
-            Serial.print("Dirección MAC del cliente: ");
-            Serial.println(clientAddress.toString().c_str());
+            Serial.printf("Client MAC address: %s\n", clientAddress.toString().c_str());
 
-            strncpy(appPrefs.authorized_address, clientAddress.toString().c_str(), sizeof(appPrefs.authorized_address) - 1);
-            appPrefs.authorized_address[sizeof(appPrefs.authorized_address) - 1] = '\0';
-            saveAppPreferences();
+            // Save the authorized client address
+            securityPreferences.begin("ble_auth", false);
+            securityPreferences.putString("client_addr", clientAddress.toString().c_str());
+            securityPreferences.end();
+
+            if (authorizedClientAddress != nullptr) {
+                delete authorizedClientAddress;
+            }
+            authorizedClientAddress = new BLEAddress(clientAddress);
 
             BLEAdvertisingManager::setup();
         } else {
-            Serial.println("Emparejamiento fallido");
+            Serial.println("Pairing failed");
         }
     }
 };
@@ -206,9 +238,17 @@ void setupBLE()
     BLEDevice::setEncryptionLevel(ESP_BLE_SEC_ENCRYPT);
     BLEDevice::setSecurityCallbacks(new MySecurity());
 
-    // Configura parámetros de seguridad
-    esp_ble_auth_req_t auth_req = ESP_LE_AUTH_REQ_SC_ONLY; // Solo conexiones seguras
+    // Configure security parameters
+    esp_ble_auth_req_t auth_req = ESP_LE_AUTH_REQ_SC_MITM_BOND;
+    esp_ble_io_cap_t iocap = ESP_IO_CAP_NONE;
+    uint8_t key_size = 16;
+    uint8_t init_key = ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK;
+    uint8_t rsp_key = ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK;
     esp_ble_gap_set_security_param(ESP_BLE_SM_AUTHEN_REQ_MODE, &auth_req, sizeof(uint8_t));
+    esp_ble_gap_set_security_param(ESP_BLE_SM_IOCAP_MODE, &iocap, sizeof(uint8_t));
+    esp_ble_gap_set_security_param(ESP_BLE_SM_MAX_KEY_SIZE, &key_size, sizeof(uint8_t));
+    esp_ble_gap_set_security_param(ESP_BLE_SM_SET_INIT_KEY, &init_key, sizeof(uint8_t));
+    esp_ble_gap_set_security_param(ESP_BLE_SM_SET_RSP_KEY, &rsp_key, sizeof(uint8_t));
 
     // Set the BLE TX power to -12 dBm
     esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT, ESP_PWR_LVL_N12);
@@ -354,6 +394,8 @@ void updateListSizesCharacteristic()
         last_ble_devices_size = bleDeviceList.size();
     }
 }
+
+
 
 
 

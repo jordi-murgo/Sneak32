@@ -68,6 +68,16 @@ void BLEScanAdvertisedDeviceCallbacks::onResult(BLEAdvertisedDevice advertisedDe
             std::string uuidStr = advertisedDevice.haveServiceUUID() ? advertisedDevice.getServiceUUID().toString() : "";
             boolean isPublic = (advertisedDevice.getAddressType() == BLE_ADDR_TYPE_PUBLIC);
 
+            if (addressStr == "00:00:00:00:00:00") {
+                // This is an invalid address, ignore it
+                return;
+            }
+
+            if (!isPublic && appPrefs.ignore_random_ble_addresses) {
+                // This is a random BLE address, ignore it
+                return;
+            }
+
             esp_bd_addr_t bleaddr;
             memcpy(bleaddr, advertisedDevice.getAddress().getNative(), sizeof(esp_bd_addr_t));
 
