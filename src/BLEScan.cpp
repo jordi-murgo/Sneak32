@@ -49,7 +49,10 @@ void BLEScanClass::scan_loop() {
     while (true) {
         delay(appPrefs.ble_scan_period);
         Serial.println("Starting BLE Scan");
-        BLEScanResults foundDevices = pBLEScan->start(appPrefs.ble_scan_duration, !appPrefs.passive_scan);
+        pBLEScan->setInterval(100);
+        pBLEScan->setWindow(90);
+        pBLEScan->setActiveScan(!appPrefs.passive_scan);
+        BLEScanResults foundDevices = pBLEScan->start(appPrefs.ble_scan_duration, false);
         Serial.printf("BLE Scan complete. %d devices found.\n", foundDevices.getCount());
         // Add a small delay here to allow for task yielding
         delay(10);
@@ -67,6 +70,24 @@ void BLEScanAdvertisedDeviceCallbacks::onResult(BLEAdvertisedDevice advertisedDe
             std::string appearanceStr = std::to_string(advertisedDevice.getAppearance());
             std::string uuidStr = advertisedDevice.haveServiceUUID() ? advertisedDevice.getServiceUUID().toString() : "";
             boolean isPublic = (advertisedDevice.getAddressType() == BLE_ADDR_TYPE_PUBLIC);
+            esp_bd_addr_t bleaddr;
+            memcpy(bleaddr, advertisedDevice.getAddress().getNative(), sizeof(esp_bd_addr_t));
+
+            Serial.printf("Address: %s, isPublic: %d, Name: '%s', Appearance: %s, Service UUID: %s\n",
+                        addressStr.c_str(), isPublic, nameStr.c_str(), appearanceStr.c_str(), uuidStr.c_str());
+
+            // New code to print payload in hexdump format
+            uint8_t* payload = advertisedDevice.getPayload();
+            Serial.println("Payload (hexdump):");
+            for (size_t i = 0; i < advertisedDevice.getPayloadLength(); ++i) {
+                Serial.printf("%02X ", static_cast<unsigned char>(payload[i]));
+                if ((i + 1) % 16 == 0) {
+                    Serial.println();
+                }
+            }
+            if (advertisedDevice.getPayloadLength() % 16 != 0) {
+                Serial.println();
+            }   
 
             if (addressStr == "00:00:00:00:00:00") {
                 // This is an invalid address, ignore it
@@ -78,18 +99,14 @@ void BLEScanAdvertisedDeviceCallbacks::onResult(BLEAdvertisedDevice advertisedDe
                 return;
             }
 
-            esp_bd_addr_t bleaddr;
-            memcpy(bleaddr, advertisedDevice.getAddress().getNative(), sizeof(esp_bd_addr_t));
-
             // Use a lock_guard for exception-safe locking
             {
                 std::lock_guard<std::mutex> lock(scan->mtx);
-                Serial.printf("Address: %s, isPublic: %d, Name: '%s', Appearance: %s, Service UUID: %s\n",
-                              addressStr.c_str(), isPublic, nameStr.c_str(), appearanceStr.c_str(), uuidStr.c_str());
 
                 if (!appPrefs.ignore_random_ble_addresses || isPublic) {
                     bleDeviceList.updateOrAddDevice(MacAddress(bleaddr), rssi, String(nameStr.c_str()), isPublic);
                 }
+
             }
         }
     } catch (const std::exception &e) {
