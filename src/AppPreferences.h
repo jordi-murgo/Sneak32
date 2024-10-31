@@ -27,6 +27,23 @@ const int8_t OPERATION_MODE_OFF = 0;
 const int8_t OPERATION_MODE_SCAN = 1;
 const int8_t OPERATION_MODE_DETECTION = 2;
 
+// Namespace y Keys para NVS
+namespace Keys {
+    const char* const NAMESPACE = "wifi_monitor";
+    const char* const DEVICE_NAME = "device_name";
+    const char* const OP_MODE = "op_mode";
+    const char* const MIN_RSSI = "min_rssi";
+    const char* const ONLY_MGMT = "only_mgmt";
+    const char* const LOOP_DELAY = "loop_delay";
+    const char* const BLE_SCAN_PERIOD = "ble_period";
+    const char* const IGNORE_RANDOM = "ignore_rand";
+    const char* const BLE_SCAN_DUR = "ble_dur";
+    const char* const AUTOSAVE_INT = "autosave_int";
+    const char* const PASSIVE_SCAN = "passive";
+    const char* const STEALTH_MODE = "stealth";
+    const char* const AUTH_ADDR = "auth_addr";
+}
+
 // Declaraciones de funciones
 void initAppPreferences();
 void loadAppPreferences();

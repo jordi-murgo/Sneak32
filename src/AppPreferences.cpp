@@ -30,7 +30,7 @@ void printPreferences() {
 
 void loadAppPreferences() {
     Serial.println("Loading App Preferences");
-    preferences.begin("wifi_monitor", false);
+    preferences.begin(Keys::NAMESPACE, false);
 
     // Generate default device name
     uint8_t mac[6];
@@ -40,26 +40,26 @@ void loadAppPreferences() {
     snprintf(default_name, sizeof(default_name), "Sneak%s (%02X%02X)", 
              chipModel.c_str() + 3, mac[4], mac[5]);
     String defaultName = String(default_name);
-    String savedName = preferences.getString("device_name", defaultName);
+    String savedName = preferences.getString(Keys::DEVICE_NAME, defaultName);
 
     strncpy(appPrefs.device_name, savedName.c_str(), sizeof(appPrefs.device_name) - 1);
     appPrefs.device_name[sizeof(appPrefs.device_name) - 1] = '\0';
 
-    appPrefs.operation_mode = preferences.getInt("op_mode", 1); // 0-OFF, 1-SCAN_MODE, 2-DETECTION_MODE
+    appPrefs.operation_mode = preferences.getInt(Keys::OP_MODE, 1); // 0-OFF, 1-SCAN_MODE, 2-DETECTION_MODE
 
-    appPrefs.minimal_rssi = preferences.getInt("min_rssi", -85);
+    appPrefs.minimal_rssi = preferences.getInt(Keys::MIN_RSSI, -85);
 
-    appPrefs.only_management_frames = preferences.getBool("only_mgmt", true);
-    appPrefs.loop_delay = preferences.getUInt("loop_delay", 1000);
+    appPrefs.only_management_frames = preferences.getBool(Keys::ONLY_MGMT, true);
+    appPrefs.loop_delay = preferences.getUInt(Keys::LOOP_DELAY, 1000);
 
-    appPrefs.ble_scan_period = preferences.getUInt("ble_scan_period", 30000);
-    appPrefs.ignore_random_ble_addresses = preferences.getBool("ignore_random", false);
-    appPrefs.ble_scan_duration = preferences.getUInt("ble_scan_dur", 15);
-    appPrefs.autosave_interval = preferences.getUInt("autosave_interval", 60);
-    appPrefs.passive_scan = preferences.getBool("passive_scan", false);
-    appPrefs.stealth_mode = preferences.getBool("stealth_mode", false);
+    appPrefs.ble_scan_period = preferences.getUInt(Keys::BLE_SCAN_PERIOD, 30000);
+    appPrefs.ignore_random_ble_addresses = preferences.getBool(Keys::IGNORE_RANDOM, false);
+    appPrefs.ble_scan_duration = preferences.getUInt(Keys::BLE_SCAN_DUR, 15);
+    appPrefs.autosave_interval = preferences.getUInt(Keys::AUTOSAVE_INT, 60);
+    appPrefs.passive_scan = preferences.getBool(Keys::PASSIVE_SCAN, false);
+    appPrefs.stealth_mode = preferences.getBool(Keys::STEALTH_MODE, false);
 
-    String savedAddress = preferences.getString("authorized_address", "");
+    String savedAddress = preferences.getString(Keys::AUTH_ADDR, "");
     strncpy(appPrefs.authorized_address, savedAddress.c_str(), sizeof(appPrefs.authorized_address) - 1);
     appPrefs.authorized_address[sizeof(appPrefs.authorized_address) - 1] = '\0';
     
@@ -71,20 +71,19 @@ void loadAppPreferences() {
 
 void saveAppPreferences() {
     Serial.println("Saving App Preferences");
-    preferences.begin("wifi_monitor", false);
-
-    preferences.putString("device_name", appPrefs.device_name);
-    preferences.putInt("op_mode", appPrefs.operation_mode);
-    preferences.putInt("min_rssi", appPrefs.minimal_rssi);
-    preferences.putBool("only_mgmt", appPrefs.only_management_frames);
-    preferences.putUInt("loop_delay", appPrefs.loop_delay);
-    preferences.putUInt("ble_scan_period", appPrefs.ble_scan_period);
-    preferences.putBool("ignore_random", appPrefs.ignore_random_ble_addresses);
-    preferences.putUInt("ble_scan_dur", appPrefs.ble_scan_duration);
-    preferences.putUInt("autosave_interval", appPrefs.autosave_interval);
-    preferences.putBool("passive_scan", appPrefs.passive_scan);
-    preferences.putBool("stealth_mode", appPrefs.stealth_mode);
-    preferences.putString("authorized_address", appPrefs.authorized_address);
+    preferences.begin(Keys::NAMESPACE, false);
+    preferences.putString(Keys::DEVICE_NAME, appPrefs.device_name);
+    preferences.putInt(Keys::OP_MODE, appPrefs.operation_mode);
+    preferences.putInt(Keys::MIN_RSSI, appPrefs.minimal_rssi);
+    preferences.putBool(Keys::ONLY_MGMT, appPrefs.only_management_frames);
+    preferences.putUInt(Keys::LOOP_DELAY, appPrefs.loop_delay);
+    preferences.putUInt(Keys::BLE_SCAN_PERIOD, appPrefs.ble_scan_period);
+    preferences.putBool(Keys::IGNORE_RANDOM, appPrefs.ignore_random_ble_addresses);
+    preferences.putUInt(Keys::BLE_SCAN_DUR, appPrefs.ble_scan_duration);
+    preferences.putUInt(Keys::AUTOSAVE_INT, appPrefs.autosave_interval);
+    preferences.putBool(Keys::PASSIVE_SCAN, appPrefs.passive_scan);
+    preferences.putBool(Keys::STEALTH_MODE, appPrefs.stealth_mode);
+    preferences.putString(Keys::AUTH_ADDR, appPrefs.authorized_address);
     preferences.end();
 
     Serial.println("App Preferences saved");
