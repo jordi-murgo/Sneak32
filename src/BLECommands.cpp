@@ -36,11 +36,7 @@ void CommandsCallbacks::onWrite(BLECharacteristic *pCharacteristic)
         }
         else if (value == "clear_flash_data")
         {
-            // Clear all saved data
-            stationsList.clear();
-            ssidList.clear();
-            bleDeviceList.clear();
-            FlashStorage::saveAll();
+            FlashStorage::clearAll();
             updateListSizesCharacteristic();
         }
         else if (value == "save_data")
