@@ -44,6 +44,7 @@ public:
     static void loadWifiNetworks(WifiNetworkList& list);
     static void loadAll();
     static void saveAll();
+    static void clearAll();
 
 private:
     static const char* NAMESPACE;

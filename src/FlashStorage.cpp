@@ -232,3 +232,18 @@ void FlashStorage::loadAll()
         Serial.println("All lists cleared due to error");
     }
 }
+
+void FlashStorage::clearAll()
+{
+    // Clear the preferences namespace
+    preferences.begin(NAMESPACE, false);
+    preferences.clear();
+    preferences.end();
+
+    // Clear the lists
+    stationsList.clear();
+    bleDeviceList.clear();
+    ssidList.clear();
+    
+    Serial.println("All data cleared from flash storage");
+}
