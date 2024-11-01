@@ -12,10 +12,11 @@ WifiScanClass WifiScanner;
 
 #define SSID_MAX_LEN 33
 
-WifiScanClass* WifiScanClass::instance = nullptr;
+WifiScanClass *WifiScanClass::instance = nullptr;
 
-WifiScanClass::WifiScanClass() {
-    instance = this;
+WifiScanClass::WifiScanClass()
+{
+  instance = this;
 }
 
 void WifiScanClass::setup()
@@ -67,6 +68,7 @@ void WifiScanClass::process_management_frame(const uint8_t *payload, int payload
   const uint8_t *src_addr = nullptr;
   char ssid[SSID_MAX_LEN] = {0};
   String frameType;
+  bool suspicious = false;
 
   switch (subtype)
   {
@@ -80,7 +82,30 @@ void WifiScanClass::process_management_frame(const uint8_t *payload, int payload
     src_addr = &payload[10];
     parse_ssid(payload, payload_len, subtype, ssid);
     frameType = "probe";
+
+    // Verificar si el SSID contiene caracteres sospechosos
+    for (int i = 0; ssid[i] != '\0'; i++)
+    {
+      if (!isalnum(ssid[i]) && !isspace(ssid[i]) && ssid[i] != '-' && ssid[i] != '_')
+      {
+        suspicious = true;
+        break;
+      }
+    }
+
+    if (suspicious)
+    {
+      Serial.printf("\nSuspicious Probe Request SSID found: '%s'\n", ssid);
+      Serial.println("Frame hexdump:");
+      printHexDump(payload, payload_len);
+      // Wait until user press button
+      while (!digitalRead(0))
+      {
+        delay(100);
+      }
+    }
     break;
+
   case 8: // Beacon
     // src_addr = &payload[10];
     parse_ssid(payload, payload_len, subtype, ssid);
@@ -235,7 +260,8 @@ void WifiScanClass::parse_ssid(const uint8_t *payload, int payload_len, uint8_t 
  */
 void WifiScanClass::promiscuous_rx_cb(void *buf, wifi_promiscuous_pkt_type_t type)
 {
-  if (instance) {
+  if (instance)
+  {
     instance->handle_rx(buf, type);
   }
 }
@@ -255,6 +281,20 @@ void WifiScanClass::handle_rx(void *buf, wifi_promiscuous_pkt_type_t type)
   uint8_t frame_subtype = (frame_control & 0x00F0) >> 4;
 
   uint8_t channel = pkt->rx_ctrl.channel;
+
+  // Verificar la longitud mínima del paquete
+  if (payload_len < 28)
+  { // 24 bytes de cabecera + 4 bytes de FCS
+    Serial.printf("Packet too short %d\n", payload_len);
+    return;
+  }
+
+  // Verificar el FCS (Frame Check Sequence) del hardware
+  if (pkt->rx_ctrl.rx_state != 0)
+  {
+    Serial.println("FCS check failed");
+    return;
+  }
 
   if (rssi >= appPrefs.minimal_rssi)
   {

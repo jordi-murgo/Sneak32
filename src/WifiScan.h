@@ -21,6 +21,8 @@ private:
     void process_data_frame(const uint8_t *payload, int payload_len, uint8_t subtype, int8_t rssi, uint8_t channel);
     void parse_ssid(const uint8_t *payload, int payload_len, uint8_t subtype, char ssid[33]);
     static WifiScanClass* instance;
+
 };
 
+extern void printHexDump(const uint8_t* data, size_t length);
 extern WifiScanClass WifiScanner;
