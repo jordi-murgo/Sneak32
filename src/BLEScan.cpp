@@ -47,15 +47,58 @@ void BLEScanClass::stop() {
 void BLEScanClass::scan_loop() {
     Serial.println("ScanLoop started");
     while (true) {
-        delay(appPrefs.ble_scan_period);
+        delay(appPrefs.ble_scan_delay * 1000);
         Serial.println("Starting BLE Scan");
         pBLEScan->setInterval(100);
         pBLEScan->setWindow(90);
         pBLEScan->setActiveScan(!appPrefs.passive_scan);
         BLEScanResults foundDevices = pBLEScan->start(appPrefs.ble_scan_duration, false);
         Serial.printf("BLE Scan complete. %d devices found.\n", foundDevices.getCount());
-        // Add a small delay here to allow for task yielding
-        delay(10);
+    }
+}
+
+void printHexDump(const uint8_t* data, size_t length) {
+    char ascii[17];
+    char formatted_ascii[17];
+
+    for (size_t i = 0; i < length; i++) {
+        // Print offset at the start of each line
+        if (i % 16 == 0) {
+            if (i != 0) {
+                Serial.printf("  |%s|\n", formatted_ascii);
+            }
+            Serial.printf("%08x  ", i);
+            // Initialize ascii buffer for new line
+            memset(ascii, 0, sizeof(ascii));
+            memset(formatted_ascii, ' ', sizeof(formatted_ascii) - 1);
+            formatted_ascii[16] = '\0';
+        }
+
+        // Print hex value
+        Serial.printf("%02x ", data[i]);
+        
+        // Store ASCII representation
+        ascii[i % 16] = (data[i] >= 32 && data[i] <= 126) ? data[i] : '.';
+        formatted_ascii[i % 16] = ascii[i % 16];
+
+        // Print extra space between 8th and 9th bytes
+        if ((i + 1) % 8 == 0 && (i + 1) % 16 != 0) {
+            Serial.print(" ");
+        }
+    }
+
+    // Print padding spaces if the last line is incomplete
+    if (length % 16 != 0) {
+        size_t padding = 16 - (length % 16);
+        for (size_t i = 0; i < padding; i++) {
+            Serial.print("   ");
+            if ((length + i + 1) % 8 == 0 && (length + i + 1) % 16 != 0) {
+                Serial.print(" ");
+            }
+        }
+        Serial.printf("  |%s|\n", formatted_ascii);
+    } else if (length > 0) {
+        Serial.printf("  |%s|\n", formatted_ascii);
     }
 }
 
@@ -73,21 +116,32 @@ void BLEScanAdvertisedDeviceCallbacks::onResult(BLEAdvertisedDevice advertisedDe
             esp_bd_addr_t bleaddr;
             memcpy(bleaddr, advertisedDevice.getAddress().getNative(), sizeof(esp_bd_addr_t));
 
-            Serial.printf("Address: %s, isPublic: %d, Name: '%s', Appearance: %s, Service UUID: %s\n",
-                        addressStr.c_str(), isPublic, nameStr.c_str(), appearanceStr.c_str(), uuidStr.c_str());
+            // Base output always includes address and type
+            Serial.printf("Address: %s (%s)", 
+                addressStr.c_str(), 
+                isPublic ? "public" : "random");
 
-            // New code to print payload in hexdump format
-            uint8_t* payload = advertisedDevice.getPayload();
-            Serial.println("Payload (hexdump):");
-            for (size_t i = 0; i < advertisedDevice.getPayloadLength(); ++i) {
-                Serial.printf("%02X ", static_cast<unsigned char>(payload[i]));
-                if ((i + 1) % 16 == 0) {
-                    Serial.println();
-                }
+            // Optional fields only if they have value
+            if (!nameStr.empty()) {
+                Serial.printf(", Name: '%s'", nameStr.c_str());
             }
-            if (advertisedDevice.getPayloadLength() % 16 != 0) {
-                Serial.println();
-            }   
+
+            uint16_t appearance = advertisedDevice.getAppearance();
+            if (appearance != 0) {
+                Serial.printf(", Appearance: %d", appearance);
+            }
+
+            if (advertisedDevice.haveServiceUUID()) {
+                Serial.printf(", Service UUID: %s", uuidStr.c_str());
+            }
+
+            Serial.println(); // End the line
+
+            // Print payload in hexdump format
+            if (advertisedDevice.getPayloadLength() > 0) {
+                Serial.println("Payload hexdump:");
+                printHexDump(advertisedDevice.getPayload(), advertisedDevice.getPayloadLength());
+            }
 
             if (addressStr == "00:00:00:00:00:00") {
                 // This is an invalid address, ignore it

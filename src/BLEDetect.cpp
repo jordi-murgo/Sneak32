@@ -125,8 +125,8 @@ void BLEDetectClass::detect_loop()
     {
         try
         {
-            Serial.printf(">> BLEDetectClass::detect_loop - Starting BLE Detection pause during %d seconds\n", appPrefs.ble_scan_period);
-            delay(appPrefs.ble_scan_period);
+            Serial.printf(">> BLEDetectClass::detect_loop - Starting BLE Detection pause during %d seconds\n", appPrefs.ble_scan_delay);
+            delay(appPrefs.ble_scan_delay * 1000);
             
             Serial.printf(">> BLEDetectClass::detect_loop - Starting BLE Detection during %d seconds\n", appPrefs.ble_scan_duration);
             
