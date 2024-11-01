@@ -14,6 +14,7 @@ public:
     static void configureNormalMode();
 
 private:
+    static uint8_t advertisingMode;
     static BLEAdvertising* pAdvertising;
 
     static BLEAdvertisementData getAdvertisementData();

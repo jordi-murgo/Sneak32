@@ -4,6 +4,7 @@
 #include <string>
 
 BLEAdvertising* BLEAdvertisingManager::pAdvertising = BLEDevice::getAdvertising();
+uint8_t BLEAdvertisingManager::advertisingMode = 0xFF;
 
 void BLEAdvertisingManager::setup() {
     Serial.println(">> BLEAdvertisingManager::setup");
@@ -47,8 +48,12 @@ void BLEAdvertisingManager::updateAdvertisingData() {
 }
 
 void BLEAdvertisingManager::configureStealthMode() {
-    Serial.println(">> BLEAdvertisingManager::configureStealthMode");
-    pAdvertising->setAdvertisementType(ADV_TYPE_DIRECT_IND_LOW);
+    if (advertisingMode != ADV_TYPE_DIRECT_IND_LOW) {
+        Serial.println(">> BLEAdvertisingManager::configureStealthMode");
+    }
+    advertisingMode = ADV_TYPE_DIRECT_IND_LOW;
+
+    pAdvertising->setAdvertisementType(static_cast<esp_ble_adv_type_t>(advertisingMode));
     pAdvertising->setScanFilter(true, true);
 
     BLEAdvertisementData data = getAdvertisementData();
@@ -57,8 +62,12 @@ void BLEAdvertisingManager::configureStealthMode() {
 }
 
 void BLEAdvertisingManager::configureNormalMode() {
-    Serial.println(">> BLEAdvertisingManager::configureNormalMode");
-    pAdvertising->setAdvertisementType(ADV_TYPE_IND);
+    if (advertisingMode != ADV_TYPE_IND) {
+        Serial.println(">> BLEAdvertisingManager::configureNormalMode");
+    }
+    advertisingMode = ADV_TYPE_IND;
+
+    pAdvertising->setAdvertisementType(static_cast<esp_ble_adv_type_t>(advertisingMode));
     pAdvertising->setScanFilter(false, false);
 
     BLEAdvertisementData data = getAdvertisementData();
