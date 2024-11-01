@@ -323,20 +323,21 @@ void setupBLE()
 
 void updateDetectedDevicesCharacteristic()
 {
-    static size_t last_ssids_size = 0;
-    static size_t last_stations_size = 0;
-    static size_t last_ble_devices_size = 0;
-    static bool last_alarm_detected = false;
+    static String last_sizeString = "";
 
     size_t ssids_size = WifiDetector.getDetectedNetworksCount();
     size_t stations_size = WifiDetector.getDetectedDevicesCount();
     size_t ble_devices_size = BLEDetector.getDetectedDevicesCount();
     bool alarm = BLEDetector.isSomethingDetected() | WifiDetector.isSomethingDetected();
+    size_t free_heap = ESP.getFreeHeap();
+    unsigned long uptime = millis() / 1000; // Convert milliseconds to seconds
 
     // Crear la cadena de texto con los tamaños de las listas
     String sizeString = String(ssids_size) + ":" +
                         String(stations_size) + ":" +
                         String(ble_devices_size) + ":" +
+                        String(free_heap) + ":" +
+                        String(uptime) + ":" +
                         String(alarm);
 
     pListSizesCharacteristic->setValue(sizeString.c_str());
@@ -344,16 +345,11 @@ void updateDetectedDevicesCharacteristic()
 
     if (deviceConnected)
     {
-        if (alarm != last_alarm_detected || ssidList.size() != last_ssids_size ||
-            stationsList.size() != last_stations_size || bleDeviceList.size() != last_ble_devices_size)
+        if (last_sizeString != sizeString)
         {
             Serial.println("Notifying list sizes");
             pListSizesCharacteristic->notify();
-
-            last_ssids_size = ssidList.size();
-            last_stations_size = stationsList.size();
-            last_ble_devices_size = bleDeviceList.size();
-            last_alarm_detected = alarm;
+            last_sizeString = sizeString;
         }
     }
 }
@@ -366,32 +362,29 @@ void updateDetectedDevicesCharacteristic()
  */
 void updateListSizesCharacteristic()
 {
-    static size_t last_ssids_size = 0;
-    static size_t last_stations_size = 0;
-    static size_t last_ble_devices_size = 0;
+    static String last_sizeString = "";
 
-    boolean alarm_detected = BLEDetector.isSomethingDetected() | WifiDetector.isSomethingDetected();
+    size_t free_heap = ESP.getFreeHeap();
+    unsigned long uptime = millis() / 1000; // Convert milliseconds to seconds
 
-    if (pListSizesCharacteristic != nullptr &&
-        (ssidList.size() != last_ssids_size ||
-         stationsList.size() != last_stations_size ||
-         bleDeviceList.size() != last_ble_devices_size))
+    // Create string with list sizes, memory info and uptime, with alarm fixed to 0
+    String sizeString = String(ssidList.size()) + ":" +
+                       String(stationsList.size()) + ":" +
+                       String(bleDeviceList.size()) + ":" +
+                       String(free_heap) + ":" +
+                       String(uptime) + ":0";
+
+    if (pListSizesCharacteristic != nullptr && last_sizeString != sizeString)
     {
-        // Crear la cadena de texto con los tamaños de las listas
-        String sizeString = String(ssidList.size()) + ":" +
-                            String(stationsList.size()) + ":" +
-                            String(bleDeviceList.size()) + ":0";
-
         Serial.printf("List sizes updated -> %s\n", sizeString.c_str());
         pListSizesCharacteristic->setValue(sizeString.c_str());
+        
         if (deviceConnected)
         {
             Serial.println("Notifying list sizes");
             pListSizesCharacteristic->notify();
         }
-        last_ssids_size = ssidList.size();
-        last_stations_size = stationsList.size();
-        last_ble_devices_size = bleDeviceList.size();
+        last_sizeString = sizeString;
     }
 }
 
