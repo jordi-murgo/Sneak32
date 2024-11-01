@@ -241,6 +241,18 @@ void setup()
 
   Serial.println("Starting serial ...");
 
+  // Encuentra la partición NVS
+  const esp_partition_t* nvs_partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_NVS, NULL);
+
+  if (nvs_partition != NULL) {
+    Serial.print("Partición NVS encontrada. Tamaño: ");
+    Serial.print(nvs_partition->size);  // Tamaño en bytes
+    Serial.print(" bytes. Offset: ");
+    Serial.println(nvs_partition->address);  // Dirección de inicio (offset)
+  } else {
+    Serial.println("No se encontró la partición NVS.");
+  }
+  
   ledManager.begin();
   ledManager.setPixelColor(0, LedManager::COLOR_GREEN);
   ledManager.show();
@@ -251,6 +263,16 @@ void setup()
 
   Serial.println("Loading preferences");
   loadAppPreferences();
+
+  // Set WiFi and BLE TX power
+  esp_wifi_set_max_tx_power((wifi_power_t) appPrefs.wifiTxPower);
+  esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT, (esp_power_level_t) appPrefs.bleTxPower);
+
+  // Set CPU frequency
+  if(appPrefs.cpu_speed != getCpuFrequencyMhz()) {
+    Serial.printf("Setting CPU frequency to %u MHz\n", appPrefs.cpu_speed);
+    setCpuFrequencyMhz(appPrefs.cpu_speed);
+  }
 
   try
   {
@@ -294,6 +316,8 @@ void setup()
   ledManager.show();
 
   pinMode(BOOT_BUTTON_PIN, INPUT_PULLUP);
+
+  esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT, ESP_PWR_LVL_P9);
 }
 
 /**
@@ -310,11 +334,10 @@ void scan_mode_loop()
   currentChannel = (currentChannel % 14) + 1;
   esp_wifi_set_channel(currentChannel, WIFI_SECOND_CHAN_NONE);
 
-  Serial.printf(">> Time: %lu, WiFi Ch: %2d, St: %zu, SS: %zu, BLE: %zu, Heap: %d, minRSSI: %d, MgmtOnly: %d, WiFiScan: %u, BLEScan: %u, InTx: %d\n",
-                millis() / 1000, currentChannel, stationsList.size(), ssidList.size(), bleDeviceList.size(), ESP.getFreeHeap(),
-                appPrefs.minimal_rssi, appPrefs.only_management_frames, appPrefs.loop_delay, appPrefs.ble_scan_period, preparedJsonData.length() > 0);
+  Serial.printf(">> Time: %lu, WiFi Ch: %2d, SSIDs: %zu, Stations: %zu, BLE: %zu, Heap: %d\n",
+                millis() / 1000, currentChannel, ssidList.size(), stationsList.size(), bleDeviceList.size(), ESP.getFreeHeap());
 
-  delay(appPrefs.loop_delay);
+  delay(appPrefs.wifi_channel_dwell_time);
 
   checkTransmissionTimeout();
 
@@ -386,11 +409,13 @@ void detection_mode_loop()
 
     const auto &currentNetwork = clonedList[currentSSIDIndex];
     // Configure ESP32 to broadcast the selected SSID
-    WifiDetector.setupAP(currentNetwork.ssid.c_str(), nullptr, 1);
-
-    Serial.printf(">> Detection Mode (%02d/%02d) >> Alarm: %d, Broadcasting SSID: \"%s\", Last detection: %d\n",
-                  currentSSIDIndex + 1, clonedList.size(), WifiDetector.isSomethingDetected(), currentNetwork.ssid.c_str(),
-                  millis() / 1000 - WifiDetector.getLastDetectionTime());
+    // WifiDetector.setupAP(currentNetwork.ssid.c_str(), nullptr, 1);
+    if (&currentNetwork && currentNetwork.ssid && currentNetwork.ssid.length() > 0) {
+      WifiDetector.setupAP(currentNetwork.ssid.c_str(), nullptr, 1);
+      Serial.printf(">> Detection Mode (%02d/%02d) >> Alarm: %d, Broadcasting SSID: \"%s\", Last detection: %d\n",
+                    currentSSIDIndex + 1, clonedList.size(), WifiDetector.isSomethingDetected(), currentNetwork.ssid.c_str(),
+                    millis() / 1000 - WifiDetector.getLastDetectionTime());
+    }
 
     currentSSIDIndex++;
   }
@@ -398,7 +423,7 @@ void detection_mode_loop()
   checkTransmissionTimeout();
   checkAndRestartAdvertising();
 
-  delay(appPrefs.loop_delay);
+  delay(appPrefs.wifi_channel_dwell_time);
 }
 
 /**
@@ -423,10 +448,10 @@ void loop()
     Serial.println("Operation mode == OFF");
     ledManager.setPixelColor(0, LedManager::COLOR_RED);
     ledManager.show();
-    delay(appPrefs.loop_delay);
+    delay(appPrefs.wifi_channel_dwell_time);
     ledManager.setPixelColor(0, LedManager::COLOR_OFF);
     ledManager.show();
-    delay(appPrefs.loop_delay);
+    delay(appPrefs.wifi_channel_dwell_time);
   }
 
 }
