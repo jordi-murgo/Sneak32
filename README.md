@@ -288,7 +288,7 @@ We are constantly working to enhance Sneak32. Here are some planned improvements
    - Support for LoRa32 boards
      - [LILYGO ® TTGO LoRa32](https://www.aliexpress.us/item/32872078587.html)
      - [Heltec LoRa32 ESP32 SX1262 LoRa](https://www.aliexpress.us/item/3256806616057872.html)
-   - Support for othr communication boards (NRF24L01)
+   - Support for othr communication boards ([NRF24L01](https://es.aliexpress.com/item/4000603343837.html))
 
 4. **Communications**
    - Stealth communications using ESP-Now, NRF24L01, ZigBee and LoRa
