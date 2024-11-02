@@ -8,8 +8,6 @@ String formatVersion(long version);
 String getChipInfo();
 String getChipFeatures();
 
-JsonDocument getHardwareInfoJson();
-JsonDocument getSoftwareInfoJson();
 JsonDocument getFirmwareInfoJson();
 
 extern String getFirmwareInfoString();

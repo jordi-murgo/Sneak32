@@ -35,7 +35,7 @@ String getChipFeatures()
     return features.substring(1); // Remove initial space
 }
 
-JsonDocument getHardwareInfoJson()
+JsonDocument getFirmwareInfoJson()
 {
     JsonDocument doc;
     uint8_t mac[6];
@@ -62,51 +62,18 @@ JsonDocument getHardwareInfoJson()
 #endif
     doc["mac"] = MacAddress(mac).toString();
 
-    return doc;
-}
-
-JsonDocument getSoftwareInfoJson()
-{
-    JsonDocument doc;
     doc["version"] = AUTO_VERSION;
+    doc["built"] = AUTO_BUILD_TIME;
     doc["pio_ver"] = formatVersion(PLATFORMIO);
     doc["ard_ver"] = formatVersion(ARDUINO);
     doc["gcc_ver"] = String(__VERSION__);
     doc["cpp_ver"] = String(__cplusplus);
     doc["idf_ver"] = ESP.getSdkVersion();
     doc["board"] = ARDUINO_BOARD;
-    doc["built"] = String(__DATE__) + " " + String(__TIME__);
     doc["size_kb"] = ESP.getSketchSize() / 1024;
     doc["md5"] = ESP.getSketchMD5();
-
-    return doc;
-}
-
-JsonDocument getFirmwareInfoJson()
-{
-    JsonDocument doc;
-    
-    // Software info
-    JsonDocument softwareDoc = getSoftwareInfoJson();
-    doc["soft"] = softwareDoc.as<JsonObject>();
-
-    // Hardware info
-    JsonDocument hardwareDoc = getHardwareInfoJson();
-    doc["hard"] = hardwareDoc.as<JsonObject>();
-
-    return doc;
-} 
-
-String getHardwareInfoString()
-{
-    JsonDocument doc = getHardwareInfoJson();
-    return doc.as<String>();
-}
-
-String getSoftwareInfoString()
-{
-    JsonDocument doc = getSoftwareInfoJson();
-    return doc.as<String>();
+  
+  return doc;
 }
 
 String getFirmwareInfoString()

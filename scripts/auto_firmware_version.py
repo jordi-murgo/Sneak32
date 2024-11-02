@@ -1,10 +1,10 @@
 import subprocess
-
+import time
 Import("env")
 
 def get_firmware_specifier_build_flag():
-    ret = subprocess.run(["git", "describe"], stdout=subprocess.PIPE, text=True) #Uses only annotated tags
-    #ret = subprocess.run(["git", "describe", "--tags"], stdout=subprocess.PIPE, text=True) #Uses any tags
+    # ret = subprocess.run(["git", "describe"], stdout=subprocess.PIPE, text=True) #Uses only annotated tags
+    ret = subprocess.run(["git", "describe", "--tags"], stdout=subprocess.PIPE, text=True) #Uses any tags
     build_version = ret.stdout.strip()
     build_flag = "-D AUTO_VERSION=\\\"" + build_version + "\\\""
     print("--------------------------------------------------")
@@ -13,5 +13,7 @@ def get_firmware_specifier_build_flag():
     return (build_flag)
 
 env.Append(
-    BUILD_FLAGS=[get_firmware_specifier_build_flag()]
+    BUILD_FLAGS=[get_firmware_specifier_build_flag(),
+                 "-D AUTO_BUILD_TIME=\\\"" + str(int(time.time())) + "\\\""
+                 ]
 )
