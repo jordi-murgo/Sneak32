@@ -5,6 +5,7 @@
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/jordi-murgo/Sneak32)
 
 ## 📚 Table of Contents
+
 - [Overview](#-overview)
 - [Application in Infiltrator Detection](#-application-in-infiltrator-detection)
 - [Operation Modes](#-operation-modes)
@@ -85,6 +86,7 @@ Sneak32 is ideal for detecting devices that may be associated with surveillance 
 ## 💻 Hardware and Software Compatibility
 
 Sneak32 has been tested with the **ESP32-C3** board, a low-cost RISC-V microcontroller (less than $3), which offers:
+
 - WiFi 802.11 b/g/n (2.4 GHz) and Bluetooth 5.0 LE.
 - 4MB Flash memory and 400KB SRAM.
 - Support for **Arduino IDE**, **PlatformIO**, and **Espressif IDF**, facilitating programming and customization of the device according to each project's needs.
@@ -100,12 +102,14 @@ Sneak32 has been tested with the **ESP32-C3** board, a low-cost RISC-V microcont
 The ESP32-C3-SuperMini is a good choice for this project due to its compact size, low cost, and low power consumption. However, it's important to note that this model uses a ceramic chip antenna, which may limit its range and data capture capabilities compared to models with PCB antennas or external antennas.
 
 For optimal performance and range:
+
 - Consider ESP32 variants with PCB antennas or external antenna connectors.
 - Models with external antennas generally offer the best range and data capture capabilities.
 
 Other ESP32 variants are compatible with the program by specifying the appropriate board in the `platformio.ini` file.
 
-### Antenna Considerations:
+### Antenna Considerations
+
 1. **Ceramic Chip Antenna (e.g., ESP32-C3-SuperMini):**
    - Pros: Compact, low cost
    - Cons: Limited range, may capture fewer data points
@@ -121,6 +125,7 @@ Other ESP32 variants are compatible with the program by specifying the appropria
 Choose the antenna type based on your specific needs for range, data capture, and form factor.
 
 ## 📚 Software Dependencies
+
 - [PlatformIO](https://platformio.org/)
 - [Arduino core for ESP32](https://github.com/espressif/arduino-esp32)
 - [ESP32 BLE library](https://github.com/nkolban/ESP32_BLE_Arduino)
@@ -138,17 +143,17 @@ Choose the antenna type based on your specific needs for range, data capture, an
   ```
 
 2. **Install necessary dependencies:**
-   
+
    If using PlatformIO:
 
    ```bash
    pio lib install
    ```
-   
+
    If using Arduino IDE, install the libraries through the Library Manager.
 
 3. **Compile and flash** the firmware to your ESP32 device:
-   
+
    With PlatformIO:
 
     ```bash
@@ -160,15 +165,17 @@ Choose the antenna type based on your specific needs for range, data capture, an
     ```bash
     pio run -e esp32-c3-supermini --upload-port /dev/cu.usbmodem101 -t upload
     ```
-   
+
    With PlatfotmIO Visual Studio Code Extension, use the "Upload" button.
 
 4. **Power on the device** and verify that the LED (if connected) indicates the correct status.
 
 5. **Connect to the device via Bluetooth LE:**
-   - Use the provided web interface in `docs/index.html`.
-   - Open the `index.html` file in a compatible browser (Chrome or Edge recommended).
-   - The default `index.html` are also deployed and available at [https://jordi-murgo.github.io/Sneak32](https://jordi-murgo.github.io/Sneak32)
+
+   ![ESP-32-Manager](images/sneak-32-manager.png)
+
+   - Use the Smeak32 Manager [https://jordi-murgo.github.io/sneak-32-manager](https://jordi-murgo.github.io/sneak32-32-manager)
+   - Or compile your own version [https://github.com/jordi-murgo/sneak-32-manager](https://github.com/jordi-murgo/sneak-32-manager)
    - Click "Search for Device" and select your Sneak32 device.
 
 6. **Configure device options** through the interface:
@@ -249,13 +256,13 @@ Sneak32 provides detailed JSON output including:
 - **Ethical Use:** Consider the ethical implications of your actions. Respect individual privacy and obtain consent when necessary.
 
 For more information on legal and ethical considerations in network scanning, refer to resources such as:
+
 - [NIST Guidelines for Securing Wireless Local Area Networks](https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-153.pdf)
-- [OWASP Wireless Security Testing Guide](https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/10-Business_Logic_Testing/09-Test_Upload_of_Unexpected_File_Types)
+- [OWASP Wireless Security Testing Guide](https://owasp.org/www-project-wstg/)
 
 ## 📅 Version History
 
-- **v0.2** (2023-03-15): Improvements in detection and web interface configuration.
-- **v0.1** (2023-02-28): Initial release.
+- **v0.0.1** (2024-10-01): Initial release.
 
 ## 📧 Contact and Support
 
@@ -269,23 +276,35 @@ If you have questions or need assistance, feel free to open an **issue** in the 
 
 We are constantly working to enhance Sneak32. Here are some planned improvements for future versions:
 
-1. **Enhanced User Interface (UI)**
-   - Implement functionality to edit the devices and networks blacklist directly from the UI
-   - Add capability to download and upload blacklists
-   - Improve overall user experience and interface design
-
-2. **Expanded Connectivity Options**
-   - Add support to save blacklists to personal cloud storage service
-   - Integration with [Wiggle.net](https://www.wigle.net/) for easy loading of SSIDs near a specific location
-
-3. **Performance Optimizations**
+1. **Performance Optimizations**
    - Improve scanning efficiency to reduce power consumption
 
-4. **Extended Storage Capabilities**
+2. **Extended Storage Capabilities**
    - Add support for external memory cards to increase storage capacity
    - Implement data management features for handling larger datasets
 
-5. **Hardware Compatibility**
-   - Verify and ensure compatibility with other ESP32* boards and models like ESP32-C6
+3. **Hardware Compatibility**
+   - Verify and ensure compatibility with other ESP32* boards and models like ESP32-C6 (currently not supported by Espressif - Platform.IO - Arduino)
+   - Support for LoRa32 boards
+     - [LILYGO ® TTGO LoRa32](https://www.aliexpress.us/item/32872078587.html)
+     - [Heltec LoRa32 ESP32 SX1262 LoRa](https://www.aliexpress.us/item/3256806616057872.html)
+   - Support for othr communication boards (NRF24L01)
+
+4. **Communications**
+   - Stealth communications using ESP-Now, NRF24L01, ZigBee and LoRa
+   - Make a BLE Server proxy to LoRa (or LoRaWAN), NRF24L01, ZigBee, and ESP-Now.
 
 We welcome contributions and suggestions from the community to help make these improvements a reality. If you have ideas or want to contribute, please check our [Contributing](#-contributing) section.
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🤝 Contributing
+
+Contributions are welcome!
+## 👤 Author
+
+**Your Name** - [@jordi-murgo](https://github.com/jordi-murgo)
+
+Feel free to contact me for any questions or feedback.
