@@ -174,7 +174,7 @@ Choose the antenna type based on your specific needs for range, data capture, an
 
    ![ESP-32-Manager](images/sneak-32-manager.png)
 
-   - Use the Smeak32 Manager [https://jordi-murgo.github.io/sneak-32-manager](https://jordi-murgo.github.io/sneak32-32-manager)
+   - Use the Smeak32 Manager [https://jordi-murgo.github.io/sneak-32-manager](https://jordi-murgo.github.io/sneak-32-manager)
    - Or compile your own version [https://github.com/jordi-murgo/sneak-32-manager](https://github.com/jordi-murgo/sneak-32-manager)
    - Click "Search for Device" and select your Sneak32 device.
 
