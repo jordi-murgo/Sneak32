@@ -66,6 +66,7 @@
 #include "AppPreferences.h"
 #include "FlashStorage.h"
 #include "BLEAdvertisingManager.h"
+#include "FirmwareInfo.h"
 
 // Define the boot button pin (adjust if necessary)
 #define BOOT_BUTTON_PIN 0
@@ -121,14 +122,6 @@ void updateBaseTime(const std::vector<T> &list)
   {
     base_time = std::max(base_time, item.last_seen);
   }
-}
-
-String getChipInfo()
-{
-  char buffer[50];
-  snprintf(buffer, sizeof(buffer), "%s (Cores: %d, Rev: %d)",
-           ESP.getChipModel(), ESP.getChipCores(), ESP.getChipRevision());
-  return String(buffer);
 }
 
 /**
@@ -207,7 +200,7 @@ void printSSIDAndBLELists()
 void firmwareInfo()
 {
   Serial.println("\n\n----------------------------------------------------------------------");
-  Serial.print(getFirmwareInfo());
+  Serial.println(getFirmwareInfoString());
   Serial.println("----------------------------------------------------------------------\n");
 }
 

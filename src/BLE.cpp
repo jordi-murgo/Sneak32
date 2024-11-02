@@ -1,3 +1,4 @@
+#include <ArduinoJson.h>
 #include <sstream>
 #include <esp_gap_ble_api.h>
 
@@ -110,69 +111,8 @@ class ListSizesCallbacks : public BLECharacteristicCallbacks
     }
 };
 
-/**
- * @brief Formats a version number into a string.
- *
- * This function takes a version number and converts it into a string
- * in the format "major.minor.patch".
- *
- * @param version The version number to format.
- * @return The formatted version string.
- */
-String formatVersion(long version)
-{
-    int major = version / 10000;
-    int minor = (version / 100) % 100;
-    int patch = version % 100;
-    return String(major) + "." +
-           String(minor) + "." +
-           String(patch);
-}
-
-String getHardwareInfo()
-{
-    uint8_t mac[6];
-    esp_read_mac(mac, ESP_MAC_BT);
-
-    String mArch = String(CONFIG_SDK_TOOLPREFIX);
-    if (mArch.endsWith("-"))
-    {
-        mArch = mArch.substring(0, mArch.length() - 1);
-    }
-
-    String info = "Architecture: " + mArch + "\n";
-    info += "Chip Model: " + getChipInfo() + "\n";
-    info += "CPU Frequency: " + String(ESP.getCpuFreqMHz()) + " MHz\n";
-    info += "Flash Size: " + String(ESP.getFlashChipSize() / 1024) + " KBytes\n";
-    info += "Flash Speed: " + String(ESP.getFlashChipSpeed() / 1000000) + " MHz\n";
-    info += "RAM Size: " + String(ESP.getHeapSize() / 1024) + " KBytes\n";
-#ifdef CONFIG_SPIRAM
-    info += "PSRAM Size: " + String(ESP.getPsramSize()) + " bytes\n";
-#endif
-    info += "MAC Address: " + String(MacAddress(mac).toString().c_str()) + "\n";
-
-    return info;
-}
-
-// Implementa una función para obtener la información del firmware
-String getFirmwareInfo()
-{
-    String info = "PlatformIO Version: " + String(formatVersion(PLATFORMIO)) + "\n";
-    info += "Arduino Version: " + String(formatVersion(ARDUINO)) + "\n";
-    info += "GNU Compiler: " + String(__VERSION__) + "\n";
-    info += "C++ Version: " + String(__cplusplus) + "\n";
-    info += "ESP-IDF Version: " + String(ESP.getSdkVersion()) + "\n";
-    info += "Device Board: " + String(ARDUINO_BOARD) + "\n";
-
-    info += getHardwareInfo();
-
-    info += "Compilation date: " + String(__DATE__) + " " + String(__TIME__) + "\n";
-
-    info += "Sketch Size: " + String(ESP.getSketchSize() / 1024) + " KBytes\n";
-    info += "Sketch MD5: " + String(ESP.getSketchMD5()) + "\n";
-
-    return info;
-}
+// Add this near the top of the file, after other includes
+#include "FirmwareInfo.h"
 
 class MySecurity : public BLESecurityCallbacks {
 public:
@@ -306,7 +246,7 @@ void setupBLE()
     BLECharacteristic *pFirmwareInfoCharacteristic = pScannerService->createCharacteristic(
         BLEUUID((uint16_t)FIRMWARE_INFO_UUID),
         BLECharacteristic::PROPERTY_READ);
-    pFirmwareInfoCharacteristic->setValue(getHardwareInfo().c_str());
+    pFirmwareInfoCharacteristic->setValue(getFirmwareInfoString().c_str());
 
     Serial.println("Starting BLE service");
     pScannerService->start();
