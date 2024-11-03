@@ -28,32 +28,12 @@ void CommandsCallbacks::onWrite(BLECharacteristic *pCharacteristic)
         }
         else if (value == "clear_data")
         {
-            // Clear all collected data
-            stationsList.clear();
-            ssidList.clear();
-            bleDeviceList.clear();
-            updateListSizesCharacteristic();
-        }
-        else if (value == "clear_flash_data")
-        {
             FlashStorage::clearAll();
             updateListSizesCharacteristic();
         }
         else if (value == "save_data")
         {
             FlashStorage::saveAll();
-        }
-        else if (value == "save_relevant_data")
-        {
-            stationsList.remove_irrelevant_stations();
-            ssidList.remove_irrelevant_networks();
-            bleDeviceList.remove_irrelevant_devices();
-            FlashStorage::saveAll();
-            updateListSizesCharacteristic();
-        } else if (value == "clean_detection_data") {
-            WifiDetector.cleanDetectionData();
-            BLEDetector.cleanDetectionData();
-            updateListSizesCharacteristic();
         }
     }
 }
