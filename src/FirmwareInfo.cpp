@@ -39,7 +39,7 @@ JsonDocument getFirmwareInfoJson()
 {
     JsonDocument doc;
     uint8_t mac[6];
-    esp_read_mac(mac, ESP_MAC_BT);
+
 
     String mArch = String(CONFIG_SDK_TOOLPREFIX);
     if (mArch.endsWith("-"))
@@ -60,8 +60,10 @@ JsonDocument getFirmwareInfoJson()
     doc["psram"] = ESP.getPsramSize() / 1024;
     doc["free_psram"] = ESP.getFreePsram() / 1024;
 #endif
-    doc["mac"] = MacAddress(mac).toString();
-
+    esp_read_mac(mac, ESP_MAC_BT);
+    doc["bt_mac"] = MacAddress(mac).toString();
+    esp_read_mac(mac, ESP_MAC_WIFI_SOFTAP);
+    doc["ap_mac"] = MacAddress(mac).toString();
     doc["version"] = AUTO_VERSION;
     doc["built"] = AUTO_BUILD_TIME;
     doc["pio_ver"] = formatVersion(PLATFORMIO);
