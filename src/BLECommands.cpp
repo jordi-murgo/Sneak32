@@ -33,6 +33,35 @@ void CommandsCallbacks::onWrite(BLECharacteristic *pCharacteristic)
         {
             FlashStorage::saveAll();
         }
+        else if (value == "test_mtu")
+        {
+            Serial.println("Test MTU command received");
+            // Prepare a testMTU Buffer
+            uint8_t *mtuBuffer = (uint8_t *)malloc(600);
+            memset(mtuBuffer, 'A', 600);    
+            pCharacteristic->setValue(mtuBuffer, 600);
+            pCharacteristic->notify();
+            free(mtuBuffer);
+        }
+        else if (value.substr(0, 7) == "set_mtu")
+        {
+            // Parse MTU size from the command
+            int mtuSize = std::stoi(value.substr(8));
+            
+            String response = "MTU set to " + String(mtuSize);
+            
+            // Update the MTU in app preferences
+            appPrefs.bleMTU = mtuSize;
+            
+            // Save the preference
+            saveAppPreferences();
+            
+            // Respond with confirmation
+            pCharacteristic->setValue(String(response).c_str());
+
+            Serial.println(response);
+        } else {
+            Serial.println("Unknown command: " + String(value.c_str()));
+        }
     }
 }
-

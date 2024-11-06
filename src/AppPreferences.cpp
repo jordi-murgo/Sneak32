@@ -111,5 +111,4 @@ void saveAppPreferences() {
 
     Serial.println("App Preferences saved");
     printPreferences();
-
 }

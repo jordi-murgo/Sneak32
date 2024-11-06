@@ -205,7 +205,7 @@ void setupBLE()
     BLEService *pScannerService = pServer->createService(SCANNER_SERVICE_UUID);
 
     pStatusCharacteristic = pScannerService->createCharacteristic(
-        BLEUUID((uint16_t)LIST_SIZES_UUID),
+        BLEUUID((uint16_t)STATUS_UUID),
         BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
     pStatusCharacteristic->setCallbacks(new ListSizesCallbacks());
     pStatusCharacteristic->addDescriptor(new BLE2902());
@@ -226,7 +226,7 @@ void setupBLE()
 
     BLECharacteristic *pCommandsCharacteristic = pScannerService->createCharacteristic(
         BLEUUID((uint16_t)COMMANDS_UUID),
-        BLECharacteristic::PROPERTY_WRITE);
+        BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
     pCommandsCharacteristic->addDescriptor(new BLE2902());
     pCommandsCharacteristic->setCallbacks(new CommandsCallbacks());
 
