@@ -5,15 +5,13 @@
 #include "FlashStorage.h"
 #include "WifiDetect.h"
 #include "BLEDetect.h"
+#include "BLEStatusUpdater.h"
 #include <Arduino.h>
 
 // External variables
 extern WifiDeviceList stationsList;
 extern WifiNetworkList ssidList;
 extern BLEDeviceList bleDeviceList;
-
-// Function declaration
-void updateListSizesCharacteristic();
 
 void CommandsCallbacks::onWrite(BLECharacteristic *pCharacteristic)
 {
@@ -29,7 +27,7 @@ void CommandsCallbacks::onWrite(BLECharacteristic *pCharacteristic)
         else if (value == "clear_data")
         {
             FlashStorage::clearAll();
-            updateListSizesCharacteristic();
+            BLEStatusUpdater.update();
         }
         else if (value == "save_data")
         {

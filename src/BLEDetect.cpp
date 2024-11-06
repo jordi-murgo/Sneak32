@@ -2,6 +2,7 @@
 #include "BLEDeviceList.h"
 #include "AppPreferences.h"
 #include "BLE.h"
+#include "BLEStatusUpdater.h"
 #include <mutex>
 
 BLEDetectClass BLEDetector;
@@ -61,7 +62,7 @@ void BLEDetectClass::cleanDetectionData()
     std::lock_guard<std::mutex> lock(detectedDevicesMutex);
     detectedDevices.clear();
     lastDetectionTime = 0;
-    updateDetectedDevicesCharacteristic();
+    BLEStatusUpdater.update();
 }
 
 size_t BLEDetectClass::getDetectedDevicesCount()
@@ -90,7 +91,7 @@ void BLEDetectClass::BLEDetectAdvertisedDeviceCallbacks::onResult(BLEAdvertisedD
             if (it == parent->detectedDevices.end())
             {
                 parent->detectedDevices.push_back(deviceMac);
-                updateDetectedDevicesCharacteristic();
+                BLEStatusUpdater.update();
             }
         }
     }
@@ -149,7 +150,7 @@ void BLEDetectClass::detect_loop()
                 std::lock_guard<std::mutex> lock(detectedDevicesMutex);
                 if (isSomethingDetected())
                 {
-                    updateDetectedDevicesCharacteristic();
+                    BLEStatusUpdater.update();
                 }
             }
         }

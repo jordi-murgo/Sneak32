@@ -1,13 +1,16 @@
+#include <Arduino.h>
+#include <mutex>
+
 #include "WifiDetect.h"
 #include "WifiDeviceList.h"
 #include "WifiNetworkList.h"
 #include "MACAddress.h"
 #include "AppPreferences.h"
-#include <Arduino.h>
 #include "esp_event.h"
 #include "esp_wifi.h"
 #include "BLE.h"
-#include <mutex>
+#include "BLEStatusUpdater.h"
+
 extern WifiDeviceList stationsList;
 extern WifiNetworkList ssidList;
 
@@ -97,7 +100,7 @@ void WifiDetectClass::cleanDetectionData()
     detectedDevices.clear();
     detectedNetworks.clear();
     lastDetectionTime = 0;
-    updateDetectedDevicesCharacteristic();
+    BLEStatusUpdater.update();
 }
 
 void WifiDetectClass::addDetectedNetwork(const String &ssid)
@@ -113,7 +116,7 @@ void WifiDetectClass::addDetectedNetwork(const String &ssid)
         lastDetectionTime = millis() / 1000;
         if (detectedNetworks.size() != last_detected_networks_size) { 
             last_detected_networks_size = detectedNetworks.size();
-            updateDetectedDevicesCharacteristic();
+            BLEStatusUpdater.update();
         }
     }
 }
@@ -131,7 +134,7 @@ void WifiDetectClass::addDetectedDevice(const MacAddress &device)
         lastDetectionTime = millis() / 1000;
         if (detectedDevices.size() != last_detected_devices_size) { 
             last_detected_devices_size = detectedDevices.size();
-            updateDetectedDevicesCharacteristic();
+            BLEStatusUpdater.update();
         }
     }
 }

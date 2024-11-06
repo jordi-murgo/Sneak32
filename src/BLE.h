@@ -20,8 +20,6 @@
 
 // Function declarations
 void setupBLE();
-void updateListSizesCharacteristic();
-void updateDetectedDevicesCharacteristic();
 void sendPacket(uint16_t packetNumber, boolean only_relevant_stations);
 void prepareJsonData(boolean only_relevant_stations);
 void doBLEScan();
@@ -30,6 +28,8 @@ String getFirmwareInfo();
 
 // TODO, hacer algun método de xmit que informe ...de si esta en xmit o no
 extern String preparedJsonData;
+
+extern BLECharacteristic *pListSizesCharacteristic;
 
 // Callback classes declarations
 class MyServerCallbacks;

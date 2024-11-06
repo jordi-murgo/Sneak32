@@ -67,6 +67,7 @@
 #include "FlashStorage.h"
 #include "BLEAdvertisingManager.h"
 #include "FirmwareInfo.h"
+#include "BLEStatusUpdater.h"
 
 // Define the boot button pin (adjust if necessary)
 #define BOOT_BUTTON_PIN 0
@@ -123,19 +124,6 @@ void updateBaseTime(const std::vector<T> &list)
     base_time = std::max(base_time, item.last_seen);
   }
 }
-
-/**
- * @brief Callback class for handling list sizes characteristic.
- *
- * This class handles the callback for the list sizes characteristic, updating the list sizes.
- */
-class ListSizesCallbacks : public BLECharacteristicCallbacks
-{
-  void onRead(BLECharacteristic *pCharacteristic)
-  {
-    updateListSizesCharacteristic();
-  }
-};
 
 /**
  * @brief Prints the list of detected SSIDs and BLE devices.
@@ -371,9 +359,6 @@ void scan_mode_loop()
       BLEAdvertisingManager::configureNormalMode();
     }
   }
-
-  // Actualiza la característica de tamaños de listas
-  updateListSizesCharacteristic();
 }
 
 /**
@@ -446,5 +431,5 @@ void loop()
     ledManager.show();
     delay(appPrefs.wifi_channel_dwell_time);
   }
-
+  BLEStatusUpdater.update();
 }

@@ -1,4 +1,6 @@
 #include <ArduinoJson.h>
+#include <Preferences.h>
+
 #include <sstream>
 #include <esp_gap_ble_api.h>
 
@@ -20,6 +22,10 @@
 
 #include "BLEAdvertisingManager.h"
 
+// Add this include
+#include "BLEStatusUpdater.h"
+
+
 // External variables
 extern BLEDeviceList bleDeviceList;
 extern WifiDeviceList stationsList;
@@ -32,13 +38,11 @@ extern time_t base_time;
 BLEServer *pServer = nullptr;
 BLECharacteristic *pTxCharacteristic = nullptr;
 BLECharacteristic *pSettingsCharacteristic = nullptr;
-BLECharacteristic *pListSizesCharacteristic = nullptr;
+BLECharacteristic *pStatusCharacteristic = nullptr;
+
 
 BLEScan *pBLEScan = nullptr;
 bool deviceConnected = false;
-
-// Add this near the top of the file, after other includes
-#include <Preferences.h>
 
 // Add these global variables
 Preferences securityPreferences;
@@ -100,14 +104,7 @@ class ListSizesCallbacks : public BLECharacteristicCallbacks
 {
     void onRead(BLECharacteristic *pCharacteristic) override
     {
-        if (appPrefs.operation_mode == OPERATION_MODE_DETECTION)
-        {
-            updateDetectedDevicesCharacteristic();
-        }
-        else
-        {
-            updateListSizesCharacteristic();
-        }
+        BLEStatusUpdater.update();
     }
 };
 
@@ -169,6 +166,8 @@ public:
     }
 };
 
+
+
 // Function implementations
 void setupBLE()
 {
@@ -205,24 +204,12 @@ void setupBLE()
     Serial.println("Creating Scanner BLE service and characteristics");
     BLEService *pScannerService = pServer->createService(SCANNER_SERVICE_UUID);
 
-    pListSizesCharacteristic = pScannerService->createCharacteristic(
+    pStatusCharacteristic = pScannerService->createCharacteristic(
         BLEUUID((uint16_t)LIST_SIZES_UUID),
         BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
-    pListSizesCharacteristic->setCallbacks(new ListSizesCallbacks());
-    pListSizesCharacteristic->addDescriptor(new BLE2902());
-
-    if (appPrefs.operation_mode == OPERATION_MODE_DETECTION)
-    {
-        updateDetectedDevicesCharacteristic();
-    }
-    else if (appPrefs.operation_mode == OPERATION_MODE_SCAN)
-    {
-        updateListSizesCharacteristic();
-    }
-    else
-    {
-        pListSizesCharacteristic->setValue("0:0:0:0");
-    }
+    pStatusCharacteristic->setCallbacks(new ListSizesCallbacks());
+    pStatusCharacteristic->addDescriptor(new BLE2902());
+    BLEStatusUpdater.update();
 
     pTxCharacteristic = pScannerService->createCharacteristic(
         BLEUUID((uint16_t)SCANNER_DATATRANSFER_UUID),
@@ -259,73 +246,6 @@ void setupBLE()
     BLEAdvertisingManager::start();
 
     Serial.println("BLE Initialized");
-}
-
-void updateDetectedDevicesCharacteristic()
-{
-    static String last_sizeString = "";
-
-    size_t ssids_size = WifiDetector.getDetectedNetworksCount();
-    size_t stations_size = WifiDetector.getDetectedDevicesCount();
-    size_t ble_devices_size = BLEDetector.getDetectedDevicesCount();
-    bool alarm = BLEDetector.isSomethingDetected() | WifiDetector.isSomethingDetected();
-    size_t free_heap = ESP.getFreeHeap();
-    unsigned long uptime = millis() / 1000; // Convert milliseconds to seconds
-
-    // Crear la cadena de texto con los tamaños de las listas
-    String sizeString = String(ssids_size) + ":" +
-                        String(stations_size) + ":" +
-                        String(ble_devices_size) + ":" +
-                        String(free_heap) + ":" +
-                        String(uptime) + ":" +
-                        String(alarm);
-
-    pListSizesCharacteristic->setValue(sizeString.c_str());
-    Serial.printf("List sizes updated -> %s\n", sizeString.c_str());
-
-    if (deviceConnected)
-    {
-        if (last_sizeString != sizeString)
-        {
-            Serial.println("Notifying list sizes");
-            pListSizesCharacteristic->notify();
-            last_sizeString = sizeString;
-        }
-    }
-}
-
-/**
- * @brief Updates the list sizes characteristic with the current sizes of the lists.
- *
- * This function checks if the sizes of the lists have changed and updates the characteristic accordingly.
- * It also notifies the clients if the device is connected.
- */
-void updateListSizesCharacteristic()
-{
-    static String last_sizeString = "";
-
-    size_t free_heap = ESP.getFreeHeap();
-    unsigned long uptime = millis() / 1000; // Convert milliseconds to seconds
-
-    // Create string with list sizes, memory info and uptime, with alarm fixed to 0
-    String sizeString = String(ssidList.size()) + ":" +
-                       String(stationsList.size()) + ":" +
-                       String(bleDeviceList.size()) + ":" +
-                       String(free_heap) + ":" +
-                       String(uptime) + ":0";
-
-    if (pListSizesCharacteristic != nullptr && last_sizeString != sizeString)
-    {
-        Serial.printf("List sizes updated -> %s\n", sizeString.c_str());
-        pListSizesCharacteristic->setValue(sizeString.c_str());
-        
-        if (deviceConnected)
-        {
-            Serial.println("Notifying list sizes");
-            pListSizesCharacteristic->notify();
-        }
-        last_sizeString = sizeString;
-    }
 }
 
 
