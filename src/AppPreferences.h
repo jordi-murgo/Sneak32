@@ -29,6 +29,8 @@ struct AppPreferencesData {
     uint8_t cpu_speed;
     // LED
     uint8_t led_mode;
+
+    uint16_t bleMTU;
 };
 
 const int8_t OPERATION_MODE_OFF = 0;
@@ -54,6 +56,7 @@ namespace Keys {
     const char* const LED_MODE = "led_mode";
     const char* const WIFI_TX_POWER = "wifi_tx_power";
     const char* const BLE_TX_POWER = "ble_tx_power";
+    const char* const BLE_MTU = "ble_mtu";
 }
 
 // Declaraciones de funciones

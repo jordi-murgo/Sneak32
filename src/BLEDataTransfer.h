@@ -4,6 +4,9 @@
 #include <BLECharacteristic.h>
 #include <Arduino.h>
 
+// The MTU size determines the maximum packet size for BLE data transfer
+// Supported values: 128, 192, 256, 512 bytes
+
 class SendDataOverBLECallbacks : public BLECharacteristicCallbacks
 {
 public:

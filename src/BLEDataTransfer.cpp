@@ -19,10 +19,8 @@ extern bool deviceConnected;
 // Constants
 #define PACKET_START_MARKER "START:"
 #define PACKET_END_MARKER "END"
-#define BLE_MTU_SIZE 500
 #define PACKET_DELAY 100
 #define PACKET_HEADER_SIZE 4
-#define MAX_PACKET_SIZE (BLE_MTU_SIZE - PACKET_HEADER_SIZE)
 #define PACKET_TIMEOUT 5000
 #define TRANSMISSION_TIMEOUT 10000
 
@@ -30,6 +28,9 @@ extern bool deviceConnected;
 String preparedJsonData;
 uint16_t totalPackets = 0;
 unsigned long lastPacketRequestTime = 0;
+
+// Replace the static MTU definition with a dynamic one
+#define MAX_PACKET_SIZE (appPrefs.bleMTU - PACKET_HEADER_SIZE)
 
 void SendDataOverBLECallbacks::onWrite(BLECharacteristic *pCharacteristic)
 {

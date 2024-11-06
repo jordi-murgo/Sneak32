@@ -55,6 +55,8 @@ void SettingsCallbacks::onWrite(BLECharacteristic *pCharacteristic)
         appPrefs.wifiTxPower = std::stoi(token);
     if (std::getline(ss, token, '|'))
         appPrefs.bleTxPower = std::stoi(token);
+    if (std::getline(ss, token, '|'))
+        appPrefs.bleMTU = std::stoi(token);
 
     // Device name is now the last element
     if (std::getline(ss, token))
@@ -137,7 +139,7 @@ void SettingsCallbacks::onRead(BLECharacteristic *pCharacteristic)
                             String(appPrefs.led_mode) + "|" +
                             String(appPrefs.wifiTxPower) + "|" +
                             String(appPrefs.bleTxPower) + "|" +
-
+                            String(appPrefs.bleMTU) + "|" +
                             String(appPrefs.device_name);
     pCharacteristic->setValue(settingsString.c_str());
 }
