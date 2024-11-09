@@ -248,8 +248,16 @@ export class BleService {
             const encoder = new TextEncoder();
             await this.characteristics.commands.writeValue(encoder.encode(command));
             console.log('🚨 Command sent:', command);
-            const response = new TextDecoder().decode( await this.characteristics.commands.readValue() );
-            console.log('🚨 Command response:', response);
+            // Wait for the response to be available
+            var response = command;
+            while (response == command) {
+                await new Promise(resolve => setTimeout(resolve, 1));
+                response = new TextDecoder().decode( await this.characteristics.commands.readValue() );
+                // console.log('🚨 Command response:', response);
+            }
+            if(response.startsWith('Error:')) {
+                throw new Error(response);
+            }
             return response;
         } catch (error) {
             throw new Error(`Error sending command: ${error.message}`);
@@ -375,24 +383,48 @@ export class BleService {
 
     async measureAndSetMTU() {
         try {
-            console.log('📏 Measuring MTU...');
-            
-            // First, test current MTU size
-            const testResponse = await this.sendCommand('test_mtu');
-            const currentMTU = testResponse.length;
-            
-            console.log(`🔧 Received MTU test response length: ${currentMTU}, setting MTU to ${currentMTU}`);
+            console.log('📏 Starting MTU measurement...');
+            let currentMTU = 600; // Comenzamos con el máximo
+            let success = false;
+            let lastValidMTU = null;
 
-            const setResponse = await this.sendCommand(`set_mtu ${currentMTU}`);
-            console.log('✅ set_mtu response:', setResponse);
+            while (currentMTU >= 20 && !success) {
+                try {
+                    console.log(`🔄 Testing MTU size: ${currentMTU}`);
+                    const testResponse = await this.sendCommand(`test_mtu ${currentMTU}`);
+
+                    // Si llegamos aquí, la prueba fue exitosa
+                    lastValidMTU = testResponse.length;
+                    success = true;
+                    
+                } catch (error) {
+                    console.log(`⚠️ Failed at MTU ${currentMTU}:`, error);
+                    currentMTU = Math.floor(currentMTU * 0.875); // Reducimos a 7/8
+                }
+            }
+
+            if (!lastValidMTU) {
+                throw new Error('Could not determine a valid MTU size');
+            }
+
+            console.log(`🎯 Found valid MTU size: ${lastValidMTU}`);
+            
+            // Intentamos establecer el MTU encontrado
+            const setResponse = await this.sendCommand(`set_mtu ${lastValidMTU}`);
+            
+            if (setResponse.startsWith('Error:')) {
+                throw new Error(`Failed to set MTU: ${setResponse}`);
+            }
+
+            console.log('✅ MTU set successfully:', setResponse);
 
             return {
-                adjusted: currentMTU,
+                adjusted: lastValidMTU,
                 success: true
             };
 
         } catch (error) {
-            console.error('❌ Error measuring/setting MTU:', error);
+            console.error('❌ Error in MTU measurement process:', error);
             return {
                 error: error.message,
                 success: false

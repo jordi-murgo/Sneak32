@@ -33,35 +33,56 @@ void CommandsCallbacks::onWrite(BLECharacteristic *pCharacteristic)
         {
             FlashStorage::saveAll();
         }
-        else if (value == "test_mtu")
+        else if (value.substr(0, 8) == "test_mtu")
         {
-            Serial.println("Test MTU command received");
-            // Prepare a testMTU Buffer
-            uint8_t *mtuBuffer = (uint8_t *)malloc(600);
-            memset(mtuBuffer, 'A', 600);    
-            pCharacteristic->setValue(mtuBuffer, 600);
-            pCharacteristic->notify();
-            free(mtuBuffer);
+            try {
+                int mtuSize = std::stoi(value.substr(9));
+                
+                if (mtuSize < 20 || mtuSize > 600) {
+                    String response = "Error: MTU size must be between 20 and 600";
+                    pCharacteristic->setValue(response.c_str());
+                    Serial.println(response);
+                    return;
+                }
+
+                Serial.println("Test MTU command received, sent " + String(mtuSize) + " bytes");
+                uint8_t *mtuBuffer = (uint8_t *)malloc(mtuSize);
+                memset(mtuBuffer, 'A', mtuSize);    
+                pCharacteristic->setValue(mtuBuffer, mtuSize);
+                pCharacteristic->notify();
+                free(mtuBuffer);
+            } catch (const std::invalid_argument& e) {
+                String response = "Error: Invalid MTU value format";
+                pCharacteristic->setValue(response.c_str());
+                Serial.println(response);
+            }
         }
         else if (value.substr(0, 7) == "set_mtu")
         {
-            // Parse MTU size from the command
-            int mtuSize = std::stoi(value.substr(8));
-            
-            String response = "MTU set to " + String(mtuSize);
-            
-            // Update the MTU in app preferences
-            appPrefs.bleMTU = mtuSize;
-            
-            // Save the preference
-            saveAppPreferences();
-            
-            // Respond with confirmation
-            pCharacteristic->setValue(String(response).c_str());
+            try {
+                int mtuSize = std::stoi(value.substr(8));
 
-            Serial.println(response);
+                if (mtuSize < 20 || mtuSize > 600) {
+                    String response = "Error: MTU size must be between 20 and 600";
+                    pCharacteristic->setValue(response.c_str());
+                    Serial.println(response);
+                    return;
+                }
+                
+                String response = "MTU set to " + String(mtuSize);
+                appPrefs.bleMTU = mtuSize;
+                saveAppPreferences();
+                pCharacteristic->setValue(String(response).c_str());
+                Serial.println(response);
+            } catch (const std::invalid_argument& e) {
+                String response = "Error: Invalid MTU value format";
+                pCharacteristic->setValue(response.c_str());
+                Serial.println(response);
+            }
         } else {
-            Serial.println("Unknown command: " + String(value.c_str()));
+            String response = "Error: Unknown command " + String(value.c_str());
+            pCharacteristic->setValue(response.c_str());
+            Serial.println(response);
         }
     }
 }
