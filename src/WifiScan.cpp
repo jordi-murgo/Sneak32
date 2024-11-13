@@ -129,20 +129,25 @@ void WifiScanClass::process_management_frame(const uint8_t *payload, int payload
     ssidList.updateOrAddNetwork(String(ssid), MacAddress(bssid), rssi, channel, frameType);
   }
 
-  if (src_addr)
+  if (frameType != "beacon")
   {
-    if (frameType != "beacon")
-    {
-      Serial.printf(">> Address: %s, BSSID: %s, RSSI: %d, Channel: %d, FrameType: %s %s\n", 
-        MacAddress(src_addr).toString().c_str(), 
-        MacAddress(bssid).toString().c_str(), 
-        rssi, 
-        channel, 
-        frameType.c_str(),
-        ssid[0] ? ssid : "ALL-NETWORKS-REQUEST");
-    }
-    stationsList.updateOrAddDevice(MacAddress(src_addr), MacAddress(bssid), rssi, channel);
+    Serial.printf(">> Address: %s, BSSID: %s, RSSI: %d, Channel: %d, FrameType: %s %s\n",
+                  MacAddress(src_addr).toString().c_str(),
+                  MacAddress(bssid).toString().c_str(),
+                  rssi,
+                  channel,
+                  frameType.c_str(),
+                  ssid[0] ? ssid : "ALL-NETWORKS-REQUEST");
   }
+
+  uint8_t null_addr[6] = {0, 0, 0, 0, 0, 0};
+  if (memcmp(bssid, null_addr, 6) == 0)
+  {
+    Serial.println("Null BSSID detected");
+    printHexDump(payload, payload_len);
+  }
+
+  stationsList.updateOrAddDevice(MacAddress(src_addr), MacAddress(bssid), rssi, channel);
 }
 
 void WifiScanClass::process_control_frame(const uint8_t *payload, int payload_len, uint8_t subtype, int8_t rssi, uint8_t channel)
@@ -171,13 +176,13 @@ void WifiScanClass::process_control_frame(const uint8_t *payload, int payload_le
     return; // Ignore other subtypes
   }
 
-  Serial.printf(">> Address: %s, Dst: %s, BSSID: %s, RSSI: %d, Channel: %d, FrameType: Control (%d) \n", 
-    MacAddress(src_addr).toString().c_str(), 
-    dst_addr ? MacAddress(dst_addr).toString().c_str() : "EMPTY", 
-    MacAddress(bssid).toString().c_str(), 
-    rssi, 
-    channel, 
-    subtype);
+  Serial.printf(">> Address: %s, Dst: %s, BSSID: %s, RSSI: %d, Channel: %d, FrameType: Control (%d) \n",
+                MacAddress(src_addr).toString().c_str(),
+                dst_addr ? MacAddress(dst_addr).toString().c_str() : "EMPTY",
+                MacAddress(bssid).toString().c_str(),
+                rssi,
+                channel,
+                subtype);
   stationsList.updateOrAddDevice(MacAddress(src_addr), MacAddress(bssid), rssi, channel);
 }
 
@@ -187,12 +192,12 @@ void WifiScanClass::process_data_frame(const uint8_t *payload, int payload_len, 
   const uint8_t *src_addr = &payload[10];
   const uint8_t *bssid = &payload[16];
 
-  Serial.printf(">> Address: %s, Dst: %s, BSSID: %s, RSSI: %d, Channel: %d, FrameType: Data (%d) \n", 
-    MacAddress(src_addr).toString().c_str(), 
-    MacAddress(dst_addr).toString().c_str(), 
-    MacAddress(bssid).toString().c_str(), 
-    rssi, 
-    channel, payload_len);
+  Serial.printf(">> Address: %s, Dst: %s, BSSID: %s, RSSI: %d, Channel: %d, FrameType: Data (%d) \n",
+                MacAddress(src_addr).toString().c_str(),
+                MacAddress(dst_addr).toString().c_str(),
+                MacAddress(bssid).toString().c_str(),
+                rssi,
+                channel, payload_len);
   stationsList.updateOrAddDevice(MacAddress(src_addr), MacAddress(bssid), rssi, channel);
 }
 
