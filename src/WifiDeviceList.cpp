@@ -10,7 +10,7 @@ WifiDeviceList::WifiDeviceList(size_t maxSize) : maxSize(maxSize) {
 
 WifiDeviceList::~WifiDeviceList() = default;
 
-void WifiDeviceList::updateOrAddDevice(const MacAddress &address, int8_t rssi, uint8_t channel) {
+void WifiDeviceList::updateOrAddDevice(const MacAddress &address, const MacAddress &bssid, int8_t rssi, uint8_t channel) {
   std::lock_guard<std::mutex> lock(deviceMutex);
   
   auto it = std::find_if(deviceList.begin(), deviceList.end(),
@@ -21,12 +21,13 @@ void WifiDeviceList::updateOrAddDevice(const MacAddress &address, int8_t rssi, u
   time_t now = millis() / 1000 + base_time;
 
   if (it != deviceList.end()) {
-    it->rssi = rssi;
+    it->rssi = std::max(it->rssi, rssi);
+    it->bssid = bssid;
     it->channel = channel;
     it->last_seen = now;
     it->times_seen++;  
   } else {
-    WifiDevice newDevice(address, rssi, channel, now);
+    WifiDevice newDevice(address, bssid, rssi, channel, now);
 
     if (deviceList.size() < maxSize) {
       deviceList.push_back(newDevice);

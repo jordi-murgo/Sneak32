@@ -26,7 +26,7 @@ void BLEDeviceList::updateOrAddDevice(const MacAddress &address, int rssi, const
 
   if (it != deviceList.end()) {
     // Update existing device
-    it->rssi = rssi;
+    it->rssi = std::max<int>(it->rssi, rssi);
     it->last_seen = now;
     it->times_seen++;
     if (name.length() > 0) {

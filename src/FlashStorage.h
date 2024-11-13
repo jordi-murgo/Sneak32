@@ -9,6 +9,7 @@
 
 struct WifiDeviceStruct {
     uint8_t address[6];
+    uint8_t bssid[6];
     int8_t rssi;
     uint8_t channel;
     time_t last_seen;
@@ -26,6 +27,7 @@ struct BLEDeviceStruct {
 
 struct WifiNetworkStruct {
     char ssid[32];
+    uint8_t address[6];
     int8_t rssi;
     uint8_t channel;
     char type[16];

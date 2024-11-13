@@ -304,7 +304,7 @@ void setupBLE()
     BLECharacteristic *pCommandsCharacteristic = pScannerService->createCharacteristic(
         BLEUUID((uint16_t)COMMANDS_UUID),
         BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
-    pCommandsCharacteristic->setCallbacks(new CommandsCallbacks());
+    pCommandsCharacteristic->setCallbacks(new BLECommands());
     pCommandsCharacteristic->addDescriptor(new BLE2902()); // Añadir CCCD
 
     BLECharacteristic *pFirmwareInfoCharacteristic = pScannerService->createCharacteristic(

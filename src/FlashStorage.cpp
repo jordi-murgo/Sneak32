@@ -74,7 +74,8 @@ void FlashStorage::saveWifiNetworks(const WifiNetworkList &list)
         const auto &network = networks[i];
         auto &networkStruct = networkStructs[i];
 
-        if(!network.ssid.length()){
+        if (!network.ssid.length())
+        {
             continue;
         }
 
@@ -114,11 +115,13 @@ void FlashStorage::loadWifiDevices(WifiDeviceList &list)
         Serial.printf("Loaded %zu devices from flash\n", deviceStructs.size());
         for (const auto &deviceStruct : deviceStructs)
         {
-            Serial.printf("Loaded Device: %02X:%02X:%02X:%02X:%02X:%02X, RSSI: %d, Channel: %d, Last seen: %ld, Times seen: %u\n",
+            Serial.printf("Loaded Device: %02X:%02X:%02X:%02X:%02X:%02X, BSSID: %02X:%02X:%02X:%02X:%02X:%02X, RSSI: %d, Channel: %d, Last seen: %ld, Times seen: %u\n",
                           deviceStruct.address[0], deviceStruct.address[1], deviceStruct.address[2],
                           deviceStruct.address[3], deviceStruct.address[4], deviceStruct.address[5],
+                          deviceStruct.bssid[0], deviceStruct.bssid[1], deviceStruct.bssid[2],
+                          deviceStruct.bssid[3], deviceStruct.bssid[4], deviceStruct.bssid[5],
                           deviceStruct.rssi, deviceStruct.channel, deviceStruct.last_seen, deviceStruct.times_seen);
-            WifiDevice device(MacAddress(deviceStruct.address), deviceStruct.rssi, deviceStruct.channel, deviceStruct.last_seen, deviceStruct.times_seen);
+            WifiDevice device(MacAddress(deviceStruct.address), MacAddress(deviceStruct.bssid), deviceStruct.rssi, deviceStruct.channel, deviceStruct.last_seen, deviceStruct.times_seen);
             list.addDevice(device);
         }
         Serial.printf("Successfully loaded %zu WiFi devices\n", list.size());
@@ -147,8 +150,8 @@ void FlashStorage::loadBLEDevices(BLEDeviceList &list)
         preferences.getBytes(BLE_DEVICES_KEY, deviceStructs.data(), serializedSize);
         for (const auto &deviceStruct : deviceStructs)
         {
-            BLEFoundDevice device(MacAddress(deviceStruct.address), deviceStruct.rssi, 
-                String(deviceStruct.name), deviceStruct.isPublic, deviceStruct.last_seen, deviceStruct.times_seen);
+            BLEFoundDevice device(MacAddress(deviceStruct.address), deviceStruct.rssi,
+                                  String(deviceStruct.name), deviceStruct.isPublic, deviceStruct.last_seen, deviceStruct.times_seen);
             list.addDevice(device);
         }
         Serial.printf("Loaded %zu BLE devices\n", deviceStructs.size());
@@ -177,11 +180,12 @@ void FlashStorage::loadWifiNetworks(WifiNetworkList &list)
         preferences.getBytes(WIFI_NETWORKS_KEY, networkStructs.data(), serializedSize);
         for (const auto &networkStruct : networkStructs)
         {
-            if(!networkStruct.ssid[0]){
+            if (!networkStruct.ssid[0])
+            {
                 continue;
             }
-            WifiNetwork network(String(networkStruct.ssid), networkStruct.rssi, networkStruct.channel, 
-            String(networkStruct.type), networkStruct.last_seen, networkStruct.times_seen);
+            WifiNetwork network(String(networkStruct.ssid), MacAddress(networkStruct.address), networkStruct.rssi, networkStruct.channel,
+                                String(networkStruct.type), networkStruct.last_seen, networkStruct.times_seen);
             list.addNetwork(network);
         }
         Serial.printf("Loaded %zu WiFi networks\n", networkStructs.size());
@@ -244,6 +248,6 @@ void FlashStorage::clearAll()
     stationsList.clear();
     bleDeviceList.clear();
     ssidList.clear();
-    
+
     Serial.println("All data cleared from flash storage");
 }

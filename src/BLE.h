@@ -37,6 +37,6 @@ class ListSizesCallbacks;
 class SendDataOverBLECallbacks;
 class SettingsCallbacks;
 class MyAdvertisedDeviceCallbacks;
-class CommandsCallbacks;
+class BLECommands;
 
 #endif // BLE_H

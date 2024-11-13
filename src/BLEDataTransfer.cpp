@@ -24,151 +24,137 @@ extern bool deviceConnected;
 #define PACKET_TIMEOUT 5000
 #define TRANSMISSION_TIMEOUT 10000
 
+// Nuevos tipos de solicitud
+#define REQUEST_SSID_LIST "ssid_list"
+#define REQUEST_CLIENT_LIST "client_list"
+#define REQUEST_BLE_LIST "ble_list"
+
 // Variables for JSON preparation and sending
 String preparedJsonData;
 uint16_t totalPackets = 0;
 unsigned long lastPacketRequestTime = 0;
+String currentRequestType;
 
 // Replace the static MTU definition with a dynamic one
 #define MAX_PACKET_SIZE (appPrefs.bleMTU - PACKET_HEADER_SIZE)
 
 void SendDataOverBLECallbacks::onWrite(BLECharacteristic *pCharacteristic)
 {
-    bool only_relevant_stations = false;
     std::string value = pCharacteristic->getValue();
-
-    if (value.length() >= 4)
+    
+    if (value.length() > 0)
     {
-        uint16_t requestedPacket = strtoul(value.substr(0, 4).c_str(), NULL, 16);
-        Serial.printf("Received request for packet %d\n", requestedPacket);
-        if (value.length() >= 5)
+        String requestType = String(value.c_str());
+        currentRequestType = requestType;
+        
+        if (requestType == REQUEST_SSID_LIST || 
+            requestType == REQUEST_CLIENT_LIST || 
+            requestType == REQUEST_BLE_LIST)
         {
-            only_relevant_stations = true;
+            sendPacket(0, requestType);
+            lastPacketRequestTime = millis();
         }
-        sendPacket(requestedPacket, only_relevant_stations);
-        lastPacketRequestTime = millis();
+        else if (value.length() == 4)
+        {
+            uint16_t requestedPacket = strtoul(value.substr(0, 4).c_str(), NULL, 16);
+            sendPacket(requestedPacket, currentRequestType);
+            lastPacketRequestTime = millis();
+        }
+        else
+        {
+            pCharacteristic->setValue("Error: Invalid request type or packet number");
+            Serial.println("Invalid request type or packet number");
+        }
     }
 }
 
-String generateJsonString(boolean only_relevant_stations = false)
+String generateJsonString(const String& requestType)
 {
-    String jsonString = "";
+    String jsonString = "{";
 
-    auto stationsClonedList = stationsList.getClonedList();
-    auto ssidsClonedList = ssidList.getClonedList();
-    auto bleDevicesClonedList = bleDeviceList.getClonedList();
-
-    jsonString = "{";
-
-    // Add stations array
-    jsonString += "\"stations\":[";
-    uint32_t total_seens = 0;
-    for (const auto &device : stationsClonedList)
+    if (requestType == REQUEST_CLIENT_LIST)
     {
-        total_seens += device.times_seen;
-    }
-    uint32_t min_seens = static_cast<uint32_t>(round(total_seens / static_cast<double>(stationsClonedList.size()) / 3.0));
-
-    int stationItems = 0;
-    for (size_t i = 0; i < stationsClonedList.size(); ++i)
-    {
-        if (only_relevant_stations && (stationsClonedList[i].times_seen < min_seens || stationsClonedList[i].rssi < appPrefs.minimal_rssi))
+        auto stationsClonedList = stationsList.getClonedList();
+        jsonString += "\"stations\":[";
+        for (size_t i = 0; i < stationsClonedList.size(); ++i)
         {
-            continue;
+            if (i > 0) jsonString += ",";
+            char station_json[256];
+            snprintf(station_json, sizeof(station_json),
+                     "{\"mac\":\"%s\",\"bssid\":\"%s\",\"rssi\":%d,\"channel\":%d,\"last_seen\":%d,\"times_seen\":%u}",
+                     stationsClonedList[i].address.toString().c_str(),
+                     stationsClonedList[i].bssid.toString().c_str(),
+                     stationsClonedList[i].rssi,
+                     stationsClonedList[i].channel,
+                     stationsClonedList[i].last_seen,
+                     stationsClonedList[i].times_seen);
+            jsonString += String(station_json);
         }
-
-        if (stationItems++ > 0)
-            jsonString += ",";
-
-        char station_json[256];
-        snprintf(station_json, sizeof(station_json),
-                 "{\"mac\":\"%s\",\"rssi\":%d,\"channel\":%d,\"last_seen\":%d,\"times_seen\":%u}",
-                 stationsClonedList[i].address.toString().c_str(),
-                 stationsClonedList[i].rssi,
-                 stationsClonedList[i].channel,
-                 stationsClonedList[i].last_seen,
-                 stationsClonedList[i].times_seen);
-
-        jsonString += String(station_json);
+        jsonString += "]";
     }
-    jsonString += "],";
-
-    // Add SSIDs array
-    jsonString += "\"ssids\":[";
-    for (size_t i = 0; i < ssidsClonedList.size(); ++i)
+    else if (requestType == REQUEST_SSID_LIST)
     {
-        if (only_relevant_stations && ssidsClonedList[i].rssi < appPrefs.minimal_rssi)
+        auto ssidsClonedList = ssidList.getClonedList();
+        jsonString += "\"ssids\":[";
+        for (size_t i = 0; i < ssidsClonedList.size(); ++i)
         {
-            continue;
+            if (i > 0) jsonString += ",";
+            char ssid_json[256];
+            snprintf(ssid_json, sizeof(ssid_json),
+                     "{\"ssid\":\"%s\",\"mac\":\"%s\",\"rssi\":%d,\"channel\":%d,\"type\":\"%s\",\"last_seen\":%d,\"times_seen\":%u}",
+                     ssidsClonedList[i].ssid.c_str(),
+                     ssidsClonedList[i].address.toString().c_str(),
+                     ssidsClonedList[i].rssi,
+                     ssidsClonedList[i].channel,
+                     ssidsClonedList[i].type.c_str(),
+                     ssidsClonedList[i].last_seen,
+                     ssidsClonedList[i].times_seen);
+            jsonString += ssid_json;
         }
-
-        if (i > 0)
-            jsonString += ",";
-        char ssid_json[256];
-        snprintf(ssid_json, sizeof(ssid_json),
-                 "{\"ssid\":\"%s\",\"rssi\":%d,\"channel\":%d,\"type\":\"%s\",\"last_seen\":%d,\"times_seen\":%u}",
-                 ssidsClonedList[i].ssid.c_str(),
-                 ssidsClonedList[i].rssi,
-                 ssidsClonedList[i].channel,
-                 ssidsClonedList[i].type.c_str(),
-                 ssidsClonedList[i].last_seen,
-                 ssidsClonedList[i].times_seen);
-
-        jsonString += ssid_json;
+        jsonString += "]";
     }
-    jsonString += "],";
-
-    // Add BLE devices array
-    jsonString += "\"ble_devices\":[";
-    for (size_t i = 0; i < bleDevicesClonedList.size(); ++i)
+    else if (requestType == REQUEST_BLE_LIST)
     {
-        if (only_relevant_stations && bleDevicesClonedList[i].rssi < appPrefs.minimal_rssi)
+        auto bleDevicesClonedList = bleDeviceList.getClonedList();
+        jsonString += "\"ble_devices\":[";
+        for (size_t i = 0; i < bleDevicesClonedList.size(); ++i)
         {
-            continue;
+            if (i > 0) jsonString += ",";
+            char ble_json[256];
+            snprintf(ble_json, sizeof(ble_json),
+                     "{\"mac\":\"%s\",\"name\":\"%s\",\"rssi\":%d,\"last_seen\":%d,\"is_public\":\"%s\",\"times_seen\":%u}",
+                     bleDevicesClonedList[i].address.toString().c_str(),
+                     bleDevicesClonedList[i].name.c_str(),
+                     bleDevicesClonedList[i].rssi,
+                     bleDevicesClonedList[i].last_seen,
+                     bleDevicesClonedList[i].isPublic ? "true" : "false",
+                     bleDevicesClonedList[i].times_seen);
+            jsonString += ble_json;
         }
-
-        if (i > 0)
-            jsonString += ",";
-        char ble_json[256];
-        snprintf(ble_json, sizeof(ble_json),
-                 "{\"address\":\"%s\",\"name\":\"%s\",\"rssi\":%d,\"last_seen\":%d,\"is_public\":\"%s\",\"times_seen\":%u}",
-                 bleDevicesClonedList[i].address.toString().c_str(),
-                 bleDevicesClonedList[i].name.c_str(),
-                 bleDevicesClonedList[i].rssi,
-                 bleDevicesClonedList[i].last_seen,
-                 bleDevicesClonedList[i].isPublic ? "true" : "false",
-                 bleDevicesClonedList[i].times_seen);
-        jsonString += ble_json;
+        jsonString += "]";
     }
-    jsonString += "],";
 
-    // Add timestamp, counts, and free heap
-    jsonString += "\"timestamp\":" + String((millis() / 1000) + base_time) + ",";
-    jsonString += "\"free_heap\":" + String(ESP.getFreeHeap()) + ",";
-    jsonString += "\"min_seens\":" + String(min_seens) + ",";
-    jsonString += "\"minimal_rssi\":" + String(appPrefs.minimal_rssi) + ",";
-    jsonString += "\"stations_count\":" + String(stationItems) + ",";
-    jsonString += "\"ssids_count\":" + String(ssidsClonedList.size()) + ",";
-    jsonString += "\"ble_devices_count\":" + String(bleDevicesClonedList.size());
-
+    // Añadir timestamp y metadata común
+    jsonString += ",\"timestamp\":" + String((millis() / 1000) + base_time);
+    jsonString += ",\"free_heap\":" + String(ESP.getFreeHeap());
     jsonString += "}";
 
     return jsonString;
 }
 
-void prepareJsonData(boolean only_relevant_stations)
+void prepareJsonData(const String& requestType)
 {
-    Serial.printf("Preparing JSON data with only_relevant_stations: %d\n", only_relevant_stations);
-    preparedJsonData = generateJsonString(only_relevant_stations);
+    Serial.printf("Preparing JSON data for request type: %s\n", requestType.c_str());
+    preparedJsonData = generateJsonString(requestType);
 }
 
-void sendPacket(uint16_t packetNumber, boolean only_relevant_stations)
+void sendPacket(uint16_t packetNumber, const String& requestType)
 {
     if (pTxCharacteristic != nullptr && deviceConnected)
     {
         if (packetNumber == 0)
         {
-            prepareJsonData(only_relevant_stations);
+            prepareJsonData(requestType);
             totalPackets = 1 + preparedJsonData.length() / MAX_PACKET_SIZE;
 
             char packetsHeader[5];

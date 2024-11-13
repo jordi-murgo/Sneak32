@@ -112,14 +112,35 @@ void BLEScanAdvertisedDeviceCallbacks::onResult(BLEAdvertisedDevice advertisedDe
             std::string nameStr = advertisedDevice.haveName() ? advertisedDevice.getName() : "";
             std::string appearanceStr = std::to_string(advertisedDevice.getAppearance());
             std::string uuidStr = advertisedDevice.haveServiceUUID() ? advertisedDevice.getServiceUUID().toString() : "";
-            boolean isPublic = (advertisedDevice.getAddressType() == BLE_ADDR_TYPE_PUBLIC);
+
             esp_bd_addr_t bleaddr;
             memcpy(bleaddr, advertisedDevice.getAddress().getNative(), sizeof(esp_bd_addr_t));
 
+            boolean isPublic = false;
+            String addressType;
+            switch (advertisedDevice.getAddressType()) {
+                case BLE_ADDR_TYPE_PUBLIC:
+                    addressType = "public";
+                    isPublic = true;
+                    break;
+                case BLE_ADDR_TYPE_RANDOM:
+                    addressType = "random";
+                    break;
+                case BLE_ADDR_TYPE_RPA_PUBLIC:
+                    addressType = "RPA-public";
+                    isPublic = true;
+                    break;
+                case BLE_ADDR_TYPE_RPA_RANDOM:
+                    addressType = "RPA-random";
+                    break;
+                default:
+                    addressType = "unknown";
+                    break;
+            }
+
             // Base output always includes address and type
             Serial.printf("Address: %s (%s)", 
-                addressStr.c_str(), 
-                isPublic ? "public" : "random");
+                addressStr.c_str(), addressType.c_str());
 
             // Optional fields only if they have value
             if (!nameStr.empty()) {

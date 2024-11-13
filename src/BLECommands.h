@@ -2,11 +2,14 @@
 #define BLE_COMMANDS_H
 
 #include <BLECharacteristic.h>
+#include <SimpleCLI.h>
 
-class CommandsCallbacks : public BLECharacteristicCallbacks
-{
+class BLECommands  : public BLECharacteristicCallbacks {
 public:
-    void onWrite(BLECharacteristic *pCharacteristic) override;
+    static BLECharacteristic* pCharacteristic;
+    static SimpleCLI* pCli;
+
+    void onWrite(BLECharacteristic* characteristic);
 };
 
 #endif // BLE_COMMANDS_H

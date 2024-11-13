@@ -60,8 +60,8 @@ void loadAppPreferences() {
 
     appPrefs.minimal_rssi = preferences.getInt(Keys::MIN_RSSI, -85);
 
-    appPrefs.only_management_frames = preferences.getBool(Keys::ONLY_MGMT, true);
-    appPrefs.wifi_channel_dwell_time = preferences.getUInt(Keys::WIFI_CHANNEL_DWELL_TIME, 1000);
+    appPrefs.only_management_frames = preferences.getBool(Keys::ONLY_MGMT, false);
+    appPrefs.wifi_channel_dwell_time = preferences.getUInt(Keys::WIFI_CHANNEL_DWELL_TIME, 10000);
 
     appPrefs.ble_scan_delay = preferences.getUInt(Keys::BLE_SCAN_DELAY, 30);
     appPrefs.ignore_random_ble_addresses = preferences.getBool(Keys::IGNORE_RANDOM, true);

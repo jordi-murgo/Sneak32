@@ -11,29 +11,34 @@ WifiNetworkList::WifiNetworkList(size_t maxSize) : maxSize(maxSize)
 
 WifiNetworkList::~WifiNetworkList() = default;
 
-void WifiNetworkList::updateOrAddNetwork(const String &ssid, int8_t rssi, uint8_t channel, const String &type)
+void WifiNetworkList::updateOrAddNetwork(const String &ssid, const MacAddress &address, int8_t rssi, uint8_t channel, const String &type)
 {
   std::lock_guard<std::mutex> lock(networkMutex);
 
   auto it = std::find_if(networkList.begin(), networkList.end(),
-                         [&ssid](const WifiNetwork &network)
-                         {
-                           return network.ssid == ssid;
-                         });
+        [&ssid, &address, &type](const WifiNetwork &network)
+        {
+          // Podemos tener una entrada por cada AP de la Red, las de probe se reaprobechan si hay beacons
+          return network.ssid == ssid && (network.address == address || network.type == "probe" || type == "probe");
+        });
 
   time_t now = millis() / 1000 + base_time;
 
   if (it != networkList.end())
   {
-    it->rssi = rssi;
-    it->channel = channel;
-    it->type = type;
+    it->rssi = std::max(it->rssi, rssi); // El mejor de los rssi
+    if(type == "beacon") {
+      // Los probes no cambian el canal ni el tipo
+      it->channel = channel;
+      it->type = type;
+      it->address = address;
+    }
     it->last_seen = now;
     it->times_seen++;
   }
   else
   {
-    WifiNetwork newNetwork(ssid, rssi, channel, type, now);
+    WifiNetwork newNetwork(ssid, address, rssi, channel, type, now, 1);
 
     if (networkList.size() < maxSize)
     {
