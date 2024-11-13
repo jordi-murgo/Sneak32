@@ -100,12 +100,6 @@ export class BleService {
             (event) => this.handleDataTransferNotification(event)
         );
         await this.characteristics.dataTransfer.startNotifications();
-
-        this.characteristics.deviceStatus.addEventListener(
-            'characteristicvaluechanged',
-            (event) => this.handleStatusNotification(event)
-        );
-        await this.characteristics.deviceStatus.startNotifications();
     }
 
     async disconnect() {
