@@ -494,19 +494,12 @@ export class BleService {
 
     async fetchDeviceInfo() {
         try {
-            // Read device information in parallel
-            const [mtu, firmwareInfo, deviceStatus, settings] = await Promise.all([
-                this.measureAndSetMTU(),
-                this.readFirmwareInfo(),
-                this.readDeviceStatus(),
-                this.readSettings()
-            ]);
 
             return {
-                mtu,
-                firmwareInfo,
-                deviceStatus,
-                settings,
+                mtu: await this.measureAndSetMTU(),
+                firmwareInfo: await this.readFirmwareInfo(),
+                deviceStatus: await this.readDeviceStatus(),
+                settings: await this.readSettings()
             };
 
         } catch (error) {
