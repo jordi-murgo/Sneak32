@@ -486,6 +486,14 @@ export class BleService {
         }
     }
 
+    startStatusNotifications() {
+        this.characteristics.deviceStatus.addEventListener(
+            'characteristicvaluechanged',
+            (event) => this.handleStatusNotification(event)
+        );
+        this.characteristics.deviceStatus.startNotifications();
+    }
+
     async fetchDeviceInfo() {
         try {
 

@@ -12,7 +12,7 @@ class App {
         this.uiService.initializeUI();
         this.setupEventListeners();
         this.bleService.setConnectionStateCallback(this.handleConnectionStateChange.bind(this));
-        
+
         // Mostrar página de conexión inicialmente
         this.uiService.showConnectPage();
     }
@@ -82,7 +82,7 @@ class App {
                 }
 
                 console.log('✅ Connected successfully:', connectionInfo);
-                
+
                 // Dispatch initial connection event to show device-info page with loading state
                 document.dispatchEvent(new CustomEvent('device-connected', {
                     detail: connectionInfo
@@ -90,10 +90,10 @@ class App {
 
                 // Start loading device info
                 document.dispatchEvent(new CustomEvent('device-info-loading'));
-                
+
                 // Fetch complete device information
                 const deviceInfo = await this.bleService.fetchDeviceInfo();
-                
+
                 // Update device info with complete information
                 document.dispatchEvent(new CustomEvent('device-info-loaded', {
                     detail: {
@@ -117,6 +117,9 @@ class App {
                 const bleDeviceList = await this.bleService.requestBleDevices();
                 document.dispatchEvent(new CustomEvent('ble-devices-loaded', { detail: bleDeviceList }));
 
+                // Ok, we can start notifications for device status
+                this.bleService.startStatusNotifications();
+
             } catch (error) {
                 console.error('❌ Initialization error:', error);
             }
@@ -132,7 +135,7 @@ class App {
         try {
             const response = await this.bleService.sendCommand(command);
             document.dispatchEvent(new CustomEvent('command-response', {
-                detail: { 
+                detail: {
                     command: command,
                     response,
                     success: true,
