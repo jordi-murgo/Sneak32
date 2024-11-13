@@ -171,30 +171,7 @@ export class SneakDataDashboard extends LitElement {
                 type: 'value'
             },
             series: [
-                {
-                    name: 'Public',
-                    type: 'bar',
-                    stack: 'pila',
-                    data: [blePublic, 0, 0]
-                },
-                {
-                    name: 'Random',
-                    type: 'bar',
-                    stack: 'pila',
-                    data: [blePrivate, 0, 0]
-                },
-                {
-                    name: 'Beacon',
-                    type: 'bar',
-                    stack: 'pila',
-                    data: [0, wifiBeacons, 0]
-                },
-                {
-                    name: 'Probe',
-                    type: 'bar',
-                    stack: 'pila',
-                    data: [0, wifiProbes, 0]
-                },
+
                 {
                     name: 'APs',
                     type: 'bar',
@@ -202,17 +179,23 @@ export class SneakDataDashboard extends LitElement {
                     data: [0, 0, wifiDevicesAp]
                 },
                 {
-                    name: 'Connected',
+                    name: 'Normal',
                     type: 'bar',
                     stack: 'pila',
-                    data: [0, 0, wifiDevicesConnected]
+                    data: [blePublic, wifiBeacons, wifiDevicesConnected]
                 },
                 {
-                    name: 'Probing',
+                    name: 'Random',
                     type: 'bar',
                     stack: 'pila',
-                    data: [0, 0, wifiDevicesProbing]
-                },
+                    data: [blePrivate, 0, 0]
+                },      
+                {
+                    name: 'ProbeReqs',
+                    type: 'bar',
+                    stack: 'pila',
+                    data: [0, wifiProbes, wifiDevicesProbing]
+                },          
             ]
         };
 
@@ -701,7 +684,7 @@ export class SneakDataDashboard extends LitElement {
 
         .charts-container {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
             gap: 2rem;
             margin: 2rem 0;
             width: 100%;
