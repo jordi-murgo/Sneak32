@@ -63,24 +63,45 @@ void BLECommands::onWrite(BLECharacteristic* characteristic) {
     pCli->parse(value.c_str());
 }
 
+void BLECommands::respond(String text) {
+    if (pCharacteristic != nullptr) {
+        pCharacteristic->setValue(text.c_str());
+        Serial.println("BLE Response: " + text);
+    } else {
+        Serial.println("ERROR: Cannot send BLE response, characteristic is null");
+    }
+}
+
+void BLECommands::respond(uint8_t *value, size_t length) {
+    if (pCharacteristic != nullptr) {
+        pCharacteristic->setValue(value, length);
+        Serial.println("BLE Response: " + String(value, length));
+    } else {
+        Serial.println("ERROR: Cannot send BLE response, characteristic is null");
+    }
+}
+
 // Callback implementations
 void helpCallback(cmd* cmdPtr) {
     Command cmd(cmdPtr);
-    String cmdList = BLECommands::pCli->getFormattedHelp();
-    BLECommands::pCharacteristic->setValue(cmdList.c_str());
+    BLECommands::respond(BLECommands::getFormattedHelp());
 }
 
 void restartCallback(cmd* cmdPtr) {
+    BLECommands::respond("Restarting...");
     ESP.restart();
 }
 
 void clearDataCallback(cmd* cmdPtr) {
     FlashStorage::clearAll();
+    BLECommands::respond("Data cleared");
     BLEStatusUpdater.update();
 }
 
 void saveDataCallback(cmd* cmdPtr) {
+    Serial.println("Save data command received");
     FlashStorage::saveAll();
+    BLECommands::respond("Data saved");
 }
 
 void testMtuCallback(cmd* cmdPtr) {
@@ -88,16 +109,14 @@ void testMtuCallback(cmd* cmdPtr) {
     int mtuSize = cmd.getArgument(0).getValue().toInt();
     
     if (mtuSize < 20 || mtuSize > 600) {
-        String response = "Error: MTU size must be between 20 and 600";
-        BLECommands::pCharacteristic->setValue(response.c_str());
-        Serial.println(response);
+        BLECommands::respond("Error: MTU size must be between 20 and 600");
         return;
     }
 
     Serial.println("Test MTU command received, sent " + String(mtuSize) + " bytes");
     uint8_t *mtuBuffer = (uint8_t *)malloc(mtuSize);
     memset(mtuBuffer, 'A', mtuSize);    
-    BLECommands::pCharacteristic->setValue(mtuBuffer, mtuSize);
+    BLECommands::respond(mtuBuffer, mtuSize);
     free(mtuBuffer);
 }
 
@@ -106,17 +125,14 @@ void setMtuCallback(cmd* cmdPtr) {
     int mtuSize = cmd.getArgument(0).getValue().toInt();
 
     if (mtuSize < 20 || mtuSize > 600) {
-        String response = "Error: MTU size must be between 20 and 600";
-        BLECommands::pCharacteristic->setValue(response.c_str());
-        Serial.println(response);
+        BLECommands::respond("Error: MTU size must be between 20 and 600");
         return;
     }
     
     String response = "MTU set to " + String(mtuSize);
     appPrefs.bleMTU = mtuSize;
     saveAppPreferences();
-    BLECommands::pCharacteristic->setValue(response.c_str());
-    Serial.println(response);
+    BLECommands::respond(response);
 }
 
 void versionCallback(cmd* cmdPtr) {
@@ -126,13 +142,17 @@ void versionCallback(cmd* cmdPtr) {
     }
 
     String versionInfo = "Sneak32 " + String(AUTO_VERSION) + " (" + mArch + ")";
-    BLECommands::pCharacteristic->setValue(versionInfo.c_str());
-    Serial.println(versionInfo);
+    BLECommands::respond(versionInfo);
 }
 
 void errorCallback(cmd_error* errorPtr) {
     CommandError e(errorPtr);
-    String response = "Error: " + e.toString();
-    BLECommands::pCharacteristic->setValue(response.c_str());
-    Serial.println(response);
+    BLECommands::respond("Error: " + e.toString());
+}
+
+String BLECommands::getFormattedHelp() {
+    if (BLECommands::pCli == nullptr) {
+        return "Error: CLI not initialized";
+    }
+    return BLECommands::pCli->getFormattedHelp();
 }
