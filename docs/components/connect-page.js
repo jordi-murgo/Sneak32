@@ -23,24 +23,11 @@ export class SneakConnectPage extends LitElement {
         // Listen for successful connections
         document.addEventListener('device-connected', (event) => {
             console.log('📱 Device connected event received:', event.detail);
-            this.isConnected = true;
+            this.isConnected = event.detail.isConnected;
             
-            const mtuInfo = event.detail.mtu;
-            if (mtuInfo.success) {
-                if (mtuInfo.original !== mtuInfo.adjusted) {
-                    this.showToast(
-                        `Connected to ${event.detail.deviceName}. MTU optimized: ${mtuInfo.adjusted} bytes`,
-                        'success'
-                    );
-                } else {
-                    this.showToast(
-                        `Connected to ${event.detail.deviceName}. MTU: ${mtuInfo.original} bytes`,
-                        'success'
-                    );
-                }
-            } else {
+            if (this.isConnected) {
                 this.showToast(
-                    `Connected to ${event.detail.deviceName}. MTU optimization failed`,
+                    `Connected to ${event.detail.deviceName}.`,
                     'warning'
                 );
             }
@@ -58,14 +45,14 @@ export class SneakConnectPage extends LitElement {
 
     render() {
         return html`
-            <ion-page>
+            <ion-page class="ion-page">
                 <ion-header>
                     <ion-toolbar>
                         <ion-title>🥷 Sneak32 Manager</ion-title>
                     </ion-toolbar>
                 </ion-header>
 
-                <ion-content fullscreen>
+                <ion-content class="ion-content">
                     <div class="flex-col-center">
                         <sneak-esp32-logo></sneak-esp32-logo>
                         <ion-button @click=${this.handleSearch}>
@@ -145,7 +132,7 @@ export class SneakConnectPage extends LitElement {
     }
 
     static styles = css`
-        :host {
+            :host {
             display: block;
             height: 100%;
         }
@@ -155,9 +142,8 @@ export class SneakConnectPage extends LitElement {
             flex-direction: column;
             align-items: center;
             justify-content: flex-start;
-            height: 100%;
             padding: 1rem;
-            padding-top: 20vh;
+            padding-top: 40px;
         }
 
         .logo-container {

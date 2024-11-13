@@ -1,5 +1,6 @@
 export class UiService {
     constructor() {
+        console.log('🚨 UiService constructor');
         this.currentPage = 'Device Info';
         this.components = {
             deviceInfo: null,
@@ -17,6 +18,7 @@ export class UiService {
         this.components.sideMenu = document.querySelector('sneak-side-menu');
         this.components.pageTitle = document.querySelector('#pageTitle');
         this.components.pageContents = document.querySelectorAll('.page-content');
+
         this.connectPage = document.querySelector('#connectPage');
         this.mainContent = document.querySelector('#mainContent');
         
@@ -31,11 +33,12 @@ export class UiService {
         document.addEventListener('reset-device', () => this.handleResetDevice());
         document.addEventListener('disconnect', () => this.handleDisconnect());
         document.addEventListener('mode-change', () => this.handleModeChange());
-        
-        // Escuchar el evento de actualización del estado del dispositivo
-        document.addEventListener('device-status-update', (event) => {
-            this.updateDeviceStatus(event.detail.status);
+
+        document.addEventListener('connection-error', (event) => {
+            console.log('🚨 Connection error:', event.detail);
+            this.showToast(event.detail.message + " Try to delete pairing information.", { duration: 5000, color: 'danger' });
         });
+
     }
 
     updatePage(page) {
@@ -62,21 +65,6 @@ export class UiService {
         this.dispatchEvent('ui-page-changed', { page });
     }
 
-    // Device Info Updates
-    updateDeviceInfo(info) {
-        if (this.components.deviceInfo) {
-            this.components.deviceInfo.updateDeviceInfo(info);
-        }
-    }
-
-    // Device Info Updates
-    updateDeviceStatus(status) {
-        if (this.components.deviceInfo) {
-            this.components.deviceInfo.updateDeviceStatus(status);
-        }
-    }
-
-    
 
     // Alert Handlers
     async showAlert(options) {
@@ -245,10 +233,4 @@ export class UiService {
         }
     }
 
-    // Método para actualizar el estado del dispositivo
-    updateDeviceStatus(status) {
-        if (this.components.deviceInfo) {
-            this.components.deviceInfo.updateDeviceStatus(status); // Llamar al método de actualización
-        }
-    }
 }

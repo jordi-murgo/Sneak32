@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🥷 Sneak32</title>
     
+
     <!-- Ionic Framework -->
     <script type="module" src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.esm.js"></script>
     <script nomodule src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.js"></script>
@@ -14,15 +15,20 @@
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
 
+    <!-- ECharts -->
+    <script type="module" src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+
     <!-- Components -->
     <script type="module" src="./components/side-menu.js"></script>
     <script type="module" src="./components/device-info.js"></script>
     <script type="module" src="./components/setup-page.js"></script>
-    <script type="module" src="./components/data-transfer.js"></script>
+    <script type="module" src="./components/data-dashboard.js"></script>
     <script type="module" src="./components/wifi-networks.js"></script>
-    <script type="module" src="./components/wifi-stations.js"></script>
+    <script type="module" src="./components/wifi-devices.js"></script>
     <script type="module" src="./components/ble-devices.js"></script>
+    <script type="module" src="./components/terminal.js"></script>
     <script type="module" src="./components/connect-page.js"></script>
+    <script type="module" src="./vendors.js"></script>
 
     <style>
         ion-split-pane {
@@ -75,10 +81,11 @@
                     <ion-content>
                         <sneak-device-info class="page-content active"></sneak-device-info>
                         <sneak-setup class="page-content"></sneak-setup>
-                        <sneak-data-transfer class="page-content"></sneak-data-transfer>
+                        <sneak-data-dashboard class="page-content"></sneak-data-dashboard>
                         <sneak-wifi-networks class="page-content"></sneak-wifi-networks>
-                        <sneak-wifi-stations class="page-content"></sneak-wifi-stations>
+                        <sneak-wifi-devices class="page-content"></sneak-wifi-devices>
                         <sneak-ble-devices class="page-content"></sneak-ble-devices>
+                        <sneak-terminal class="page-content"></sneak-terminal>
                     </ion-content>
                 </div>
             </ion-split-pane>

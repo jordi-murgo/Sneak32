@@ -23,41 +23,6 @@ export class BleService {
         this.statusCallback = null;
         this.onConnectionStateChange = null;
         this.connectionPromise = null;
-
-        // Listen for connection requests
-        document.addEventListener('connection-requested', async () => {
-            // Notify connection attempt starting
-            document.dispatchEvent(new CustomEvent('connection-starting', {
-                detail: { timestamp: Date.now() }
-            }));
-
-            try {
-                const connectionInfo = await this.connect().catch(error => {
-                    if (error.name === 'NotFoundError') {
-                        console.log('👤 User cancelled the device selection');
-                        return null;
-                    }
-                    throw error;
-                });
-
-                if (!connectionInfo) {
-                    console.log('❌ No connection info received');
-                    return;
-                }
-
-                console.log('✅ Connected successfully:', connectionInfo);
-                
-                // Dispatch successful connection event
-                document.dispatchEvent(new CustomEvent('device-connected', {
-                    detail: connectionInfo
-                }));
-            } catch (error) {
-                console.error('❌ Connection error:', error);
-                document.dispatchEvent(new CustomEvent('connection-error', {
-                    detail: { message: error.message }
-                }));
-            }
-        });
     }
 
     setConnectionStateCallback(callback) {
@@ -65,6 +30,7 @@ export class BleService {
     }
 
     async connect() {
+        console.log('🔌 Connecting to device...');
         if (this.connectionPromise) {
             return this.connectionPromise;
         }
@@ -72,12 +38,10 @@ export class BleService {
         this.connectionPromise = (async () => {
             try {
                 if (this.isConnected) {
-                    console.log('🔌 Already connected, returning existing connection');
+                    console.log('🔌 Already connected');
                     return {
                         deviceName: this.device.name,
-                        firmwareInfo: await this.readFirmwareInfo(),
-                        settings: await this.readSettings(),
-                        deviceStatus: await this.readDeviceStatus()
+                        isConnected: true
                     };
                 }
 
@@ -96,24 +60,13 @@ export class BleService {
                 this.server = await this.device.gatt.connect();
 
                 await this.initializeCharacteristics();
-                await this.startNotifications();
-
-                // Measure and set MTU
-                const mtuResult = await this.measureAndSetMTU();
-                console.log('📊 MTU measurement result:', mtuResult);
-
-                // Read firmware info after connection is established
-                const firmwareInfo = await this.readFirmwareInfo();
-                const deviceStatus = await this.readDeviceStatus();
-                const settings = await this.readSettings();
+                await this.registerNotifications();
 
                 return {
                     deviceName: this.device.name,
-                    firmwareInfo: firmwareInfo,
-                    deviceStatus: deviceStatus,
-                    settings: settings,
-                    mtu: mtuResult
+                    isConnected: true
                 };
+
             } catch (error) {
                 if (this.onConnectionStateChange) {
                     this.onConnectionStateChange(false);
@@ -141,7 +94,7 @@ export class BleService {
         console.log('🚨 Characteristics initialized:', this.characteristics);
     }
 
-    async startNotifications() {
+    async registerNotifications() {
         this.characteristics.dataTransfer.addEventListener(
             'characteristicvaluechanged',
             (event) => this.handleDataTransferNotification(event)
@@ -234,7 +187,7 @@ export class BleService {
     async updateSettings(settings) {
         try {
             const encoder = new TextEncoder();
-            const settingsString = this.stringifySettings(settings);
+            const settingsString = this.serializeSettings(settings);
             await this.characteristics.settings.writeValue(encoder.encode(settingsString));
             console.log('🚨 Settings updated:', settingsString);
             return true;
@@ -244,24 +197,17 @@ export class BleService {
     }
 
     async sendCommand(command) {
-        try {
-            const encoder = new TextEncoder();
-            await this.characteristics.commands.writeValue(encoder.encode(command));
-            console.log('🚨 Command sent:', command);
-            // Wait for the response to be available
-            var response = command;
-            while (response == command) {
-                await new Promise(resolve => setTimeout(resolve, 1));
-                response = new TextDecoder().decode( await this.characteristics.commands.readValue() );
-                // console.log('🚨 Command response:', response);
-            }
-            if(response.startsWith('Error:')) {
-                throw new Error(response);
-            }
-            return response;
-        } catch (error) {
-            throw new Error(`Error sending command: ${error.message}`);
+        const encoder = new TextEncoder();
+        await this.characteristics.commands.writeValue(encoder.encode(command));
+        console.log('🚨 Command sent:', command);
+        // Wait for the response to be available
+        await new Promise(resolve => setTimeout(resolve, 10));
+        var response = new TextDecoder().decode( await this.characteristics.commands.readValue() );
+        console.log('🚨 Command response:', response);
+        if(response.startsWith('Error:')) {
+            throw new Error(response);
         }
+        return response;
     }
 
     async getData(initialPacket = '0000') {
@@ -279,7 +225,11 @@ export class BleService {
         const value = event.target.value;
         const decoder = new TextDecoder();
         const data = decoder.decode(value);
-        this.dispatchEvent('data-transfer-received', { data });
+        if(this.dataTransferCallback) {
+            this.dataTransferCallback(data);
+        } else {
+            console.log('🚨 No data transfer callback registered:', data);
+        }
     }
 
     handleStatusNotification(event) {
@@ -291,7 +241,7 @@ export class BleService {
 
     // String format: "1|-100|10000|30|1|15|1|0|0|60||80|1|34|11|508|Sneak32-C3 (EF30)"
     parseSettings(settingsString) {
-        console.log('Parsing settings:', settingsString);
+        console.log('👓 Parsing settings:', settingsString);
         const parts = settingsString.split('|');
 
         const appSettings = {
@@ -320,13 +270,13 @@ export class BleService {
 
     // JSON format.
     parseFirmwareInfo(firmwareInfoString) {
-        console.log('Parsing firmware info:', firmwareInfoString);
+        console.log('👓 Parsing firmware info:', firmwareInfoString);
         return JSON.parse(firmwareInfoString);
     }
 
     // String format: "50:100:9:0:0:0:0:95612:3596"
     parseDeviceStatus(statusString) {
-        console.log('Parsing device status:', statusString);
+        console.log('👓 Parsing device status:', statusString);
         const parts = statusString.split(':');
         return { 
             wifiNetworks: parseInt(parts[0]), 
@@ -341,7 +291,7 @@ export class BleService {
         };
     }
 
-    stringifySettings(settings) {
+    serializeSettings(settings) {
         return [
             settings.onlyManagementFrames ? '1' : '0',
             settings.minimalRSSI,
@@ -394,11 +344,11 @@ export class BleService {
                     const testResponse = await this.sendCommand(`test_mtu ${currentMTU}`);
 
                     // Si llegamos aquí, la prueba fue exitosa
-                    lastValidMTU = testResponse.length;
+                    lastValidMTU = testResponse.length - 4;
                     success = true;
                     
                 } catch (error) {
-                    console.log(`⚠️ Failed at MTU ${currentMTU}:`, error);
+                    console.log(`⚠️ Failed at MTU ${currentMTU}:`);
                     currentMTU = Math.floor(currentMTU * 0.875); // Reducimos a 7/8
                 }
             }
@@ -429,6 +379,139 @@ export class BleService {
                 error: error.message,
                 success: false
             };
+        }
+    }
+
+    async requestWifiNetworks() {
+        try {
+            console.log('📥 Requesting WiFi networks...');
+            // Iniciar la transferencia solicitando SSIDs
+            await this.characteristics.dataTransfer.writeValue(
+                new TextEncoder().encode('ssid_list')
+            );
+
+            // Esperar y procesar los datos
+            const data = await this.receivePackets();
+
+            console.log('📥 WiFi networks:', data);
+
+            return JSON.parse(data);
+        } catch (error) {
+            throw new Error(`Error requesting WiFi networks: ${error.message}`);
+        }
+    }
+
+    async requestWifiDevices() {
+        try {
+            console.log('📥 Requesting WiFi devices...');
+            // Iniciar la transferencia solicitando clientes WiFi
+            await this.characteristics.dataTransfer.writeValue(
+                new TextEncoder().encode('client_list')
+            );
+
+            // Esperar y procesar los datos
+            const data = await this.receivePackets();
+            return JSON.parse(data);
+        } catch (error) {
+            throw new Error(`Error requesting WiFi devices: ${error.message}`);
+        }
+    }
+
+    async requestBleDevices() {
+        try {
+            console.log('📥 Requesting BLE devices...');
+            // Iniciar la transferencia solicitando dispositivos BLE
+            await this.characteristics.dataTransfer.writeValue(
+                new TextEncoder().encode('ble_list')
+            );
+
+            // Esperar y procesar los datos
+            const data = await this.receivePackets();
+            return JSON.parse(data);
+        } catch (error) {
+            throw new Error(`Error requesting BLE devices: ${error.message}`);
+        }
+    }
+
+    async receivePackets() {
+        return new Promise((resolve, reject) => {
+            let completeData = '';
+            let currentPacket = 1;
+            let timeout;
+
+            const cleanup = () => {
+                clearTimeout(timeout);
+                this.dataTransferCallback = null;
+            };
+
+            // Establecer un timeout global para la transferencia
+            timeout = setTimeout(() => {
+                cleanup();
+                reject(new Error('Data transfer timeout'));
+            }, 30000); // 30 segundos de timeout
+
+            this.dataTransferCallback = (data) => {
+                console.log('📥 Data transfer callback:', data);
+                
+                if (data.startsWith('START:')) {
+                    // Extraer el número total de paquetes del mensaje START
+                    const totalPackets = parseInt(data.split(':')[1]);
+                    console.log(`📦 Starting transfer with ${totalPackets} packets`);
+                    
+                    // Solicitar el primer paquete
+                    this.requestNextPacket(currentPacket);
+                } else if (data === 'END') {
+                    cleanup();
+                    try {
+                        resolve(completeData);
+                    } catch (error) {
+                        reject(new Error(`Error parsing JSON: ${error.message}`));
+                    }
+                } else {
+                    // Acumular datos
+                    completeData += data.slice(4);
+                    currentPacket++;
+                    
+                    // Solicitar el siguiente paquete
+                    this.requestNextPacket(currentPacket);
+                }
+            };
+        });
+    }
+
+    async requestNextPacket(packetNumber) {
+        try {
+            // Convertir el número de paquete a una cadena hexadecimal de 4 caracteres
+            const packetHex = packetNumber.toString(16).padStart(4, '0');
+            await this.characteristics.dataTransfer.writeValue(
+                new TextEncoder().encode(packetHex)
+            );
+        } catch (error) {
+            console.error('Error requesting next packet:', error);
+            throw error;
+        }
+    }
+
+    async fetchDeviceInfo() {
+        try {
+            // Read device information in parallel
+            const [mtu, firmwareInfo, deviceStatus, settings] = await Promise.all([
+                this.measureAndSetMTU(),
+                this.readFirmwareInfo(),
+                this.readDeviceStatus(),
+                this.readSettings()
+            ]);
+
+            return {
+                mtu,
+                firmwareInfo,
+                deviceStatus,
+                settings,
+            };
+
+        } catch (error) {
+            console.error('Error fetching device info:', error);
+            throw error;
         }
     }
 }

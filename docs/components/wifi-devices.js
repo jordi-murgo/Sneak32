@@ -1,6 +1,6 @@
 import { LitElement, html, css } from 'https://cdn.jsdelivr.net/npm/lit-element@4.1.1/+esm';
 
-export class SneakBleDevices extends LitElement {
+export class SneakWifiDevices extends LitElement {
     static properties = {
         devices: { type: Array },
         isLoadning: { type: Boolean },
@@ -11,31 +11,42 @@ export class SneakBleDevices extends LitElement {
         super();
         this.devices = [];
         this.isLoadning = false;
-        this.deviceStatus = { bleDevices: 0 };
+        this.deviceStatus = { devices: 0 };
         this.remoteTimestamp = 0;
         this.localTimestamp = 0;
+        this.networks = {};
 
-        document.addEventListener('ble-devices-loading', () => {
-            console.log('🔵 BleDevices :: Devices loading');
+        document.addEventListener('wifi-devices-loading', () => {
+            console.log('🎯 WifiDevices :: Devices loading');
             this.isLoadning = true;
         });
 
-        document.addEventListener('ble-devices-loaded', (event) => {
-            console.log('🔵 BleDevices :: Devices loaded', event.detail);
+        document.addEventListener('wifi-devices-loaded', (event) => {
+            console.log('🎯 WifiDevices :: Devices loaded', event.detail);
             this.isLoadning = false;
-            this.devices = event.detail.ble_devices;
+            this.devices = event.detail.stations;
             this.remoteTimestamp = event.detail.timestamp * 1000;
             this.localTimestamp = Date.now();
 
-            this.devices.forEach(async (device) => {
-                device.vendor = await window.vendorDecode(device.mac);
+            this.devices.forEach(async (station) => {
+                station.vendor = await window.vendorDecode(station.mac);
             });
 
             this.requestUpdate();
         });
 
+        document.addEventListener('wifi-networks-loaded', (event) => {
+            console.log('🥁 WifiNetworks :: WiFi networks loaded', event.detail);
+            event.detail.ssids.forEach(network => {
+                if(network.mac !== "FF:FF:FF:FF:FF:FF" && network.mac !== "00:00:00:00:00:00") {
+                    this.networks[network.mac] = network.ssid;
+                }
+            });
+            this.requestUpdate();
+        });
+
         document.addEventListener('device-status-update', (event) => {
-            console.log('🔵 BleDevices :: Device status update', event.detail);
+            console.log('🎯 WifiDevices :: Device status update', event.detail);
             this.updateDeviceStatus(event.detail.status);
         });
     }
@@ -52,19 +63,25 @@ export class SneakBleDevices extends LitElement {
         const difference = this.remoteTimestamp - lastSeen * 1000;
         const date = new Date(this.localTimestamp - difference);
 
+        // Return the date in the format of "2024-12-31 23:30:00"
+        // Obtenir les parts de la data
         var year = date.getFullYear();
+
+        // Afegir 1 al mes ja que getMonth() retorna valors de 0 a 11
         var month = ('0' + (date.getMonth() + 1)).slice(-2);
+
         var day = ('0' + date.getDate()).slice(-2);
         var hours = ('0' + date.getHours()).slice(-2);
         var minutes = ('0' + date.getMinutes()).slice(-2);
         var seconds = ('0' + date.getSeconds()).slice(-2);
 
+        // Construir la cadena de data en el format desitjat
         return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     }
 
     render() {
         return html`
-            <div class="ble-devices-content">
+            <div class="wifi-devices-content">
                 ${this.isLoadning ? html`
                     <div class="loading-overlay">
                         <ion-spinner></ion-spinner>
@@ -75,8 +92,8 @@ export class SneakBleDevices extends LitElement {
                 <ion-list>
                     <ion-item>
                         <ion-label>
-                            <h2>BLE Devices</h2>
-                            <p>Downloaded: ${this.devices.length}, Scanned: ${this.deviceStatus.bleDevices}</p>
+                            <h2>WiFi Devices</h2>
+                            <p>Downloaded: ${this.devices.length}, Scanned: ${this.deviceStatus.wifiDevices}</p>
                         </ion-label>
                     </ion-item>
                     <!-- Actions -->
@@ -122,60 +139,101 @@ export class SneakBleDevices extends LitElement {
     renderDevicesList() {
         const sortedDevices = [...this.devices].sort((a, b) => b.rssi - a.rssi);
 
-        return sortedDevices.map(device => html`
-            <ion-item-sliding>
-                <ion-item>
-                    <ion-icon 
-                        slot="start" 
-                        name="bluetooth-outline"
-                        style="color: ${this.getSignalColor(device.rssi)}"
-                    ></ion-icon>
-                    <ion-label>
-                        <h3>${device.name}</h3>
-                        <p>MAC: ${device.mac } ${device.vendor ? `(Vendor: ${device.vendor})` : ''}</p>
-                        <p>RSSI: ${device.rssi} dBm, Last seen: ${this.getLastSeenDate(device.last_seen)}</p>
-                    </ion-label>
-                    <div class="badge-container">
-                        ${device.rssi <= -90 ? html`
-                            <ion-badge color="warning">Weak</ion-badge>
-                        ` : ''}
-                        <ion-badge color="primary">${device.times_seen}</ion-badge>
-                    </div>
-                </ion-item>
-                <ion-item-options side="end">
-                    <ion-item-option color="danger" @click=${() => this.deleteDevice(device.mac)}>
-                        <ion-icon slot="start" name="trash-outline"></ion-icon>
-                        Delete
-                    </ion-item-option>
-                </ion-item-options>
-            </ion-item-sliding>
-        `);
+        return sortedDevices.map(station => {
+            const isAp = (station.mac === station.bssid);
+            var ssid = this.networks[station.bssid];
+            
+            return html`
+                <ion-item-sliding>
+                    <ion-item>
+                        <ion-icon 
+                            slot="start" 
+                            name="${isAp ? 'radio-outline' : 'phone-portrait-outline'}"
+                            style="color: ${this.getSignalColor(station.rssi)}"
+                        ></ion-icon>
+                        <ion-label>
+                            <h3>MAC: ${station.mac}${isAp ? html` (AP)` : ''}${ssid ? `, Network: ${ssid}` : ''}</h3>
+                            <p>Channel: ${station.channel}, RSSI: ${station.rssi} dBm ${station.vendor ? html`(Vendor: ${station.vendor})` : ''}</p>
+                            <p>Last seen: ${this.getLastSeenDate(station.last_seen)}</p>
+                        </ion-label>
+                        <div class="badge-container">
+                            ${station.rssi <= -90 ? html`
+                                <ion-badge color="warning">Weak</ion-badge>
+                            ` : ''}
+                            <ion-badge color="primary">${station.times_seen}</ion-badge>
+                        </div>
+                    </ion-item>
+                    <ion-item-options side="end">
+                        <ion-item-option color="danger" @click=${() => this.deleteStation(station.mac)}>
+                            <ion-icon slot="start" name="trash-outline"></ion-icon>
+                            Delete
+                        </ion-item-option>
+                    </ion-item-options>
+                </ion-item-sliding>
+            `;
+        });
+    }
+
+    downloadDevices() {
+        this.dispatchEvent(new CustomEvent('download-devices', {
+            bubbles: true,
+            composed: true
+        }));
+    }
+
+    saveDevices() {
+        this.dispatchEvent(new CustomEvent('save-devices', {
+            bubbles: true,
+            composed: true
+        }));
+    }
+
+    deleteDevices() {
+        this.dispatchEvent(new CustomEvent('delete-all-devices', {
+            bubbles: true,
+            composed: true
+        }));
+    }
+
+    deleteStation(mac) {
+        this.devices = this.devices.filter(station => station.mac !== mac);
+        this.dispatchEvent(new CustomEvent('delete-station', {
+            detail: { mac },
+            bubbles: true,
+            composed: true
+        }));
     }
 
     getSignalColor(dBm) {
+        // Assegurem que el valor estigui entre -50 i -100
         if (dBm > -50) dBm = -50;
         if (dBm < -100) dBm = -100;
     
-        let ratio = (-dBm - 50) / 50;
+        // Convertim el valor de dBm a un rang de 0 a 1
+        let ratio = (-dBm - 50) / 50; // -50 serà 0, -100 serà 1
         let r, g, b;
     
         if (ratio <= 0.3333) {
+            // Segment 1: de verd/cian a groc
             let segmentRatio = ratio / 0.3333;
             r = Math.round(255 * segmentRatio);
             g = 255;
             b = Math.round(255 * (1 - segmentRatio));
         } else if (ratio <= 0.6666) {
+            // Segment 2: de groc a vermell
             let segmentRatio = (ratio - 0.3333) / 0.3333;
             r = 255;
             g = Math.round(255 * (1 - segmentRatio));
             b = 0;
         } else {
+            // Segment 3: de vermell a gris
             let segmentRatio = (ratio - 0.6666) / 0.3334;
             r = Math.round(255 + (21 - 255) * segmentRatio);
             g = Math.round(0 + (210 - 0) * segmentRatio);
             b = Math.round(0 + (210 - 0) * segmentRatio);
         }
     
+        // Asegurar que los valores RGB estén dentro del rango válido (0-255)
         r = Math.max(0, Math.min(255, r));
         g = Math.max(0, Math.min(255, g));
         b = Math.max(0, Math.min(255, b));
@@ -183,42 +241,17 @@ export class SneakBleDevices extends LitElement {
         return `rgb(${r},${g},${b})`;
     }
 
-    downloadDevices() {
-        this.dispatchEvent(new CustomEvent('download-ble-devices', {
-            bubbles: true,
-            composed: true
-        }));
-    }
-
-    saveDevices() {
-        this.dispatchEvent(new CustomEvent('save-ble-devices', {
-            bubbles: true,
-            composed: true
-        }));
-    }
-
-    deleteDevices() {
-        this.dispatchEvent(new CustomEvent('delete-all-ble-devices', {
-            bubbles: true,
-            composed: true
-        }));
-    }
-
-    deleteDevice(mac) {
-        this.devices = this.devices.filter(device => device.mac !== mac);
-        this.dispatchEvent(new CustomEvent('delete-ble-device', {
-            detail: { mac },
-            bubbles: true,
-            composed: true
-        }));
-    }
-
     startLoad() {
         this.isLoadning = true;
-        this.dispatchEvent(new CustomEvent('start-ble-load', {
+        this.dispatchEvent(new CustomEvent('start-devices-load', {
             bubbles: true,
             composed: true
         }));
+
+        // Simulate load completion after 5 seconds
+        setTimeout(() => {
+            this.isLoadning = false;
+        }, 5000);
     }
 
     static styles = css`
@@ -227,7 +260,7 @@ export class SneakBleDevices extends LitElement {
             padding: 2px 0;
         }
 
-        .ble-devices-content {
+        .wifi-devices-content {
             margin: 0 auto;
         }
 
@@ -331,4 +364,4 @@ export class SneakBleDevices extends LitElement {
     `;
 }
 
-customElements.define('sneak-ble-devices', SneakBleDevices); 
+customElements.define('sneak-wifi-devices', SneakWifiDevices); 

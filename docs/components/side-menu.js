@@ -25,11 +25,12 @@ export class SneakSideMenu extends LitElement {
         this.currentPage = 'Device Info';
         this.menuItems = [
             { title: 'Device Info', icon: 'hardware-chip' },
-            { title: 'Setup', icon: 'settings' },
-            { title: 'Data Transfer', icon: 'save' },
+            { title: 'Data Dashboard', icon: 'bar-chart' },
             { title: 'WiFi Networks', icon: 'wifi' },
-            { title: 'WiFi Stations', icon: 'phone-portrait' },
-            { title: 'BLE Devices', icon: 'bluetooth' }
+            { title: 'WiFi Devices', icon: 'phone-portrait' },
+            { title: 'BLE Devices', icon: 'bluetooth' },
+            { title: 'Setup', icon: 'settings' },
+            { title: 'Terminal', icon: 'terminal' },
         ];
         this.actionItems = [
             {

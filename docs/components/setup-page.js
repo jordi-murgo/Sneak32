@@ -30,9 +30,21 @@ export class SneakSetup extends LitElement {
             bleTxPower: 0,
             bleMTU: 256
         };
-        this.isConnected = false;
-    }
+        this.isLoading = false;
 
+        // Listen for loading events
+        document.addEventListener('device-info-loading', () => {
+            console.log('🥁 DeviceInfo :: Device info loading');
+            this.isLoading = true;
+        });
+
+        document.addEventListener('device-info-loaded', (event) => {
+            console.log('🥁 DeviceInfo :: Device info loaded');
+            this.isLoading = false;
+            this.handleDeviceSettingsLoad(event.detail.settings);
+        });
+
+    }
 
     // Method to update settings
     updateSetting(key, value) {
@@ -66,13 +78,14 @@ export class SneakSetup extends LitElement {
 
     render() {
         return html`
-            <div class="setup-content">
+            <div id="setup-content">
+
                 <ion-list>
                     <!-- General Configuration -->
-                    <ion-item-group class="ion-margin-bottom">
+                    <ion-item-group>
                         <ion-item-divider color="medium">
                             <ion-icon name="settings-outline" slot="start"></ion-icon>
-                            <ion-label class="divider-label">General Configuration</ion-label>
+                            <ion-label>General Configuration</ion-label>
                         </ion-item-divider>
 
                         <!-- Device Name -->
@@ -181,10 +194,10 @@ export class SneakSetup extends LitElement {
                     </ion-item-group>
 
                     <!-- Security Configuration -->
-                    <ion-item-group class="ion-margin-bottom">
+                    <ion-item-group>
                         <ion-item-divider color="medium">
-                            <ion-icon name="shield" slot="start"></ion-icon>
-                            <ion-label class="divider-label">Security</ion-label>
+                            <ion-icon name="shield-half" slot="start"></ion-icon>
+                            <ion-label>Security</ion-label>
                         </ion-item-divider>
 
                         <ion-item>
@@ -228,11 +241,24 @@ export class SneakSetup extends LitElement {
                     </ion-item-group>
 
                     <!-- WiFi Configuration -->
-                    <ion-item-group class="ion-margin-bottom">
+                    <ion-item-group>
                         <ion-item-divider color="medium">
                             <ion-icon name="wifi" slot="start"></ion-icon>
-                            <ion-label class="divider-label">WiFi Configuration</ion-label>
+                            <ion-label>WiFi Configuration</ion-label>
                         </ion-item-divider>
+
+                        <ion-item>
+                            <ion-label position="stacked">
+                                <h2>Only Management Frames</h2>
+                                <p>Capture only WiFi management frames</p>
+                            </ion-label>
+                            <ion-toggle
+                                fill="solid"
+                                slot="end"
+                                .checked=${this.settings.onlyManagementFrames}
+                                @ionChange=${(e) => this.updateSetting('onlyManagementFrames', e.detail.checked)}
+                            />
+                        </ion-item>
 
                         <ion-item>
                             <ion-label position="stacked">
@@ -248,11 +274,13 @@ export class SneakSetup extends LitElement {
                         </ion-item>
                     </ion-item-group>
 
+                    
+
                     <!-- BLE Configuration -->
-                    <ion-item-group class="ion-margin-bottom">
+                    <ion-item-group>
                         <ion-item-divider color="medium">
                             <ion-icon name="bluetooth" slot="start"></ion-icon>
-                            <ion-label class="divider-label">BLE Configuration</ion-label>
+                            <ion-label>BLE Configuration</ion-label>
                         </ion-item-divider>
 
                         <ion-item>
@@ -305,12 +333,12 @@ export class SneakSetup extends LitElement {
                                 @ionChange=${(e) => {
                 const value = parseInt(e.detail.value, 10);
                 // Validate input range
-                if (value >= 32 && value <= 512) {
+                if (value >= 32 && value <= 1024) {
                     this.updateSetting('bleMTU', value);
                 }
             }}
                                 min={32}
-                                max={512}
+                                max={1024}
                             />
                         </ion-item>
                     </ion-item-group>
@@ -332,64 +360,85 @@ export class SneakSetup extends LitElement {
         `;
     }
 
-    static get styles() {
-        return css`
-            /* Estilos específicos del componente */
-            .setup-content {
-                margin-bottom: 16px; /* Reduced margin since we don't need space for footer */
-            }
+    static styles = css`
+        :host {
+            display: block;
+            padding: 10px 0;
+        }
 
-            .save-button-container {
-                padding: 16px;
-                margin-top: 16px;
-            }
+        ion-list {
+            padding-top: 0px !important;
+            padding-bottom: 0px !important;
+        }
 
-            /* Estilos del tema global */
-            ion-input, ion-select {
-                margin-top: 0.25rem;
-            }
+        .save-button-container {
+            padding: 16px;
+            margin-top: 16px;
+        }
 
-            .divider-label {
-                font-size: 1.2rem !important;
-                font-weight: 500 !important;
-                color: var(--ion-color-light) !important;
-                letter-spacing: 0.05rem;
-            }
+        /* Estilos del tema global */
+        ion-input, ion-select {
+            margin-top: 0.25rem;
+        }
 
-            ion-label[position="stacked"] {
-                margin-bottom: 1em !important;
-            }
+        .divider-label {
+            font-size: 1.2rem !important;
+            font-weight: 500 !important;
+            color: var(--ion-color-light) !important;
+            letter-spacing: 0.05rem;
+        }
 
-            .setting-item {
-                margin-bottom: 1.5rem;
-            }
+        ion-label[position="stacked"] {
+            margin-bottom: 1em !important;
+        }
 
-            ion-content {
-                --overflow: scroll;
-                --padding-bottom: 20px;
-            }
+        .setting-item {
+            margin-bottom: 1.5rem;
+        }
 
-            ion-content::part(scroll) {
-                overflow-y: auto !important;
-            }
+        ion-content {
+            --overflow: scroll;
+            --padding-bottom: 20px;
+        }
 
-            .save-button-container ion-button {
-                background: var(--ion-color-primary);
-                color: var(--ion-color-primary-contrast);
-            }
+        ion-content::part(scroll) {
+            overflow-y: auto !important;
+        }
 
-            .save-button-container ion-button:hover {
-                background: var(--ion-color-primary-shade);
-            }
-        
-            ion-item-divider {
-                background: var(--ion-color-medium);
-                color: var(--ion-color-light);
-            }
-        
-        `;
+        .save-button-container ion-button {
+            background: var(--ion-color-primary);
+            color: var(--ion-color-primary-contrast);
+        }
 
-    }
+        .save-button-container ion-button:hover {
+            background: var(--ion-color-primary-shade);
+        }
+    
+        ion-item-divider {
+            background: var(--ion-color-medium);
+            color: var(--ion-color-light);
+        }
+
+        ion-item-divider>ion-label {
+            font-size: 1.2rem !important;
+            font-weight: 500 !important;
+            color: var(--ion-color-light) !important;
+            letter-spacing: 0.05rem;
+        }
+
+        ion-item-group {
+            margin-bottom: 16px !important;
+        }
+
+        .sc-ion-label-md-s h2 {
+            margin-left: 0;
+            margin-right: 0;
+            margin-top: 2px;
+            margin-bottom: 2px;
+            font-size: 1.3rem;
+            font-weight: normal;
+        }
+    `;
 }
 
 customElements.define('sneak-setup', SneakSetup);
