@@ -328,7 +328,7 @@ export class BleService {
     async measureAndSetMTU() {
         try {
             console.log('📏 Starting MTU measurement...');
-            let currentMTU = 600; // Comenzamos con el máximo
+            let currentMTU = 512; // Comenzamos con el máximo (hay dispositivos que soportan más)
             let success = false;
             let lastValidMTU = null;
 
