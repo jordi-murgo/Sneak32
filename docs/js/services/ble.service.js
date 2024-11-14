@@ -389,13 +389,14 @@ export class BleService {
     async requestWifiNetworks() {
         try {
             console.log('📥 Requesting WiFi networks...');
+
+            const dataPromise = this.receivePackets();
             // Iniciar la transferencia solicitando SSIDs
             await this.characteristics.dataTransfer.writeValue(
                 new TextEncoder().encode('ssid_list')
             );
-
             // Esperar y procesar los datos
-            const data = await this.receivePackets();
+            const data = await dataPromise;
             console.log('📥 WiFi networks:', data);
             return JSON.parse(data);
         } catch (error) {
@@ -406,13 +407,13 @@ export class BleService {
     async requestWifiDevices() {
         try {
             console.log('📥 Requesting WiFi devices...');
+            const dataPromise = this.receivePackets();
             // Iniciar la transferencia solicitando clientes WiFi
             await this.characteristics.dataTransfer.writeValue(
                 new TextEncoder().encode('client_list')
             );
-
             // Esperar y procesar los datos
-            const data = await this.receivePackets();
+            const data = await dataPromise;
             console.log('📥 WiFi devices:', data);
             return JSON.parse(data);
         } catch (error) {
@@ -423,13 +424,13 @@ export class BleService {
     async requestBleDevices() {
         try {
             console.log('📥 Requesting BLE devices...');
+            const dataPromise = this.receivePackets();
             // Iniciar la transferencia solicitando dispositivos BLE
             await this.characteristics.dataTransfer.writeValue(
                 new TextEncoder().encode('ble_list')
             );
-
             // Esperar y procesar los datos
-            const data = await this.receivePackets();
+            const data = await dataPromise;
             console.log('📥 BLE devices:', data);
             return JSON.parse(data);
         } catch (error) {
@@ -444,19 +445,29 @@ export class BleService {
             let timeout;
 
             const cleanup = () => {
-                clearTimeout(timeout);
+                if(timeout) {
+                    clearTimeout(timeout);
+                }
                 this.dataTransferCallback = null;
             };
 
-            // Establecer un timeout global para la transferencia
-            timeout = setTimeout(() => {
-                cleanup();
-                reject(new Error('Data transfer timeout'));
-            }, 30000); // 30 segundos de timeout
+            const updateTimeout = () => {
+                if (timeout) {
+                    clearTimeout(timeout);
+                }
+
+                // Establecer un timeout global para la transferencia
+                timeout = setTimeout(() => {
+                    cleanup();
+                    reject(new Error('Data transfer timeout'));
+                }, 5000); 
+            };
 
             this.dataTransferCallback = (data) => {
                 console.log('📥 Data transfer callback:', data);
                 
+                updateTimeout();
+
                 if (data.startsWith('START:')) {
                     // Extraer el número total de paquetes del mensaje START
                     const totalPackets = parseInt(data.split(':')[1]);
