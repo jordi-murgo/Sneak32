@@ -39,6 +39,11 @@ export class UiService {
             this.showToast(event.detail.message + " Try to delete pairing information.", { duration: 5000, color: 'danger' });
         });
 
+        document.addEventListener('ble-service-error', (event) => {
+            console.log('🚨 BLE Service error:', event.detail);
+            this.showToast(event.detail.message, { duration: 5000, color: 'danger' });
+        });
+
     }
 
     updatePage(page) {

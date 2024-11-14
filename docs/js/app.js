@@ -104,18 +104,30 @@ class App {
 
                 await new Promise(resolve => setTimeout(resolve, 100));
                 document.dispatchEvent(new CustomEvent('wifi-networks-loading'));
-                const wifiNetworkList = await this.bleService.requestWifiNetworks();
-                document.dispatchEvent(new CustomEvent('wifi-networks-loaded', { detail: wifiNetworkList }));
+                try {
+                    const wifiNetworkList = await this.bleService.requestWifiNetworks();
+                    document.dispatchEvent(new CustomEvent('wifi-networks-loaded', { detail: wifiNetworkList }));
+                } catch (error) {
+                    document.dispatchEvent(new CustomEvent('ble-service-error', { detail: error }));
+                }
 
                 await new Promise(resolve => setTimeout(resolve, 100));
                 document.dispatchEvent(new CustomEvent('wifi-devices-loading'));
-                const wifiDeviceList = await this.bleService.requestWifiDevices();
-                document.dispatchEvent(new CustomEvent('wifi-devices-loaded', { detail: wifiDeviceList }));
+                try {
+                    const wifiDeviceList = await this.bleService.requestWifiDevices();
+                    document.dispatchEvent(new CustomEvent('wifi-devices-loaded', { detail: wifiDeviceList }));
+                } catch (error) {
+                    document.dispatchEvent(new CustomEvent('ble-service-error', { detail: error }));
+                }
 
                 await new Promise(resolve => setTimeout(resolve, 100));
                 document.dispatchEvent(new CustomEvent('ble-devices-loading'));
-                const bleDeviceList = await this.bleService.requestBleDevices();
-                document.dispatchEvent(new CustomEvent('ble-devices-loaded', { detail: bleDeviceList }));
+                try {
+                    const bleDeviceList = await this.bleService.requestBleDevices();
+                    document.dispatchEvent(new CustomEvent('ble-devices-loaded', { detail: bleDeviceList }));
+                } catch (error) {
+                    document.dispatchEvent(new CustomEvent('ble-service-error', { detail: error }));
+                }
 
                 // Ok, we can start notifications for device status
                 this.bleService.startStatusNotifications();
@@ -157,31 +169,33 @@ class App {
     }
 
     handlePageChange(page) {
+        console.log('🔄 Page change:', page);
         this.uiService.updatePage(page);
         document.getElementById('pageTitle').textContent = page;
     }
 
     handleModeChange(mode) {
+        console.log('🔄 Mode change:', mode);
         // Handle mode change logic
     }
 
     handleSaveData() {
-        console.log('Saving data...');
+        console.log('💾 Saving data...');
         // Implementar lógica de guardado
     }
 
     handleClearData() {
-        console.log('Clearing data...');
+        console.log('🔄 Clearing data...');
         // Implementar lógica de limpieza
     }
 
     handleResetDevice() {
-        console.log('Resetting device...');
+        console.log('🔄 Resetting device...');
         // Implementar lógica de reinicio
     }
 
     handleDisconnect() {
-        console.log('Disconnecting...');
+        console.log('🔄 Disconnecting...');
         // Implementar lógica de desconexión
     }
 
