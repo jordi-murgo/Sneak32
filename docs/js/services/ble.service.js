@@ -1,3 +1,5 @@
+import { bleOperationQueue } from './ble.queue.js';
+
 export class BleService {
     static SNEAK32_SERVICE_UUID = "81af4cd7-e091-490a-99ee-caa99032ef4e";
     static FIRMWARE_INFO_UUID = 0xFFE3;
@@ -23,6 +25,7 @@ export class BleService {
         this.statusCallback = null;
         this.onConnectionStateChange = null;
         this.connectionPromise = null;
+        this.queue = bleOperationQueue;
     }
 
     setConnectionStateCallback(callback) {
@@ -56,7 +59,7 @@ export class BleService {
                     ]
                 });
 
-                this.device.addEventListener('gattserverdisconnected', () => this.handleDisconnection());
+                this.device.addEventListener('gattserverdisconnected', (event) => this.handleDisconnection(event));
                 this.server = await this.device.gatt.connect();
 
                 await this.initializeCharacteristics();
@@ -120,6 +123,7 @@ export class BleService {
 
     cleanup() {
         clearInterval(this.statusInterval);
+        this.queue.clear();
         this.device = null;
         this.server = null;
         this.characteristics = {
@@ -131,7 +135,9 @@ export class BleService {
         };
     }
 
-    handleDisconnection() {
+    handleDisconnection(event) {
+        console.log('🚨 Disconnection detected:', event);
+        this.queue.clear();
         clearInterval(this.statusInterval);
         
         const wasConnected = this.isConnected;
@@ -152,78 +158,82 @@ export class BleService {
     }
 
     async readFirmwareInfo() {
-        try {
-            const value = await this.characteristics.firmwareInfo.readValue();
-            return this.parseFirmwareInfo(new TextDecoder().decode(value));
-        } catch (error) {
-            throw new Error(`Error reading firmware info: ${error.message}`);
-        }
+        return this.queue.enqueue(async () => {
+            try {
+                const value = await this.characteristics.firmwareInfo.readValue();
+                return this.parseFirmwareInfo(new TextDecoder().decode(value));
+            } catch (error) {
+                throw new Error(`Error reading firmware info: ${error.message}`);
+            }
+        }, 'Read Firmware Info');
     }
 
     async readDeviceStatus() {
-        try {
-            const value = await this.characteristics.deviceStatus.readValue();
-            return this.parseDeviceStatus(new TextDecoder().decode(value));
-        } catch (error) {
-            throw new Error(`Error reading status: ${error.message}`);
-        }
+        return this.queue.enqueue(async () => {
+            try {
+                const value = await this.characteristics.deviceStatus.readValue();
+                return this.parseDeviceStatus(new TextDecoder().decode(value));
+            } catch (error) {
+                throw new Error(`Error reading status: ${error.message}`);
+            }
+        }, 'Read Device Status');
     }
 
     async readSettings() {
-        try {
-            const value = await this.characteristics.settings.readValue();
-            return this.parseSettings(new TextDecoder().decode(value));
-        } catch (error) {
-            throw new Error(`Error reading settings: ${error.message}`);
-        }
+        return this.queue.enqueue(async () => {
+            try {
+                const value = await this.characteristics.settings.readValue();
+                return this.parseSettings(new TextDecoder().decode(value));
+            } catch (error) {
+                throw new Error(`Error reading settings: ${error.message}`);
+            }
+        }, 'Read Settings');
     }
 
     async updateSettings(settings) {
-        try {
-            const encoder = new TextEncoder();
-            const settingsString = this.serializeSettings(settings);
-            await this.characteristics.settings.writeValue(encoder.encode(settingsString));
-            console.log('🚨 Settings updated:', settingsString);
-            return true;
-        } catch (error) {
-            throw new Error(`Error updating settings: ${error.message}`);
-        }
+        return this.queue.enqueue(async () => {
+            try {
+                const encoder = new TextEncoder();
+                const settingsString = this.serializeSettings(settings);
+                await this.characteristics.settings.writeValue(encoder.encode(settingsString));
+                console.log('🚨 Settings updated:', settingsString);
+                return true;
+            } catch (error) {
+                throw new Error(`Error updating settings: ${error.message}`);
+            }
+        }, 'Update Settings');
     }
 
     async sendCommand(command) {
-        const encoder = new TextEncoder();
-        await this.characteristics.commands.writeValue(encoder.encode(command));
-        console.log('🚨 Command sent:', command);
-        // Wait for the response to be available
-        await new Promise(resolve => setTimeout(resolve, 10));
-        var response = new TextDecoder().decode( await this.characteristics.commands.readValue() );
-        console.log('🚨 Command response:', response);
-        if(response.startsWith('Error:')) {
-            throw new Error(response);
-        }
-        return response;
-    }
-
-    async getData(initialPacket = '0000') {
-        try {
+        return this.queue.enqueue(async () => {
             const encoder = new TextEncoder();
-            await this.characteristics.dataTransfer.writeValue(encoder.encode(initialPacket));
-            return true;
-        } catch (error) {
-            throw new Error(`Error getting data: ${error.message}`);
-        }
+            await this.characteristics.commands.writeValue(encoder.encode(command));
+            console.log('🚨 Command sent:', command);
+            
+            await new Promise(resolve => setTimeout(resolve, 10));
+            const value = await this.characteristics.commands.readValue();
+            const response = new TextDecoder().decode(value);
+            
+            console.log('🚨 Command response:', response);
+            if(response.startsWith('Error:')) {
+                throw new Error(response);
+            }
+            return response;
+        }, `Send Command: ${command}`);
     }
 
-    // Event handling methods
+
     handleDataTransferNotification(event) {
-        const value = event.target.value;
-        const decoder = new TextDecoder();
-        const data = decoder.decode(value);
-        if(this.dataTransferCallback) {
-            this.dataTransferCallback(data);
-        } else {
-            console.log('🚨 No data transfer callback registered:', data);
-        }
+        // this.queue.enqueue(async () => {
+            const value = event.target.value;
+            const decoder = new TextDecoder();
+            const data = decoder.decode(value);
+            if(this.dataTransferCallback) {
+                this.dataTransferCallback(data);
+            } else {
+                console.log('🚨 No data transfer callback registered:', data);
+            }
+        // }, 'Handle Data Transfer Notification');
     }
 
     handleStatusNotification(event) {
@@ -386,9 +396,7 @@ export class BleService {
 
             // Esperar y procesar los datos
             const data = await this.receivePackets();
-
             console.log('📥 WiFi networks:', data);
-
             return JSON.parse(data);
         } catch (error) {
             throw new Error(`Error requesting WiFi networks: ${error.message}`);
@@ -405,6 +413,7 @@ export class BleService {
 
             // Esperar y procesar los datos
             const data = await this.receivePackets();
+            console.log('📥 WiFi devices:', data);
             return JSON.parse(data);
         } catch (error) {
             throw new Error(`Error requesting WiFi devices: ${error.message}`);
@@ -421,6 +430,7 @@ export class BleService {
 
             // Esperar y procesar los datos
             const data = await this.receivePackets();
+            console.log('📥 BLE devices:', data);
             return JSON.parse(data);
         } catch (error) {
             throw new Error(`Error requesting BLE devices: ${error.message}`);
@@ -474,12 +484,13 @@ export class BleService {
     }
 
     async requestNextPacket(packetNumber) {
+        const packetHex = packetNumber.toString(16).padStart(4, '0');
         try {
-            // Convertir el número de paquete a una cadena hexadecimal de 4 caracteres
-            const packetHex = packetNumber.toString(16).padStart(4, '0');
-            await this.characteristics.dataTransfer.writeValue(
-                new TextEncoder().encode(packetHex)
-            );
+            this.queue.enqueue(async () => {
+                await this.characteristics.dataTransfer.writeValue(
+                    new TextEncoder().encode(packetHex)
+                );
+            }, `Request Next Packet: ${packetHex}`);
         } catch (error) {
             console.error('Error requesting next packet:', error);
             throw error;
