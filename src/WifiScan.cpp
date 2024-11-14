@@ -188,9 +188,36 @@ void WifiScanClass::process_control_frame(const uint8_t *payload, int payload_le
 
 void WifiScanClass::process_data_frame(const uint8_t *payload, int payload_len, uint8_t subtype, int8_t rssi, uint8_t channel)
 {
-  const uint8_t *dst_addr = &payload[4];
-  const uint8_t *src_addr = &payload[10];
-  const uint8_t *bssid = &payload[16];
+  // Data frames pueden tener 3 o 4 addresses dependiendo de los flags DS
+  const uint8_t *addr1 = &payload[4];  // Destination
+  const uint8_t *addr2 = &payload[10]; // Source
+  const uint8_t *addr3 = &payload[16]; // BSSID/Source/Destination dependiendo de DS flags
+  
+  uint16_t frame_ctrl = payload[0] | (payload[1] << 8);
+  bool toDS = frame_ctrl & 0x0100;
+  bool fromDS = frame_ctrl & 0x0200;
+
+  const uint8_t *src_addr;
+  const uint8_t *dst_addr;
+  const uint8_t *bssid;
+
+  if (!toDS && !fromDS) {      // IBSS (ad-hoc)
+    src_addr = addr2;
+    dst_addr = addr1;
+    bssid = addr3;
+  } else if (toDS && !fromDS) { // To AP
+    src_addr = addr2;
+    bssid = addr3;
+    dst_addr = addr1;
+  } else if (!toDS && fromDS) { // From AP
+    dst_addr = addr1;
+    bssid = addr2;
+    src_addr = addr3;
+  } else {                      // WDS (bridge)
+    dst_addr = addr3;
+    src_addr = addr2;
+    bssid = addr1;
+  }
 
   Serial.printf(">> Address: %s, Dst: %s, BSSID: %s, RSSI: %d, Channel: %d, FrameType: Data (%d) \n",
                 MacAddress(src_addr).toString().c_str(),
@@ -199,6 +226,7 @@ void WifiScanClass::process_data_frame(const uint8_t *payload, int payload_len, 
                 rssi,
                 channel, payload_len);
   stationsList.updateOrAddDevice(MacAddress(src_addr), MacAddress(bssid), rssi, channel);
+  stationsList.updateOrAddDevice(MacAddress(dst_addr), MacAddress(bssid), rssi, channel);
 }
 
 /**
