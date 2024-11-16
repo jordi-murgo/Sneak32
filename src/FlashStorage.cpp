@@ -24,6 +24,7 @@ void FlashStorage::saveWifiDevices(const WifiDeviceList &list)
         auto &deviceStruct = deviceStructs[i];
 
         memcpy(deviceStruct.address, device.address.getBytes(), 6);
+        memcpy(deviceStruct.bssid, device.bssid.getBytes(), 6);
         deviceStruct.rssi = device.rssi;
         deviceStruct.channel = device.channel;
         deviceStruct.last_seen = device.last_seen;
@@ -74,14 +75,10 @@ void FlashStorage::saveWifiNetworks(const WifiNetworkList &list)
         const auto &network = networks[i];
         auto &networkStruct = networkStructs[i];
 
-        if (!network.ssid.length())
-        {
-            continue;
-        }
-
         memset(networkStruct.ssid, 0, sizeof(networkStruct.ssid));
         strncpy(networkStruct.ssid, network.ssid.c_str(), sizeof(networkStruct.ssid) - 1);
         networkStruct.ssid[sizeof(networkStruct.ssid) - 1] = '\0';
+        memcpy(networkStruct.address, network.address.getBytes(), 6);
         networkStruct.rssi = network.rssi;
         networkStruct.channel = network.channel;
         memset(networkStruct.type, 0, sizeof(networkStruct.type));
@@ -180,10 +177,6 @@ void FlashStorage::loadWifiNetworks(WifiNetworkList &list)
         preferences.getBytes(WIFI_NETWORKS_KEY, networkStructs.data(), serializedSize);
         for (const auto &networkStruct : networkStructs)
         {
-            if (!networkStruct.ssid[0])
-            {
-                continue;
-            }
             WifiNetwork network(String(networkStruct.ssid), MacAddress(networkStruct.address), networkStruct.rssi, networkStruct.channel,
                                 String(networkStruct.type), networkStruct.last_seen, networkStruct.times_seen);
             list.addNetwork(network);
