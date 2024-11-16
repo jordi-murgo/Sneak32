@@ -10,6 +10,9 @@ extern WifiNetworkList ssidList;
 
 WifiScanClass WifiScanner;
 
+uint8_t broadcast_addr[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+uint8_t null_addr[6] = {0, 0, 0, 0, 0, 0};
+
 #define SSID_MAX_LEN 33
 
 WifiScanClass *WifiScanClass::instance = nullptr;
@@ -128,8 +131,6 @@ void WifiScanClass::process_management_frame(const uint8_t *payload, int payload
     break;
   }
 
-  uint8_t broadcast_addr[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-  uint8_t null_addr[6] = {0, 0, 0, 0, 0, 0};
   if (memcmp(bssid, null_addr, 6) == 0)
   {
     Serial.println("Null BSSID detected");
@@ -160,26 +161,33 @@ void WifiScanClass::process_management_frame(const uint8_t *payload, int payload
                   subtype);
   }
 
-
-  // Actualizamos la lista de redes con el BSSID y el SSID si existe.
   // Si es una respuesta de probe, usamos el tipo beacon, ya que es lo mismo para nosotros.
-  ssidList.updateOrAddNetwork(String(ssid), MacAddress(bssid), rssi, channel, frameType == "probe-resp" ? "beacon" : frameType);
+  if (frameType == "probe-resp")
+  {
+    frameType = "beacon";
+  }
 
+  // Actualizamos la lista de redes si existen el BSSID o el SSID.
+  if (ssid[0] || memcmp(bssid, broadcast_addr, 6) != 0)
+  {
+    ssidList.updateOrAddNetwork(String(ssid), MacAddress(bssid), rssi, channel, frameType);
+  }
 
   // Actualizamos la lista de estaciones con el origen
   stationsList.updateOrAddDevice(MacAddress(src_addr), MacAddress(bssid), rssi, channel);
 
-  // Si el destino no es broadcast, actualizamos la lista de estaciones
+  // Si el destino no es broadcast, actualizamos la lista de estaciones con el destino
   if (memcmp(dst_addr, broadcast_addr, 6) != 0)
   {
     stationsList.updateOrAddDevice(MacAddress(dst_addr), MacAddress(bssid), rssi, channel);
   }
 
-  // Si el destino no es la BSSID y el origen no es la BSSID y la BSSID no es broadcast, actualizamos la lista de estaciones con el BSSID
-  if (memcmp(dst_addr, bssid, 6) != 0 && memcmp(src_addr, bssid, 6) != 0 && memcmp(bssid, broadcast_addr, 6) != 0)
+  // actualizamos con el BSSID para que sume el tráfico de toda la red al AP 
+  if (memcmp(bssid, broadcast_addr, 6) != 0 && memcmp(bssid, null_addr, 6) != 0)
   {
     stationsList.updateOrAddDevice(MacAddress(bssid), MacAddress(bssid), rssi, channel);
   }
+
 }
 
 void WifiScanClass::process_control_frame(const uint8_t *payload, int payload_len, uint8_t subtype, int8_t rssi, uint8_t channel)
@@ -216,6 +224,18 @@ void WifiScanClass::process_control_frame(const uint8_t *payload, int payload_le
                 channel,
                 subtype);
   stationsList.updateOrAddDevice(MacAddress(src_addr), MacAddress(bssid), rssi, channel);
+
+  // Si el destino no es broadcast, actualizamos la lista de estaciones con el destino
+  if (dst_addr && memcmp(dst_addr, broadcast_addr, 6) != 0)
+  {
+    stationsList.updateOrAddDevice(MacAddress(dst_addr), MacAddress(bssid), rssi, channel);
+  }
+
+  // actualizamos con el BSSID para que sume el tráfico de toda la red al AP 
+  if (memcmp(bssid, broadcast_addr, 6) != 0 && memcmp(bssid, null_addr, 6) != 0)
+  {
+    stationsList.updateOrAddDevice(MacAddress(bssid), MacAddress(bssid), rssi, channel);
+  }
 }
 
 void WifiScanClass::process_data_frame(const uint8_t *payload, int payload_len, uint8_t subtype, int8_t rssi, uint8_t channel)
@@ -265,7 +285,19 @@ void WifiScanClass::process_data_frame(const uint8_t *payload, int payload_len, 
                 rssi,
                 channel, payload_len);
   stationsList.updateOrAddDevice(MacAddress(src_addr), MacAddress(bssid), rssi, channel);
-  stationsList.updateOrAddDevice(MacAddress(dst_addr), MacAddress(bssid), rssi, channel);
+
+  // Si el destino no es broadcast, actualizamos la lista de estaciones con el destino
+  if (memcmp(dst_addr, broadcast_addr, 6) != 0)
+  {
+    stationsList.updateOrAddDevice(MacAddress(dst_addr), MacAddress(bssid), rssi, channel);
+  }
+
+  // actualizamos con el BSSID para que sume el tráfico de toda la red al AP 
+  if (memcmp(bssid, broadcast_addr, 6) != 0 && memcmp(bssid, null_addr, 6) != 0)
+  {
+    stationsList.updateOrAddDevice(MacAddress(bssid), MacAddress(bssid), rssi, channel);
+  }
+
 }
 
 /**
