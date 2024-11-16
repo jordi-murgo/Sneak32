@@ -16,18 +16,35 @@ void WifiNetworkList::updateOrAddNetwork(const String &ssid, const MacAddress &a
   std::lock_guard<std::mutex> lock(networkMutex);
 
   auto it = std::find_if(networkList.begin(), networkList.end(),
-        [&ssid, &address, &type](const WifiNetwork &network)
-        {
-          // Podemos tener una entrada por cada AP de la Red, las de probe se reaprobechan si hay beacons
-          return network.ssid == ssid && (network.address == address || network.type == "probe" || type == "probe");
-        });
+                         [&ssid, &address, &type](const WifiNetwork &network)
+                         {
+                           if (type == "probe")
+                           {
+                             // si es tracta d'un probe request busquem si existeix una xarxa previa amb el mateix ssid
+                             return network.ssid == ssid;
+                           }
+                           else if (type == "beacon" || type == "assoc")
+                           {
+                             // si es tracta d'un beacon, busquem si existeix una xarxa previa amb el mateix ssid i address, o un probe amb el mateix ssid
+                             return network.ssid == ssid && (network.address == address || network.type != "beacon");
+                           }
+                           else 
+                           {
+                             // data, deauth, auth, action, timing
+                             // busquem si existeix una xarxa previa amb el mateix address
+                             return network.address == address;
+                           }
+
+                           return false;
+                         });
 
   time_t now = millis() / 1000 + base_time;
 
   if (it != networkList.end())
   {
     it->rssi = std::max(it->rssi, rssi); // El mejor de los rssi
-    if(type == "beacon") {
+    if (type == "beacon")
+    {
       // Los probes no cambian el canal ni el tipo
       it->channel = channel;
       it->type = type;
@@ -61,7 +78,7 @@ void WifiNetworkList::updateOrAddNetwork(const String &ssid, const MacAddress &a
 
 size_t WifiNetworkList::size() const
 {
-  return networkList.size(); 
+  return networkList.size();
 }
 
 std::vector<WifiNetwork> WifiNetworkList::getClonedList() const

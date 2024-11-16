@@ -80,6 +80,7 @@ void WifiScanClass::process_management_frame(const uint8_t *payload, int payload
     parse_ssid(payload, payload_len, subtype, ssid);
     frameType = "assoc";
     break;
+
   case 4: // Probe Request
     parse_ssid(payload, payload_len, subtype, ssid);
     frameType = "probe";
@@ -106,40 +107,28 @@ void WifiScanClass::process_management_frame(const uint8_t *payload, int payload
       }
     }
     break;
-
+  case 5: // Probe Response
+    parse_ssid(payload, payload_len, subtype, ssid);
+    Serial.println("Probe Response hexdump:");
+    frameType = "probe-resp";
+    break;
   case 8: // Beacon
     parse_ssid(payload, payload_len, subtype, ssid);
     frameType = "beacon";
     break;
+  case 1:  // Association Response
+  case 3:  // Reassociation Response
   case 10: // Disassociation
+  case 6:  // Timing Advertisement
+  case 11: // Authentication
   case 12: // Deauthentication
-    frameType = "deauth";
-    break;
+  case 14: // Action
   default:
-    return; // Ignore other subtypes
+    frameType = "other";
+    break;
   }
 
-  if (ssid[0] != 0)
-  {
-    if (frameType != "beacon")
-    {
-      Serial.printf(">> SSID: %s, BSSID: %s, RSSI: %d, Channel: %d, FrameType: %s\n", ssid, MacAddress(bssid).toString().c_str(), rssi, channel, frameType.c_str());
-    }
-
-    ssidList.updateOrAddNetwork(String(ssid), MacAddress(bssid), rssi, channel, frameType);
-  }
-
-  if (frameType != "beacon")
-  {
-    Serial.printf(">> Address: %s, BSSID: %s, RSSI: %d, Channel: %d, FrameType: %s %s\n",
-                  MacAddress(src_addr).toString().c_str(),
-                  MacAddress(bssid).toString().c_str(),
-                  rssi,
-                  channel,
-                  frameType.c_str(),
-                  ssid[0] ? ssid : "ALL-NETWORKS-REQUEST");
-  }
-
+  uint8_t broadcast_addr[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
   uint8_t null_addr[6] = {0, 0, 0, 0, 0, 0};
   if (memcmp(bssid, null_addr, 6) == 0)
   {
@@ -147,7 +136,50 @@ void WifiScanClass::process_management_frame(const uint8_t *payload, int payload
     printHexDump(payload, payload_len);
   }
 
+  if (frameType == "probe" || frameType == "assoc" || frameType == "probe-resp")
+  {
+    Serial.printf(">> Src: %s, Dst: %s, BSSID: %s, RSSI: %d, Channel: %d, FrameType: %s (%d) %s\n",
+                  MacAddress(src_addr).toString().c_str(),
+                  MacAddress(dst_addr).toString().c_str(),
+                  MacAddress(bssid).toString().c_str(),
+                  rssi,
+                  channel,
+                  frameType.c_str(),
+                  subtype,
+                  ssid[0] ? ssid : "WILDCARD-SSID");
+  }
+  else if (!ssid[0])
+  {
+    Serial.printf(">> Src: %s, Dst: %s, BSSID: %s, RSSI: %d, Channel: %d, FrameType: %s (%d)\n",
+                  MacAddress(src_addr).toString().c_str(),
+                  MacAddress(dst_addr).toString().c_str(),
+                  MacAddress(bssid).toString().c_str(),
+                  rssi,
+                  channel,
+                  frameType.c_str(),
+                  subtype);
+  }
+
+
+  // Actualizamos la lista de redes con el BSSID y el SSID si existe.
+  // Si es una respuesta de probe, usamos el tipo beacon, ya que es lo mismo para nosotros.
+  ssidList.updateOrAddNetwork(String(ssid), MacAddress(bssid), rssi, channel, frameType == "probe-resp" ? "beacon" : frameType);
+
+
+  // Actualizamos la lista de estaciones con el origen
   stationsList.updateOrAddDevice(MacAddress(src_addr), MacAddress(bssid), rssi, channel);
+
+  // Si el destino no es broadcast, actualizamos la lista de estaciones
+  if (memcmp(dst_addr, broadcast_addr, 6) != 0)
+  {
+    stationsList.updateOrAddDevice(MacAddress(dst_addr), MacAddress(bssid), rssi, channel);
+  }
+
+  // Si el destino no es la BSSID y el origen no es la BSSID y la BSSID no es broadcast, actualizamos la lista de estaciones con el BSSID
+  if (memcmp(dst_addr, bssid, 6) != 0 && memcmp(src_addr, bssid, 6) != 0 && memcmp(bssid, broadcast_addr, 6) != 0)
+  {
+    stationsList.updateOrAddDevice(MacAddress(bssid), MacAddress(bssid), rssi, channel);
+  }
 }
 
 void WifiScanClass::process_control_frame(const uint8_t *payload, int payload_len, uint8_t subtype, int8_t rssi, uint8_t channel)
@@ -176,7 +208,7 @@ void WifiScanClass::process_control_frame(const uint8_t *payload, int payload_le
     return; // Ignore other subtypes
   }
 
-  Serial.printf(">> Address: %s, Dst: %s, BSSID: %s, RSSI: %d, Channel: %d, FrameType: Control (%d) \n",
+  Serial.printf(">> Src: %s, Dst: %s, BSSID: %s, RSSI: %d, Channel: %d, FrameType: Control (%d) \n",
                 MacAddress(src_addr).toString().c_str(),
                 dst_addr ? MacAddress(dst_addr).toString().c_str() : "EMPTY",
                 MacAddress(bssid).toString().c_str(),
@@ -192,7 +224,7 @@ void WifiScanClass::process_data_frame(const uint8_t *payload, int payload_len, 
   const uint8_t *addr1 = &payload[4];  // Destination
   const uint8_t *addr2 = &payload[10]; // Source
   const uint8_t *addr3 = &payload[16]; // BSSID/Source/Destination dependiendo de DS flags
-  
+
   uint16_t frame_ctrl = payload[0] | (payload[1] << 8);
   bool toDS = frame_ctrl & 0x0100;
   bool fromDS = frame_ctrl & 0x0200;
@@ -201,25 +233,32 @@ void WifiScanClass::process_data_frame(const uint8_t *payload, int payload_len, 
   const uint8_t *dst_addr;
   const uint8_t *bssid;
 
-  if (!toDS && !fromDS) {      // IBSS (ad-hoc)
+  if (!toDS && !fromDS)
+  { // IBSS (ad-hoc)
     src_addr = addr2;
     dst_addr = addr1;
     bssid = addr3;
-  } else if (toDS && !fromDS) { // To AP
+  }
+  else if (toDS && !fromDS)
+  { // To AP
     src_addr = addr2;
     bssid = addr3;
     dst_addr = addr1;
-  } else if (!toDS && fromDS) { // From AP
+  }
+  else if (!toDS && fromDS)
+  { // From AP
     dst_addr = addr1;
     bssid = addr2;
     src_addr = addr3;
-  } else {                      // WDS (bridge)
+  }
+  else
+  { // WDS (bridge)
     dst_addr = addr3;
     src_addr = addr2;
     bssid = addr1;
   }
 
-  Serial.printf(">> Address: %s, Dst: %s, BSSID: %s, RSSI: %d, Channel: %d, FrameType: Data (%d) \n",
+  Serial.printf(">> Src: %s, Dst: %s, BSSID: %s, RSSI: %d, Channel: %d, FrameType: Data (len %d) \n",
                 MacAddress(src_addr).toString().c_str(),
                 MacAddress(dst_addr).toString().c_str(),
                 MacAddress(bssid).toString().c_str(),
@@ -248,71 +287,77 @@ void WifiScanClass::parse_ssid(const uint8_t *payload, int payload_len, uint8_t 
   // Ensure there are enough bytes for the header and at least one IE
   if (payload_len < pos + 2)
   {
+    Serial.println("Payload too short for header");
     return;
   }
 
-  // Determine if it's a Beacon frame or a Probe Request
-  uint16_t frame_control = payload[0] | (payload[1] << 8);
-  uint8_t frame_type = (frame_control & 0x000C) >> 2;
-  uint8_t frame_subtype = (frame_control & 0x00F0) >> 4;
+  // Determine starting position based on frame subtype
+  switch (subtype) {
+    case 0:  // Association Request
+    case 2:  // Reassociation Request
+      pos = 28; // Skip capability info + listen interval
+      if (subtype == 2) pos += 6; // Reassoc has current AP field
+      break;
+    case 4:  // Probe Request
+      pos = 24; // Start right after the header
+      break;
+    case 5:  // Probe Response
+    case 8:  // Beacon
+      pos = 36; // Skip timestamp + beacon interval + capability info
+      break;
+    default:
+      Serial.println("Unknown subtype");
+      return;
+  }
 
-  // For Probe Requests, SSID is immediately after the frame header
-  // For Beacon frames, there are additional fields before the SSID
-  if (frame_type == 0 && frame_subtype == 4)
-  { // Probe Request
-    pos = 24;
-  }
-  else if (frame_type == 0 && frame_subtype == 8)
-  {           // Beacon frame
-    pos = 36; // Skip additional Beacon frame fields
-  }
-  else
+  // Ensure we have enough bytes to read IEs
+  if (pos + 2 > payload_len)
   {
+    Serial.println("Payload too short for IEs");
     return;
   }
 
-  while (pos < payload_len - 2)
+  // Parse Information Elements
+  while (pos + 2 <= payload_len)
   {
     uint8_t id = payload[pos];
     uint8_t len = payload[pos + 1];
 
+    // Check if we can safely read the IE
+    if (pos + 2 + len > payload_len)
+    {
+      Serial.println("IE length exceeds payload");
+      break;
+    }
+
     if (id == 0)
-    { // SSID
+    { // SSID element
       if (len == 0)
       {
-        // Probe Request with hidden SSID, do not display, others do
-        if (subtype != 4)
-        {
-        }
-        return; // Hidden SSID, exit function
+        Serial.println("Empty SSID");
+        return;
       }
-      else if (len > SSID_MAX_LEN - 1)
+      else if (len >= SSID_MAX_LEN)
       {
+        Serial.println("SSID too long, truncating");
         len = SSID_MAX_LEN - 1;
       }
 
-      if (len > 0 && pos + 2 + len <= payload_len)
-      {
-        memcpy(ssid, &payload[pos + 2], len);
-        ssid[len] = '\0'; // Null-terminate
+      memcpy(ssid, &payload[pos + 2], len);
+      ssid[len] = '\0';
 
-        // Validate that SSID contains only printable characters
-        for (int i = 0; i < len; i++)
-        {
-          if (!isprint((unsigned char)ssid[i]))
-          {
-            ssid[i] = '.'; // Replace non-printable characters
-          }
-        }
-        return; // SSID found, exit function
-      }
-      else
+      // Validate SSID characters
+      for (int i = 0; i < len; i++)
       {
-        return;
+        if (!isprint((unsigned char)ssid[i]))
+        {
+          ssid[i] = '.';
+        }
       }
+      return;
     }
 
-    pos += 2 + len; // Move to the next IE
+    pos += 2 + len; // Move to next IE
   }
 }
 
@@ -388,3 +433,4 @@ void WifiScanClass::handle_rx(void *buf, wifi_promiscuous_pkt_type_t type)
     }
   }
 }
+
