@@ -126,8 +126,8 @@ export class SneakDataDashboard extends LitElement {
         const blePublic = this.bleDevices.filter(device => device.is_public === "true").length;
         const blePrivate = this.bleDevices.filter(device => device.is_public !== "true").length;
         
-        const wifiBeacons = this.networks.filter(network => network.type !== "probes").length;
-        const wifiProbes = this.networks.filter(network => network.type === "probes").length;
+        const wifiBeacons = this.networks.filter(network => network.type !== "probe").length;
+        const wifiProbes = this.networks.filter(network => network.type === "probe").length;
         
         const wifiDevicesProbing = this.wifiDevices.filter(device => 
             device.bssid === '00:00:00:00:00:00' || 
@@ -383,7 +383,7 @@ export class SneakDataDashboard extends LitElement {
         };
 
         // Create Probe Requests packets distribution chart
-        const probeNetworks = this.networks.filter(network => network.type !== 'beacon');
+        const probeNetworks = this.networks.filter(network => network.type == 'probe');
         const totalProbePackets = probeNetworks.reduce((sum, network) => sum + network.times_seen, 0);
         const probeThreshold = totalProbePackets * 0.01; // 1% threshold
 
