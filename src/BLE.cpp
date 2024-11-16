@@ -114,6 +114,8 @@ public:
             BLEAddress clientAddress = BLEAddress(auth_cmpl.bd_addr);
             Serial.printf("Paired Client MAC: %s\n", clientAddress.toString().c_str());
 
+            strncpy(appPrefs.authorized_address, clientAddress.toString().c_str(), sizeof(appPrefs.authorized_address));
+
             // Guardar la dirección en las preferencias
             Preferences preferences;
             if (preferences.begin(PREF_NAMESPACE, false))
