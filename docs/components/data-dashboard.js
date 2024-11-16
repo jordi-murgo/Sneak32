@@ -176,13 +176,13 @@ export class SneakDataDashboard extends LitElement {
                     name: 'APs',
                     type: 'bar',
                     stack: 'pila',
-                    data: [0, 0, wifiDevicesAp]
+                    data: [0, wifiBeacons, wifiDevicesAp]
                 },
                 {
                     name: 'Normal',
                     type: 'bar',
                     stack: 'pila',
-                    data: [blePublic, wifiBeacons, wifiDevicesConnected]
+                    data: [blePublic, 0, wifiDevicesConnected]
                 },
                 {
                     name: 'Random',
