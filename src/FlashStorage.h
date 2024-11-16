@@ -37,13 +37,13 @@ struct WifiNetworkStruct {
 
 class FlashStorage {
 public:
-    static void saveWifiDevices(const WifiDeviceList& list);
-    static void saveBLEDevices(const BLEDeviceList& list);
-    static void saveWifiNetworks(const WifiNetworkList& list);
+    static void saveWifiDevices();
+    static void saveBLEDevices();
+    static void saveWifiNetworks();
 
-    static void loadWifiDevices(WifiDeviceList& list);
-    static void loadBLEDevices(BLEDeviceList& list);
-    static void loadWifiNetworks(WifiNetworkList& list);
+    static void loadWifiDevices();
+    static void loadBLEDevices();
+    static void loadWifiNetworks();
     static void loadAll();
     static void saveAll();
     static void clearAll();

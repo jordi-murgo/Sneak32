@@ -24,6 +24,9 @@ void testMtuCallback(cmd* cmdPtr);
 void setMtuCallback(cmd* cmdPtr);
 void versionCallback(cmd* cmdPtr);
 void errorCallback(cmd_error* errorPtr);
+void saveWifiNetworksCallback(cmd* cmdPtr);
+void saveWifiDevicesCallback(cmd* cmdPtr);
+void saveBleDevicesCallback(cmd* cmdPtr);
 
 BLECharacteristic* BLECommands::pCharacteristic = nullptr;
 SimpleCLI* BLECommands::pCli = nullptr;
@@ -51,6 +54,15 @@ void BLECommands::onWrite(BLECharacteristic* characteristic) {
     Command save = pCli->addCommand("save_data", saveDataCallback);
     save.setDescription("Save all captured data to FlashStorage");
  
+    Command saveWifiNetworks = pCli->addCommand("save_wifi_networks", saveWifiNetworksCallback);
+    saveWifiNetworks.setDescription("Save WiFi networks to FlashStorage");
+
+    Command saveWifiDevices = pCli->addCommand("save_wifi_devices", saveWifiDevicesCallback);
+    saveWifiDevices.setDescription("Save WiFi devices to FlashStorage");
+
+    Command saveBleDevices = pCli->addCommand("save_ble_devices", saveBleDevicesCallback);
+    saveBleDevices.setDescription("Save BLE devices to FlashStorage");
+
     Command restart = pCli->addCommand("restart", restartCallback);
     restart.setDescription("Restart the device");
        
@@ -102,6 +114,24 @@ void saveDataCallback(cmd* cmdPtr) {
     Serial.println("Save data command received");
     FlashStorage::saveAll();
     BLECommands::respond("Data saved");
+}
+
+void saveWifiNetworksCallback(cmd* cmdPtr) {
+    Serial.println("Save WiFi networks command received");
+    FlashStorage::saveWifiNetworks();
+    BLECommands::respond("WiFi networks saved");
+}   
+
+void saveWifiDevicesCallback(cmd* cmdPtr) {
+    Serial.println("Save WiFi devices command received");
+    FlashStorage::saveWifiDevices();
+    BLECommands::respond("WiFi devices saved");
+}
+
+void saveBleDevicesCallback(cmd* cmdPtr) {
+    Serial.println("Save BLE devices command received");
+    FlashStorage::saveBLEDevices();
+    BLECommands::respond("BLE devices saved");
 }
 
 void testMtuCallback(cmd* cmdPtr) {

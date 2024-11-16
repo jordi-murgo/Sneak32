@@ -226,7 +226,7 @@ void WifiScanClass::process_control_frame(const uint8_t *payload, int payload_le
   // Actualizamos la lista de redes si existe el BSSID.
   if (memcmp(bssid, broadcast_addr, 6) != 0)
   {
-    ssidList.updateOrAddNetwork("", MacAddress(bssid), rssi, channel, "other");
+    ssidList.updateOrAddNetwork("", MacAddress(bssid), rssi, channel, "control");
   }
 
   stationsList.updateOrAddDevice(MacAddress(src_addr), MacAddress(bssid), rssi, channel);
@@ -295,7 +295,7 @@ void WifiScanClass::process_data_frame(const uint8_t *payload, int payload_len, 
   // Actualizamos la lista de redes si existe el BSSID.
   if (memcmp(bssid, broadcast_addr, 6) != 0)
   {
-    ssidList.updateOrAddNetwork("", MacAddress(bssid), rssi, channel, "other");
+    ssidList.updateOrAddNetwork("", MacAddress(bssid), rssi, channel, "data");
   }
 
   stationsList.updateOrAddDevice(MacAddress(src_addr), MacAddress(bssid), rssi, channel);

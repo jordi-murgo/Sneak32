@@ -12,8 +12,10 @@ const char *FlashStorage::WIFI_NETWORKS_KEY = "wifi_networks";
 
 Preferences FlashStorage::preferences;
 
-void FlashStorage::saveWifiDevices(const WifiDeviceList &list)
+void FlashStorage::saveWifiDevices()
 {
+    WifiDeviceList &list = stationsList;
+
     preferences.begin(NAMESPACE, false);
     std::vector<WifiDevice> devices = list.getClonedList();
     std::vector<WifiDeviceStruct> deviceStructs(devices.size());
@@ -37,8 +39,10 @@ void FlashStorage::saveWifiDevices(const WifiDeviceList &list)
     Serial.printf("Saved %zu WiFi devices\n", deviceStructs.size());
 }
 
-void FlashStorage::saveBLEDevices(const BLEDeviceList &list)
+void FlashStorage::saveBLEDevices()
 {
+    BLEDeviceList &list = bleDeviceList;
+
     preferences.begin(NAMESPACE, false);
     std::vector<BLEFoundDevice> devices = list.getClonedList();
     std::vector<BLEDeviceStruct> deviceStructs(devices.size());
@@ -64,8 +68,10 @@ void FlashStorage::saveBLEDevices(const BLEDeviceList &list)
     Serial.printf("Saved %zu BLE devices\n", deviceStructs.size());
 }
 
-void FlashStorage::saveWifiNetworks(const WifiNetworkList &list)
+void FlashStorage::saveWifiNetworks()
 {
+    WifiNetworkList &list = ssidList;
+
     preferences.begin(NAMESPACE, false);
     std::vector<WifiNetwork> networks = list.getClonedList();
     std::vector<WifiNetworkStruct> networkStructs(networks.size());
@@ -94,8 +100,10 @@ void FlashStorage::saveWifiNetworks(const WifiNetworkList &list)
     Serial.printf("Saved %zu WiFi networks\n", networkStructs.size());
 }
 
-void FlashStorage::loadWifiDevices(WifiDeviceList &list)
+void FlashStorage::loadWifiDevices()
 {
+    WifiDeviceList &list = stationsList;
+
     preferences.begin(NAMESPACE, true);
     size_t serializedSize = preferences.getBytesLength(WIFI_DEVICES_KEY);
     Serial.printf("Loading WiFi devices. Serialized size: %zu bytes\n", serializedSize);
@@ -130,8 +138,10 @@ void FlashStorage::loadWifiDevices(WifiDeviceList &list)
     preferences.end();
 }
 
-void FlashStorage::loadBLEDevices(BLEDeviceList &list)
+void FlashStorage::loadBLEDevices()
 {
+    BLEDeviceList &list = bleDeviceList;
+
     preferences.begin(NAMESPACE, true);
     size_t serializedSize = preferences.getBytesLength(BLE_DEVICES_KEY);
     Serial.printf("Loading BLE devices. Serialized size: %zu bytes\n", serializedSize);
@@ -160,8 +170,10 @@ void FlashStorage::loadBLEDevices(BLEDeviceList &list)
     preferences.end();
 }
 
-void FlashStorage::loadWifiNetworks(WifiNetworkList &list)
+void FlashStorage::loadWifiNetworks()
 {
+    WifiNetworkList &list = ssidList;
+
     preferences.begin(NAMESPACE, true);
     size_t serializedSize = preferences.getBytesLength(WIFI_NETWORKS_KEY);
     Serial.printf("Loading WiFi networks. Serialized size: %zu bytes\n", serializedSize);
@@ -192,10 +204,11 @@ void FlashStorage::loadWifiNetworks(WifiNetworkList &list)
 
 void FlashStorage::saveAll()
 {
-    FlashStorage::saveWifiDevices(stationsList);
-    FlashStorage::saveBLEDevices(bleDeviceList);
-    FlashStorage::saveWifiNetworks(ssidList);
+    FlashStorage::saveWifiDevices();
+    FlashStorage::saveBLEDevices();
+    FlashStorage::saveWifiNetworks();
 }
+
 
 void FlashStorage::loadAll()
 {
@@ -204,17 +217,17 @@ void FlashStorage::loadAll()
         Serial.println("Starting to load all data from flash storage");
         stationsList.clear();
         Serial.println("Loading WiFi devices...");
-        FlashStorage::loadWifiDevices(stationsList);
+        FlashStorage::loadWifiDevices();
         Serial.printf("Loaded %zu WiFi devices\n", stationsList.size());
 
         bleDeviceList.clear();
         Serial.println("Loading BLE devices...");
-        FlashStorage::loadBLEDevices(bleDeviceList);
+        FlashStorage::loadBLEDevices();
         Serial.printf("Loaded %zu BLE devices\n", bleDeviceList.size());
 
         ssidList.clear();
         Serial.println("Loading WiFi networks...");
-        FlashStorage::loadWifiNetworks(ssidList);
+        FlashStorage::loadWifiNetworks();
         Serial.printf("Loaded %zu WiFi networks\n", ssidList.size());
 
         Serial.println("All data loaded successfully from flash storage");
