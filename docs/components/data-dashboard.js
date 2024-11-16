@@ -126,8 +126,8 @@ export class SneakDataDashboard extends LitElement {
         const blePublic = this.bleDevices.filter(device => device.is_public === "true").length;
         const blePrivate = this.bleDevices.filter(device => device.is_public !== "true").length;
         
-        const wifiBeacons = this.networks.filter(network => network.type === "beacon").length;
-        const wifiProbes = this.networks.filter(network => network.type !== "beacon").length;
+        const wifiBeacons = this.networks.filter(network => network.type !== "probes").length;
+        const wifiProbes = this.networks.filter(network => network.type === "probes").length;
         
         const wifiDevicesProbing = this.wifiDevices.filter(device => 
             device.bssid === '00:00:00:00:00:00' || 
@@ -173,16 +173,16 @@ export class SneakDataDashboard extends LitElement {
             series: [
 
                 {
+                    name: 'Items',
+                    type: 'bar',
+                    stack: 'pila',
+                    data: [blePublic, wifiBeacons, wifiDevicesConnected]
+                },
+                {
                     name: 'APs',
                     type: 'bar',
                     stack: 'pila',
-                    data: [0, wifiBeacons, wifiDevicesAp]
-                },
-                {
-                    name: 'Normal',
-                    type: 'bar',
-                    stack: 'pila',
-                    data: [blePublic, 0, wifiDevicesConnected]
+                    data: [0, 0, wifiDevicesAp]
                 },
                 {
                     name: 'Random',
