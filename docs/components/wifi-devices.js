@@ -28,15 +28,22 @@ export class SneakWifiDevices extends LitElement {
             this.remoteTimestamp = event.detail.timestamp * 1000;
             this.localTimestamp = Date.now();
 
-            this.devices.forEach(async (station) => {
-                station.vendor = await window.vendorDecode(station.mac);
+            this.devices.forEach(station => {
+                station.vendor = window.vendorDecode(station.mac);
+                station.is_public = !this.isLocalMac(station.mac);
             });
 
             this.requestUpdate();
         });
 
+        document.addEventListener('wifi-networks-loading', () => {
+            console.log('🎯 WifiDevices :: Networks loading');
+            this.isLoadning = true;
+        });
+
         document.addEventListener('wifi-networks-loaded', (event) => {
             console.log('🥁 WifiNetworks :: WiFi networks loaded', event.detail);
+            this.isLoadning = false;
             event.detail.ssids.forEach(network => {
                 if(network.mac !== "FF:FF:FF:FF:FF:FF" && network.mac !== "00:00:00:00:00:00") {
                     this.networks[network.mac] = network.ssid;
@@ -77,6 +84,11 @@ export class SneakWifiDevices extends LitElement {
 
         // Construir la cadena de data en el format desitjat
         return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    }
+
+    isLocalMac(mac) {
+        const firstByte = parseInt(mac.split(':')[0], 16);
+        return (firstByte & 0x02) === 0x02;
     }
 
     render() {
@@ -160,6 +172,9 @@ export class SneakWifiDevices extends LitElement {
                             ${station.rssi <= -90 ? html`
                                 <ion-badge color="warning">Weak</ion-badge>
                             ` : ''}
+                            ${!station.is_public ? html`
+                                <ion-badge color="tertiary">Local Addr</ion-badge>
+                            ` : ''}
                             <ion-badge color="primary">${station.times_seen}</ion-badge>
                         </div>
                     </ion-item>
@@ -175,14 +190,39 @@ export class SneakWifiDevices extends LitElement {
     }
 
     downloadDevices() {
-        this.dispatchEvent(new CustomEvent('download-devices', {
-            bubbles: true,
-            composed: true
+        // Prepare data to export
+        const exportData = this.devices.map(device => ({
+            ...device,
+            network: this.networks[device.bssid] || null,
+            last_seen_formatted: this.getLastSeenDate(device.last_seen)
         }));
+
+        // Create JSON content
+        const jsonContent = JSON.stringify(exportData, null, 2);
+        
+        // Generate filename with current date/time
+        const now = new Date();
+        const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+        const filename = `wifi-devices-${timestamp}.json`;
+
+        // Create blob and download link
+        const blob = new Blob([jsonContent], { type: 'application/json' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        
+        // Trigger download
+        document.body.appendChild(link);
+        link.click();
+        
+        // Cleanup
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
     }
 
     saveDevices() {
-        this.dispatchEvent(new CustomEvent('save-devices', {
+        this.dispatchEvent(new CustomEvent('save-wifi-devices', {
             bubbles: true,
             composed: true
         }));
@@ -242,16 +282,10 @@ export class SneakWifiDevices extends LitElement {
     }
 
     startLoad() {
-        this.isLoadning = true;
-        this.dispatchEvent(new CustomEvent('start-devices-load', {
+        this.dispatchEvent(new CustomEvent('load-wifi-devices', {
             bubbles: true,
             composed: true
         }));
-
-        // Simulate load completion after 5 seconds
-        setTimeout(() => {
-            this.isLoadning = false;
-        }, 5000);
     }
 
     static styles = css`
@@ -293,6 +327,11 @@ export class SneakWifiDevices extends LitElement {
         ion-badge[color="warning"] {
             background: var(--ion-color-warning, #ffc409);
             color: var(--ion-color-warning-contrast, #000000);
+        }
+
+        ion-badge[color="tertiary"] {
+            background: var(--ion-color-tertiary, #6030ff);
+            color: var(--ion-color-tertiary-contrast, #ffffff);
         }
 
         ion-item-option[color="danger"] {

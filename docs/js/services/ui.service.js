@@ -27,12 +27,6 @@ export class UiService {
     }
 
     setupEventListeners() {
-        // Listen for UI events
-        document.addEventListener('save-data', () => this.handleSaveData());
-        document.addEventListener('clear-data', () => this.handleClearData());
-        document.addEventListener('reset-device', () => this.handleResetDevice());
-        document.addEventListener('disconnect', () => this.handleDisconnect());
-        document.addEventListener('mode-change', () => this.handleModeChange());
 
         document.addEventListener('connection-error', (event) => {
             console.log('🚨 Connection error:', event.detail);
@@ -95,107 +89,6 @@ export class UiService {
         const result = await toast.onDidDismiss();
         toast.remove();
         return result;
-    }
-
-    // Event Handlers
-    async handleSaveData() {
-        this.dispatchEvent('ui-save-data');
-        await this.showToast('Data saved successfully');
-    }
-
-    async handleClearData() {
-        const alert = await this.showAlert({
-            header: 'Clear Data',
-            message: 'Are you sure you want to clear all captured data?',
-            buttons: [
-                {
-                    text: 'Cancel',
-                    role: 'cancel'
-                },
-                {
-                    text: 'Clear',
-                    role: 'destructive',
-                    handler: () => {
-                        this.dispatchEvent('ui-clear-data');
-                    }
-                }
-            ]
-        });
-    }
-
-    async handleResetDevice() {
-        const alert = await this.showAlert({
-            header: 'Reset Device',
-            message: 'Are you sure you want to restart the device?',
-            buttons: [
-                {
-                    text: 'Cancel',
-                    role: 'cancel'
-                },
-                {
-                    text: 'Reset',
-                    role: 'destructive',
-                    handler: () => {
-                        this.dispatchEvent('ui-reset-device');
-                    }
-                }
-            ]
-        });
-    }
-
-    async handleDisconnect() {
-        const alert = await this.showAlert({
-            header: 'Disconnect',
-            message: 'Are you sure you want to disconnect from the device?',
-            buttons: [
-                {
-                    text: 'Cancel',
-                    role: 'cancel'
-                },
-                {
-                    text: 'Disconnect',
-                    handler: () => {
-                        this.dispatchEvent('ui-disconnect');
-                    }
-                }
-            ]
-        });
-    }
-
-    async handleModeChange() {
-        const alert = await this.showAlert({
-            header: 'Operation Mode',
-            inputs: [
-                {
-                    type: 'radio',
-                    label: 'Off Mode',
-                    value: 'off',
-                    checked: true
-                },
-                {
-                    type: 'radio',
-                    label: 'Monitor Mode',
-                    value: 'monitor'
-                },
-                {
-                    type: 'radio',
-                    label: 'Active Mode',
-                    value: 'active'
-                }
-            ],
-            buttons: [
-                {
-                    text: 'Cancel',
-                    role: 'cancel'
-                },
-                {
-                    text: 'OK',
-                    handler: (mode) => {
-                        this.dispatchEvent('ui-mode-change', { mode });
-                    }
-                }
-            ]
-        });
     }
 
     // Loading indicator methods

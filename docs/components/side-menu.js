@@ -1,4 +1,5 @@
 import { LitElement, html, css } from 'https://cdn.jsdelivr.net/npm/lit-element@4.1.1/+esm';
+import { alertController } from 'https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/index.esm.js';
 
 export class SneakSideMenu extends LitElement {
     static properties = {
@@ -107,7 +108,6 @@ export class SneakSideMenu extends LitElement {
             <ion-item 
                 button 
                 @click=${() => this.handleAction(item.action)}
-                detail="false" 
                 color="${item.color}"
             >
                 <ion-icon slot="start" name="${item.icon}"></ion-icon>
@@ -121,7 +121,6 @@ export class SneakSideMenu extends LitElement {
             <ion-item 
                 button 
                 @click=${this.handleDisconnect}
-                detail="false" 
                 color="primary"
             >
                 <ion-icon slot="start" name="power"></ion-icon>
@@ -158,7 +157,7 @@ export class SneakSideMenu extends LitElement {
     handleAction(action) {
         switch (action) {
             case 'save_data':
-                this.dispatchEvent(new CustomEvent('save-data', {
+                this.dispatchEvent(new CustomEvent('save-device-data', {
                     bubbles: true,
                     composed: true
                 }));
@@ -173,76 +172,78 @@ export class SneakSideMenu extends LitElement {
     }
 
     async handleClearData() {
-        const alert = document.createElement('ion-alert');
-        alert.header = 'Clear Data';
-        alert.message = 'Are you sure you want to clear all captured data?';
-        alert.buttons = [
-            {
-                text: 'Cancel',
-                role: 'cancel'
-            },
-            {
-                text: 'Clear',
-                role: 'destructive',
-                handler: () => {
-                    this.dispatchEvent(new CustomEvent('clear-data', {
-                        bubbles: true,
-                        composed: true
-                    }));
+        const alert = await alertController.create({
+            header: 'Clear Data',
+            message: 'Are you sure you want to clear all captured data?',
+            buttons: [
+                {
+                    text: 'Cancel',
+                    role: 'cancel'
+                },
+                {
+                    text: 'Clear',
+                    role: 'destructive',
+                    handler: () => {
+                        this.dispatchEvent(new CustomEvent('clear-device-data', {
+                            bubbles: true,
+                            composed: true,
+                        }));
+                    }
                 }
-            }
-        ];
+            ]
+        });
 
-        document.body.appendChild(alert);
         await alert.present();
     }
 
     async handleResetDevice() {
-        const alert = document.createElement('ion-alert');
-        alert.header = 'Reset Device';
-        alert.message = 'Are you sure you want to restart the device?';
-        alert.buttons = [
-            {
-                text: 'Cancel',
-                role: 'cancel'
-            },
-            {
-                text: 'Reset',
-                role: 'destructive',
-                handler: () => {
-                    this.dispatchEvent(new CustomEvent('reset-device', {
-                        bubbles: true,
-                        composed: true
-                    }));
+        const alert = await alertController.create({
+            header: 'Reset Device',
+            message: 'Are you sure you want to restart the device?',
+            buttons: [
+                {
+                    text: 'Cancel',
+                    role: 'cancel'
+                },
+                {
+                    text: 'Reset',
+                    role: 'destructive',
+                    handler: async () => {
+                        await alert.dismiss();
+                        this.dispatchEvent(new CustomEvent('reset-device', {
+                            bubbles: true,
+                            composed: true
+                        }));
+                    }
                 }
-            }
-        ];
+            ]
+        });
 
-        document.body.appendChild(alert);
         await alert.present();
     }
 
     async handleDisconnect() {
-        const alert = document.createElement('ion-alert');
-        alert.header = 'Disconnect';
-        alert.message = 'Are you sure you want to disconnect from the device?';
-        alert.buttons = [
-            {
-                text: 'Cancel',
-                role: 'cancel'
-            },
-            {
-                text: 'Disconnect',
-                handler: () => {
-                    this.dispatchEvent(new CustomEvent('disconnect', {
-                        bubbles: true,
-                        composed: true
-                    }));
+        const alert = await alertController.create({
+            header: 'Disconnect',
+            message: 'Are you sure you want to disconnect from the device?',
+            buttons: [
+                {
+                    text: 'Cancel',
+                    role: 'cancel'
+                },
+                {
+                    text: 'Disconnect',
+                    role: 'destructive',
+                    handler: () => {
+                        this.dispatchEvent(new CustomEvent('disconnect-device', {
+                            bubbles: true,
+                            composed: true,
+                        }));
+                    }
                 }
-            }
-        ];
+            ]
+        });
 
-        document.body.appendChild(alert);
         await alert.present();
     }
 

@@ -72,26 +72,50 @@ export class SneakConnectPage extends LitElement {
                 .isOpen=${this.showDisconnectModal}
                 @didDismiss=${() => this.showDisconnectModal = false}
             >
-                <ion-card>
-                    <ion-card-header>
-                        <ion-card-title>Unexpected Disconnection</ion-card-title>
-                    </ion-card-header>
-                    <ion-card-content>
-                        <p>The connection to your Sneak32 device was unexpectedly lost. This could be due to:</p>
-                        <ul>
-                            <li>Device moving out of range</li>
-                            <li>Device power loss</li>
-                            <li>Interference in the Bluetooth connection</li>
-                        </ul>
-                        <p>Please try reconnecting to your device.</p>
+                <ion-header>
+                    <ion-toolbar>
+                        <ion-title>
+                            <ion-icon name="warning-outline" color="warning"></ion-icon>
+                            Lost Connection
+                        </ion-title>
+                        <ion-buttons slot="end">
+                            <ion-button @click=${() => this.showDisconnectModal = false}>
+                                <ion-icon name="close-outline"></ion-icon>
+                            </ion-button>
+                        </ion-buttons>
+                    </ion-toolbar>
+                </ion-header>
+
+                <ion-content class="ion-padding">
+                    <div class="disconnect-content">
+                        <ion-icon name="bluetooth-outline" color="primary" size="large"></ion-icon>
+                        <h2>Connection to your Sneak32 device was lost</h2>
+                        
+                        <ion-list lines="none">
+                            <ion-item>
+                                <ion-icon slot="start" name="radio-outline"></ion-icon>
+                                <ion-label>Device out of range</ion-label>
+                            </ion-item>
+                            <ion-item>
+                                <ion-icon slot="start" name="battery-dead-outline"></ion-icon>
+                                <ion-label>Power loss</ion-label>
+                            </ion-item>
+                            <ion-item>
+                                <ion-icon slot="start" name="wifi-outline"></ion-icon>
+                                <ion-label>Bluetooth interference</ion-label>
+                            </ion-item>
+                        </ion-list>
+
                         <ion-button 
                             expand="block"
                             @click=${() => this.showDisconnectModal = false}
+                            class="ion-margin-top"
                         >
-                            Close
+                            <ion-icon slot="start" name="refresh-outline"></ion-icon>
+                            Try Reconnecting
                         </ion-button>
-                    </ion-card-content>
-                </ion-card>
+                    </div>
+                </ion-content>
             </ion-modal>
         `;
     }
@@ -172,6 +196,39 @@ export class SneakConnectPage extends LitElement {
 
         ion-modal::part(content) {
             --height: auto;
+        }
+
+        .disconnect-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding: 1rem;
+        }
+
+        .disconnect-content ion-icon[size="large"] {
+            font-size: 48px;
+            margin-bottom: 1rem;
+        }
+
+        .disconnect-content h2 {
+            font-size: 1.2rem;
+            margin-bottom: 1.5rem;
+            color: var(--ion-color-dark);
+        }
+
+        ion-list {
+            width: 100%;
+            margin-bottom: 1.5rem;
+        }
+
+        ion-item {
+            --padding-start: 0;
+        }
+
+        ion-item ion-icon {
+            margin-right: 1rem;
+            color: var(--ion-color-medium);
         }
     `;
 }

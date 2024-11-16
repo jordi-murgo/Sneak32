@@ -38,14 +38,15 @@ export class SneakWifiNetworks extends LitElement {
             this.requestUpdate();
         });
 
-        document.addEventListener('wifi-networks-loading', () => {
-            console.log('🥁 WifiNetworks :: WiFi networks loading');
+        document.addEventListener('wifi-devices-loading', () => {
+            console.log('🥁 WifiNetworks :: WiFi devices loading');
             this.isLoading = true;
         });
 
         document.addEventListener('wifi-devices-loaded', (event) => {
             console.log('🥁 WifiNetworks :: WiFi networks loaded', event.detail);
             this.isLoading = false;
+            this.stations = [];
             event.detail.stations.forEach(async (station) => {
                 this.stations[station.bssid] = 1 + (this.stations[station.bssid] || 0);
             });
@@ -273,7 +274,7 @@ export class SneakWifiNetworks extends LitElement {
 
     reloadNetworks() {
         this.isLoading = true;
-        this.dispatchEvent(new CustomEvent('start-wifi-scan', {
+        this.dispatchEvent(new CustomEvent('load-wifi-networks', {
             bubbles: true,
             composed: true
         }));
@@ -282,6 +283,13 @@ export class SneakWifiNetworks extends LitElement {
         setTimeout(() => {
             this.isLoading = false;
         }, 5000);
+    }
+
+    saveNetworks() {
+        this.dispatchEvent(new CustomEvent('save-wifi-networks', {
+            bubbles: true,
+            composed: true
+        }));
     }
 
     deleteNetwork(ssid) {
@@ -299,6 +307,40 @@ export class SneakWifiNetworks extends LitElement {
 
     getWeakNetworks() {
         return this.networks.filter(network => network.rssi <= -85);
+    }
+
+    downloadNetworks() {
+        // Prepare data to export
+        const exportData = this.networks.map(network => ({
+            ...network,
+            clients: network.mac !== 'FF:FF:FF:FF:FF:FF' && network.mac !== '00:00:00:00:00:00' 
+                ? (this.stations[network.mac] - 1 || 0) 
+                : 0,
+            last_seen_formatted: this.getLastSeenDate(network.last_seen),
+        }));
+
+        // Create JSON content
+        const jsonContent = JSON.stringify(exportData, null, 2);
+        
+        // Generate filename with current date/time
+        const now = new Date();
+        const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+        const filename = `wifi-networks-${timestamp}.json`;
+
+        // Create blob and download link
+        const blob = new Blob([jsonContent], { type: 'application/json' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        
+        // Trigger download
+        document.body.appendChild(link);
+        link.click();
+        
+        // Cleanup
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
     }
 
     static styles = css`

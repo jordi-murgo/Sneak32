@@ -121,6 +121,30 @@ export class BleService {
         }
     }
 
+    async saveData() {
+        return await this.sendCommand('save_data');
+    }
+
+    async saveWifiNetworks() {
+        return await this.sendCommand('save_wifi_networks');
+    }
+
+    async saveWifiDevices() {
+        return await this.sendCommand('save_wifi_devices');
+    }
+
+    async saveBleDevices() {
+        return await this.sendCommand('save_ble_devices');
+    }
+
+    async clearData() {
+        return await this.sendCommand('clear_data');
+    }
+
+    async resetDevice() {
+        await this.sendCommand('restart');
+    }
+
     cleanup() {
         clearInterval(this.statusInterval);
         this.queue.clear();
@@ -137,23 +161,17 @@ export class BleService {
 
     handleDisconnection(event) {
         console.log('🚨 Disconnection detected:', event);
-        this.queue.clear();
         clearInterval(this.statusInterval);
+        this.queue.clear();
         
         const wasConnected = this.isConnected;
         const wasIntentional = this.isIntentionalDisconnect;
         
         this.cleanup();
         
-        if (wasConnected) {
-            if (!wasIntentional) {
-                this.dispatchEvent('disconnected', { unexpected: true });
-            } else {
-                this.dispatchEvent('disconnected', { unexpected: false });
-            }
-            if (this.onConnectionStateChange) {
-                this.onConnectionStateChange(false);
-            }
+        this.dispatchEvent('disconnected', { unexpected: !wasIntentional });
+        if (this.onConnectionStateChange) {
+            this.onConnectionStateChange(false);
         }
     }
 

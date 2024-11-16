@@ -1,32 +1,3 @@
-
-window.vendorDecodeAPI = async (macAddress) =>  {
-  // Normalitzar l'adreça MAC: eliminar separadors i convertir a majúscules
-  let normalizedMac = macAddress.toUpperCase().replace(/[^A-F0-9]/g, '').slice(0,9);
-
-  if (window.vendorCache[normalizedMac])
-    return window.vendorCache[normalizedMac];
-
-  // Construir la URL de l'API
-  let apiUrl = `https://api.macvendors.com/${normalizedMac}`;
-
-  try {
-      // Fer la petició a l'API
-      let response = await fetch(apiUrl);
-
-      if (response.ok) {
-          let vendor = await response.text();
-          // Retornar el nom del fabricant
-          window.vendorCache[normalizedMac] = vendor;
-      }
-  } catch (error) {
-      console.error('Error al fer la petició a l\'API:', error);
-  }
-
-  return window.vendorCache[normalizedMac];
-}
-
-window.vendorCache = {}
-
 window.vendorDecode = (mac) => {
   var prefix;
   var vendor;

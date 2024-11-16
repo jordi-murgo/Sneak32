@@ -3,32 +3,32 @@ import { LitElement, html, css } from 'https://cdn.jsdelivr.net/npm/lit-element@
 export class SneakBleDevices extends LitElement {
     static properties = {
         devices: { type: Array },
-        isLoadning: { type: Boolean },
+        isLoading: { type: Boolean },
         deviceStatus: { type: Object }
     };
 
     constructor() {
         super();
         this.devices = [];
-        this.isLoadning = false;
+        this.isLoading = false;
         this.deviceStatus = { bleDevices: 0 };
         this.remoteTimestamp = 0;
         this.localTimestamp = 0;
 
         document.addEventListener('ble-devices-loading', () => {
             console.log('🔵 BleDevices :: Devices loading');
-            this.isLoadning = true;
+            this.isLoading = true;
         });
 
         document.addEventListener('ble-devices-loaded', (event) => {
             console.log('🔵 BleDevices :: Devices loaded', event.detail);
-            this.isLoadning = false;
+            this.isLoading = false;
             this.devices = event.detail.ble_devices;
             this.remoteTimestamp = event.detail.timestamp * 1000;
             this.localTimestamp = Date.now();
 
-            this.devices.forEach(async (device) => {
-                device.vendor = await window.vendorDecode(device.mac);
+            this.devices.forEach(device => {
+                device.vendor = window.vendorDecode(device.mac);
             });
 
             this.requestUpdate();
@@ -65,7 +65,7 @@ export class SneakBleDevices extends LitElement {
     render() {
         return html`
             <div class="ble-devices-content">
-                ${this.isLoadning ? html`
+                ${this.isLoading ? html`
                     <div class="loading-overlay">
                         <ion-spinner></ion-spinner>
                         <ion-label>Loadning...</ion-label>
@@ -83,14 +83,14 @@ export class SneakBleDevices extends LitElement {
                     <ion-item>
                         <ion-button 
                             @click=${this.startLoad}
-                            ?disabled=${this.isLoadning}
+                            ?disabled=${this.isLoading}
                         >
                             <ion-icon slot="start" name="refresh-outline"></ion-icon>
                             Reload
                         </ion-button>
                         <ion-button   
                             @click=${this.downloadDevices}
-                            ?disabled=${this.isLoadning}
+                            ?disabled=${this.isLoading}
                         >
                             <ion-icon slot="start" name="download-outline"></ion-icon>
                             Download
@@ -98,7 +98,7 @@ export class SneakBleDevices extends LitElement {
                         <ion-button 
                             color="warning"
                             @click=${this.saveDevices}
-                            ?disabled=${this.isLoadning}
+                            ?disabled=${this.isLoading}
                         >
                             <ion-icon slot="start" name="save-outline"></ion-icon>
                             Save
@@ -106,7 +106,7 @@ export class SneakBleDevices extends LitElement {
                         <ion-button 
                             color="danger"
                             @click=${this.deleteDevices}
-                            ?disabled=${this.isLoadning}
+                            ?disabled=${this.isLoading}
                         >
                             <ion-icon slot="start" name="trash-outline"></ion-icon>
                             Delete
@@ -184,10 +184,34 @@ export class SneakBleDevices extends LitElement {
     }
 
     downloadDevices() {
-        this.dispatchEvent(new CustomEvent('download-ble-devices', {
-            bubbles: true,
-            composed: true
+        // Prepare data to export
+        const exportData = this.devices.map(device => ({
+            ...device,
+            last_seen_formatted: this.getLastSeenDate(device.last_seen)
         }));
+        
+        // Create JSON content
+        const jsonContent = JSON.stringify(exportData, null, 2);
+        
+        // Generate filename with current date/time
+        const now = new Date();
+        const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+        const filename = `ble-devices-${timestamp}.json`;
+
+        // Create blob and download link
+        const blob = new Blob([jsonContent], { type: 'application/json' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        
+        // Trigger download
+        document.body.appendChild(link);
+        link.click();
+        
+        // Cleanup
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
     }
 
     saveDevices() {
@@ -214,8 +238,7 @@ export class SneakBleDevices extends LitElement {
     }
 
     startLoad() {
-        this.isLoadning = true;
-        this.dispatchEvent(new CustomEvent('start-ble-load', {
+        this.dispatchEvent(new CustomEvent('load-ble-devices', {
             bubbles: true,
             composed: true
         }));

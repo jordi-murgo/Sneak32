@@ -17,16 +17,30 @@ class App {
         this.uiService.showConnectPage();
     }
 
+    // Eventos del Menu
     setupEventListeners() {
         document.addEventListener('page-change', (e) => {
             this.handlePageChange(e.detail.page);
         });
 
-        document.addEventListener('save-data', () => {
+        document.addEventListener('save-device-data', () => {
             this.handleSaveData();
         });
 
-        document.addEventListener('clear-data', () => {
+        document.addEventListener('save-wifi-networks', () => {
+            this.handleSaveWifiNetworks();
+        });
+
+        document.addEventListener('save-wifi-devices', () => {
+            this.handleSaveWifiDevices();
+        });
+
+        document.addEventListener('save-ble-devices', () => {
+            this.handleSaveBleDevices();
+        });
+
+
+        document.addEventListener('clear-device-data', () => {
             this.handleClearData();
         });
 
@@ -34,7 +48,7 @@ class App {
             this.handleResetDevice();
         });
 
-        document.addEventListener('disconnect', () => {
+        document.addEventListener('disconnect-device', () => {
             this.handleDisconnect();
         });
 
@@ -56,6 +70,21 @@ class App {
             } catch (error) {
                 console.error('Error saving settings:', error);
             }
+        });
+
+        document.addEventListener('load-wifi-networks', async () => {
+            console.log('🎯 App :: Event :: Loading WiFi networks');
+            await this.loadWifiNetworks();
+        });
+
+        document.addEventListener('load-wifi-devices', async () => {
+            console.log('🎯 App :: Event :: Loading WiFi devices');
+            await this.loadWifiDevices();
+        });
+
+        document.addEventListener('load-ble-devices', async () => {
+            console.log('🎯 App :: Event :: Loading BLE devices');
+            await this.loadBleDevices();
         });
 
         document.addEventListener('connection-requested', async () => {
@@ -103,31 +132,11 @@ class App {
                 }));
 
                 await new Promise(resolve => setTimeout(resolve, 100));
-                document.dispatchEvent(new CustomEvent('wifi-networks-loading'));
-                try {
-                    const wifiNetworkList = await this.bleService.requestWifiNetworks();
-                    document.dispatchEvent(new CustomEvent('wifi-networks-loaded', { detail: wifiNetworkList }));
-                } catch (error) {
-                    document.dispatchEvent(new CustomEvent('ble-service-error', { detail: error }));
-                }
-
+                await this.loadWifiNetworks();
                 await new Promise(resolve => setTimeout(resolve, 100));
-                document.dispatchEvent(new CustomEvent('wifi-devices-loading'));
-                try {
-                    const wifiDeviceList = await this.bleService.requestWifiDevices();
-                    document.dispatchEvent(new CustomEvent('wifi-devices-loaded', { detail: wifiDeviceList }));
-                } catch (error) {
-                    document.dispatchEvent(new CustomEvent('ble-service-error', { detail: error }));
-                }
-
+                await this.loadWifiDevices();
                 await new Promise(resolve => setTimeout(resolve, 100));
-                document.dispatchEvent(new CustomEvent('ble-devices-loading'));
-                try {
-                    const bleDeviceList = await this.bleService.requestBleDevices();
-                    document.dispatchEvent(new CustomEvent('ble-devices-loaded', { detail: bleDeviceList }));
-                } catch (error) {
-                    document.dispatchEvent(new CustomEvent('ble-service-error', { detail: error }));
-                }
+                await this.loadBleDevices();
 
                 // Ok, we can start notifications for device status
                 this.bleService.startStatusNotifications();
@@ -179,24 +188,79 @@ class App {
         // Handle mode change logic
     }
 
-    handleSaveData() {
+    async handleSaveData() {
         console.log('💾 Saving data...');
-        // Implementar lógica de guardado
+        try {
+            const result =await this.bleService.saveData();
+            await this.uiService.showToast(result, {
+                color: 'success'
+            });
+        } catch (error) {
+            await this.uiService.showToast('Error saving data', {
+                color: 'danger'
+            });
+            console.error('Error saving data:', error);
+        }
+    }
+
+    async handleSaveWifiNetworks() {
+        console.log('💾 Saving WiFi networks...');
+        try {
+            const result = await this.bleService.saveWifiNetworks();
+            await this.uiService.showToast(result, {
+                color: 'success'
+            });
+        } catch (error) {
+            await this.uiService.showToast('Error saving WiFi networks', {
+                color: 'danger'
+            });
+            console.error('Error saving WiFi networks:', error);
+        }
+    }
+
+    async handleSaveWifiDevices() {
+        console.log('💾 Saving WiFi devices...');
+        try {
+            const result = await this.bleService.saveWifiDevices();
+            await this.uiService.showToast(result, {
+                color: 'success'
+            });
+        } catch (error) {
+            await this.uiService.showToast('Error saving WiFi devices', {
+                color: 'danger'
+            });
+            console.error('Error saving WiFi devices:', error);
+        }
+    }
+
+    async handleSaveBleDevices() {
+        console.log('💾 Saving BLE devices...');
+        try {
+            const result = await this.bleService.saveBleDevices();
+            await this.uiService.showToast(result, {
+                color: 'success'
+            });
+        } catch (error) {
+            await this.uiService.showToast('Error saving BLE devices', {
+                color: 'danger'
+            });
+            console.error('Error saving BLE devices:', error);
+        }
     }
 
     handleClearData() {
         console.log('🔄 Clearing data...');
-        // Implementar lógica de limpieza
+        this.bleService.clearData();
     }
 
     handleResetDevice() {
         console.log('🔄 Resetting device...');
-        // Implementar lógica de reinicio
+        this.bleService.resetDevice();
     }
 
     handleDisconnect() {
         console.log('🔄 Disconnecting...');
-        // Implementar lógica de desconexión
+        this.bleService.disconnect();
     }
 
     handleConnectionStateChange(isConnected) {
@@ -205,6 +269,48 @@ class App {
             this.uiService.showMainContent();
         } else {
             this.uiService.showConnectPage();
+        }
+    }
+
+    async loadWifiDevices() {
+        document.dispatchEvent(new CustomEvent('wifi-devices-loading'));
+        try {
+            const wifiDeviceList = await this.bleService.requestWifiDevices();
+            document.dispatchEvent(new CustomEvent('wifi-devices-loaded', { 
+                detail: wifiDeviceList 
+            }));
+        } catch (error) {
+            document.dispatchEvent(new CustomEvent('ble-service-error', { 
+                detail: error 
+            }));
+        }
+    }
+
+    async loadBleDevices() {
+        document.dispatchEvent(new CustomEvent('ble-devices-loading'));
+        try {
+            const bleDeviceList = await this.bleService.requestBleDevices();
+            document.dispatchEvent(new CustomEvent('ble-devices-loaded', { 
+                detail: bleDeviceList 
+            }));
+        } catch (error) {
+            document.dispatchEvent(new CustomEvent('ble-service-error', { 
+                detail: error 
+            }));
+        }
+    }
+
+    async loadWifiNetworks() {
+        document.dispatchEvent(new CustomEvent('wifi-networks-loading'));
+        try {
+            const wifiNetworkList = await this.bleService.requestWifiNetworks();
+            document.dispatchEvent(new CustomEvent('wifi-networks-loaded', { 
+                detail: wifiNetworkList 
+            }));
+        } catch (error) {
+            document.dispatchEvent(new CustomEvent('ble-service-error', { 
+                detail: error 
+            }));
         }
     }
 }
