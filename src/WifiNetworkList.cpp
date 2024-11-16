@@ -43,13 +43,21 @@ void WifiNetworkList::updateOrAddNetwork(const String &ssid, const MacAddress &a
   if (it != networkList.end())
   {
     it->rssi = std::max(it->rssi, rssi); // El mejor de los rssi
-    if (type == "beacon" || type == "assoc")
+    if (type == "beacon")
     {
-      // Los probes / others no cambian el canal ni el tipo
+      // Los beacons lo cambiamos todo
       it->channel = channel;
       it->type = type;
       it->address = address;
     }
+    
+    if (type == "assoc")
+    {
+      // No cambiamos el tipo, solo el canal y el address
+      it->channel = channel;
+      it->address = address;
+    }
+    // Para el resto solo actualizamos el último visto y el número de veces visto
     it->last_seen = now;
     it->times_seen++;
   }
