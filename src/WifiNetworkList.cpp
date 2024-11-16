@@ -30,7 +30,7 @@ void WifiNetworkList::updateOrAddNetwork(const String &ssid, const MacAddress &a
                            }
                            else 
                            {
-                             // data, deauth, auth, action, timing
+                             // data, deauth, auth, action, timing, other
                              // busquem si existeix una xarxa previa amb el mateix address
                              return network.address == address;
                            }
@@ -43,9 +43,9 @@ void WifiNetworkList::updateOrAddNetwork(const String &ssid, const MacAddress &a
   if (it != networkList.end())
   {
     it->rssi = std::max(it->rssi, rssi); // El mejor de los rssi
-    if (type == "beacon")
+    if (type == "beacon" || type == "assoc")
     {
-      // Los probes no cambian el canal ni el tipo
+      // Los probes / others no cambian el canal ni el tipo
       it->channel = channel;
       it->type = type;
       it->address = address;
@@ -60,7 +60,8 @@ void WifiNetworkList::updateOrAddNetwork(const String &ssid, const MacAddress &a
     if (networkList.size() < maxSize)
     {
       networkList.push_back(newNetwork);
-      Serial.printf("Added new network: %s\n", newNetwork.ssid.c_str());
+      Serial.printf("Added new network: %s '%s' (type: %s)\n", 
+      newNetwork.address.toString().c_str(), newNetwork.ssid.c_str(), newNetwork.type.c_str());
     }
     else
     {
@@ -69,8 +70,9 @@ void WifiNetworkList::updateOrAddNetwork(const String &ssid, const MacAddress &a
                                      {
                                        return a.last_seen < b.last_seen;
                                      });
-      Serial.printf("Replacing network: %s (seen %u times) with new network: %s\n",
-                    oldest->ssid.c_str(), oldest->times_seen, newNetwork.ssid.c_str());
+      Serial.printf("Replacing network: %s '%s' (seen %u times) with new network: %s '%s' (type: %s) \n",
+                    oldest->address.toString().c_str(), oldest->ssid.c_str(), oldest->times_seen, 
+                    newNetwork.address.toString().c_str(), newNetwork.ssid.c_str(), newNetwork.type.c_str());
       *oldest = newNetwork;
     }
   }

@@ -112,7 +112,6 @@ void WifiScanClass::process_management_frame(const uint8_t *payload, int payload
     break;
   case 5: // Probe Response
     parse_ssid(payload, payload_len, subtype, ssid);
-    Serial.println("Probe Response hexdump:");
     frameType = "probe-resp";
     break;
   case 8: // Beacon
@@ -223,6 +222,13 @@ void WifiScanClass::process_control_frame(const uint8_t *payload, int payload_le
                 rssi,
                 channel,
                 subtype);
+
+  // Actualizamos la lista de redes si existe el BSSID.
+  if (memcmp(bssid, broadcast_addr, 6) != 0)
+  {
+    ssidList.updateOrAddNetwork("", MacAddress(bssid), rssi, channel, "other");
+  }
+
   stationsList.updateOrAddDevice(MacAddress(src_addr), MacAddress(bssid), rssi, channel);
 
   // Si el destino no es broadcast, actualizamos la lista de estaciones con el destino
@@ -284,6 +290,14 @@ void WifiScanClass::process_data_frame(const uint8_t *payload, int payload_len, 
                 MacAddress(bssid).toString().c_str(),
                 rssi,
                 channel, payload_len);
+
+
+  // Actualizamos la lista de redes si existe el BSSID.
+  if (memcmp(bssid, broadcast_addr, 6) != 0)
+  {
+    ssidList.updateOrAddNetwork("", MacAddress(bssid), rssi, channel, "other");
+  }
+
   stationsList.updateOrAddDevice(MacAddress(src_addr), MacAddress(bssid), rssi, channel);
 
   // Si el destino no es broadcast, actualizamos la lista de estaciones con el destino
