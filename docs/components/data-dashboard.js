@@ -312,7 +312,7 @@ export class SneakDataDashboard extends LitElement {
 
         // Create network packets distribution chart
         const totalPackets = beaconNetworks.reduce((sum, network) => sum + network.times_seen, 0);
-        const threshold = totalPackets * 0.01; // 1% threshold
+        const threshold = totalPackets * 0.03; // Cambiado a 0.03 (3%)
 
         // Separate networks into significant (>1%) and others
         const significantNetworks = [];
@@ -334,7 +334,7 @@ export class SneakDataDashboard extends LitElement {
         // Add "Others" category if there are minor networks
         if (othersTotal > 0) {
             significantNetworks.push({
-                name: 'Others (<1%)',
+                name: 'Others (<3%)',
                 value: othersTotal
             });
         }
@@ -385,7 +385,7 @@ export class SneakDataDashboard extends LitElement {
         // Create Probe Requests packets distribution chart
         const probeNetworks = this.networks.filter(network => network.type == 'probe');
         const totalProbePackets = probeNetworks.reduce((sum, network) => sum + network.times_seen, 0);
-        const probeThreshold = totalProbePackets * 0.01; // 1% threshold
+        const probeThreshold = totalProbePackets * 0.03; // Cambiado a 0.03 (3%)
 
         // Separate probe requests into significant (>1%) and others
         const significantProbes = [];
@@ -407,7 +407,7 @@ export class SneakDataDashboard extends LitElement {
         // Add "Others" category if there are minor networks
         if (probeOthersTotal > 0) {
             significantProbes.push({
-                name: 'Others (<1%)',
+                name: 'Others (<3%)',
                 value: probeOthersTotal
             });
         }
