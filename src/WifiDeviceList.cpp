@@ -13,6 +13,11 @@ WifiDeviceList::~WifiDeviceList() = default;
 void WifiDeviceList::updateOrAddDevice(const MacAddress &address, const MacAddress &bssid, int8_t rssi, uint8_t channel) {
   std::lock_guard<std::mutex> lock(deviceMutex);
   
+  // Local addresses start with bit 2 set
+  if (appPrefs.ignore_local_wifi_addresses && address.getBytes()[0] & 0x02) {
+    return;
+  }
+
   auto it = std::find_if(deviceList.begin(), deviceList.end(),
                          [&address](const WifiDevice &device) {
                            return device.address == address;

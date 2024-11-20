@@ -17,7 +17,7 @@ struct AppPreferencesData {
     bool only_management_frames;
     uint32_t wifi_channel_dwell_time;
     uint8_t wifiTxPower;
-
+    bool ignore_local_wifi_addresses;
     // BLE
     uint32_t ble_scan_delay;
     bool ignore_random_ble_addresses;  
@@ -47,6 +47,7 @@ namespace Keys {
     const char* const WIFI_CHANNEL_DWELL_TIME = "wifi_dwell";
     const char* const BLE_SCAN_DELAY = "ble_delay";
     const char* const IGNORE_RANDOM = "ignore_rand";
+    const char* const IGNORE_LOCAL = "ignore_local";
     const char* const BLE_SCAN_DUR = "ble_dur";
     const char* const AUTOSAVE_INT = "autosave_int";
     const char* const PASSIVE_SCAN = "passive";

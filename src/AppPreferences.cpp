@@ -31,6 +31,7 @@ void printPreferences() {
     Serial.printf(" - wifi_channel_dwell_time: %u ms\n", appPrefs.wifi_channel_dwell_time);
     Serial.printf(" - only_mgmt: %s\n", appPrefs.only_management_frames ? "true" : "false");
     Serial.printf(" - wifi_tx_power: %u\n", appPrefs.wifiTxPower);
+    Serial.printf(" - ignore_local_wifi_addresses: %s\n", appPrefs.ignore_local_wifi_addresses ? "true" : "false");
 
     Serial.printf(" - ble_tx_power: %u\n", appPrefs.bleTxPower);
     Serial.printf(" - ble_scan_delay: %u s\n", appPrefs.ble_scan_delay);
@@ -62,11 +63,14 @@ void loadAppPreferences() {
 
     appPrefs.only_management_frames = preferences.getBool(Keys::ONLY_MGMT, false);
     appPrefs.wifi_channel_dwell_time = preferences.getUInt(Keys::WIFI_CHANNEL_DWELL_TIME, 10000);
+    appPrefs.ignore_local_wifi_addresses = preferences.getBool(Keys::IGNORE_LOCAL, true);
 
     appPrefs.ble_scan_delay = preferences.getUInt(Keys::BLE_SCAN_DELAY, 30);
     appPrefs.ignore_random_ble_addresses = preferences.getBool(Keys::IGNORE_RANDOM, true);
     appPrefs.ble_scan_duration = preferences.getUInt(Keys::BLE_SCAN_DUR, 15);
+
     appPrefs.autosave_interval = preferences.getUInt(Keys::AUTOSAVE_INT, 60);
+
     appPrefs.passive_scan = preferences.getBool(Keys::PASSIVE_SCAN, false);
     appPrefs.stealth_mode = preferences.getBool(Keys::STEALTH_MODE, false);
 
@@ -94,6 +98,7 @@ void saveAppPreferences() {
     preferences.putInt(Keys::OP_MODE, appPrefs.operation_mode);
     preferences.putInt(Keys::MIN_RSSI, appPrefs.minimal_rssi);
     preferences.putBool(Keys::ONLY_MGMT, appPrefs.only_management_frames);
+    preferences.putBool(Keys::IGNORE_LOCAL, appPrefs.ignore_local_wifi_addresses);
     preferences.putUInt(Keys::WIFI_CHANNEL_DWELL_TIME, appPrefs.wifi_channel_dwell_time);
     preferences.putUInt(Keys::BLE_SCAN_DELAY, appPrefs.ble_scan_delay);
     preferences.putBool(Keys::IGNORE_RANDOM, appPrefs.ignore_random_ble_addresses);
