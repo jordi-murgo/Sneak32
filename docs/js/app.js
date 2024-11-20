@@ -150,6 +150,11 @@ class App {
         document.addEventListener('send-command', async (event) => {
             this.executeCommand(event.detail.command);
         });
+
+        document.addEventListener('offline-view-requested', () => {
+            this.handlePageChange('Device Info');
+            this.uiService.showMainContent();
+        });
     }
 
     async executeCommand(command) {
@@ -261,6 +266,7 @@ class App {
     handleDisconnect() {
         console.log('🔄 Disconnecting...');
         this.bleService.disconnect();
+        this.uiService.showConnectPage();
     }
 
     handleConnectionStateChange(isConnected) {

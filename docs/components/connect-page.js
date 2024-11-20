@@ -58,6 +58,13 @@ export class SneakConnectPage extends LitElement {
                         <ion-button @click=${this.handleSearch}>
                             Search for Sneak32
                         </ion-button>
+                        <ion-button 
+                            @click=${this.handleOfflineView}
+                            class="offline-button"
+                        >
+                            <ion-icon name="eye-outline" slot="start"></ion-icon>
+                            View Without Connection
+                        </ion-button>
                     </div>
                 </ion-content>
 
@@ -155,8 +162,16 @@ export class SneakConnectPage extends LitElement {
         toast.present();
     }
 
+    handleOfflineView() {
+        // Dispatch an event to switch to Device Info page
+        this.dispatchEvent(new CustomEvent('offline-view-requested', {
+            bubbles: true,
+            composed: true
+        }));
+    }
+
     static styles = css`
-            :host {
+        :host {
             display: block;
             height: 100%;
         }
