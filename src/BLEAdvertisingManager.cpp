@@ -10,7 +10,7 @@ void BLEAdvertisingManager::setup() {
     Serial.println(">> BLEAdvertisingManager::setup");
     pAdvertising = BLEDevice::getAdvertising();
 
-    pAdvertising->addServiceUUID(SCANNER_SERVICE_UUID);
+    pAdvertising->addServiceUUID(SNEAK32_SERVICE_UUID);
     pAdvertising->setAppearance(ESP_BLE_APPEARANCE_GENERIC_WATCH);
     pAdvertising->setMinPreferred(0x06);
     pAdvertising->setMaxPreferred(0x12);
@@ -84,7 +84,7 @@ BLEAdvertisementData BLEAdvertisingManager::getAdvertisementData() {
     data.setAppearance(ESP_BLE_APPEARANCE_SPORTS_WATCH);
     */
 
-    data.setCompleteServices(BLEUUID(SCANNER_SERVICE_UUID));
+    data.setCompleteServices(BLEUUID(SNEAK32_SERVICE_UUID));
     data.setName(appPrefs.device_name);
 
     return data;
