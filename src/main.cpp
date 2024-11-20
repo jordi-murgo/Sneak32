@@ -52,8 +52,8 @@
 #include "Preferences.h"
 #include "WifiScan.h"
 
-#define MAX_STATIONS 100
-#define MAX_SSIDS 100
+#define MAX_STATIONS 255
+#define MAX_SSIDS 200
 #define MAX_BLE_DEVICES 100
 
 #include "BLEDeviceList.h"
