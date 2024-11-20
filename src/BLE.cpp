@@ -3,6 +3,7 @@
 
 #include <sstream>
 #include <esp_gap_ble_api.h>
+#include <BLEUtils.h>
 
 #include "BLE.h"
 #include "WifiDeviceList.h"
@@ -254,6 +255,17 @@ void setupBLE()
 
     BLEDevice::setEncryptionLevel(ESP_BLE_SEC_ENCRYPT);
     BLEDevice::setSecurityCallbacks(new MySecurity());
+    BLEDevice::setPower((esp_power_level_t) appPrefs.bleTxPower, ESP_BLE_PWR_TYPE_DEFAULT);
+    BLEDevice::setMTU(517); // Set to the Maximum MTU size
+
+    // Ajustar parámetros de conexión para mayor estabilidad
+    esp_ble_conn_update_params_t conn_params = {
+        .min_int = 0x10,     // x 1.25ms = 20ms
+        .max_int = 0x20,     // x 1.25ms = 40ms
+        .latency = 0,        // Número de eventos que pueden saltarse
+        .timeout = 400       // Supervisión timeout en unidades de 10ms
+    };
+    esp_ble_gap_update_conn_params(&conn_params);
 
     // Configurar parámetros de seguridad
     esp_ble_auth_req_t auth_req = ESP_LE_AUTH_REQ_SC_BOND; // Conexión segura con bonding
@@ -268,9 +280,6 @@ void setupBLE()
     esp_ble_gap_set_security_param(ESP_BLE_SM_SET_INIT_KEY, &init_key, sizeof(uint8_t));
     esp_ble_gap_set_security_param(ESP_BLE_SM_SET_RSP_KEY, &rsp_key, sizeof(uint8_t));
 
-    // Establecer la potencia de transmisión BLE a -12 dBm
-    esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT, ESP_PWR_LVL_N12);
-
     pServer = BLEDevice::createServer();
     pServer->setCallbacks(new MyServerCallbacks());
 
@@ -281,7 +290,7 @@ void setupBLE()
     pSecurity->setInitEncryptionKey(ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK);
 
     Serial.println("Creating Scanner BLE service and characteristics");
-    BLEService *pScannerService = pServer->createService(SCANNER_SERVICE_UUID);
+    BLEService *pScannerService = pServer->createService(SNEAK32_SERVICE_UUID);
 
     pStatusCharacteristic = pScannerService->createCharacteristic(
         BLEUUID((uint16_t)STATUS_UUID),
@@ -291,7 +300,7 @@ void setupBLE()
     BLEStatusUpdater.update();
 
     pTxCharacteristic = pScannerService->createCharacteristic(
-        BLEUUID((uint16_t)SCANNER_DATATRANSFER_UUID),
+        BLEUUID((uint16_t)DATA_TRANSFER_UUID),
         BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_INDICATE);
     pTxCharacteristic->setCallbacks(new SendDataOverBLECallbacks());
     pTxCharacteristic->addDescriptor(new BLE2902()); // Añadir CCCD
