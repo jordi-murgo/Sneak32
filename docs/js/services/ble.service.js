@@ -282,8 +282,10 @@ export class BleService {
             ledMode: parseInt(parts[12]) || 1,
             wifiTxPower: parseInt(parts[13]) || 20,
             bleTxPower: parseInt(parts[14]) || 0,
-            bleMTU: parseInt(parts[15]) || 256,
-            deviceName: parts.slice(16).join('|') || 'Unknown Device', // Manejar caso de que no haya nombre
+            bleMTU: parseInt(parts[15]) || 512,
+            ignoreLocalWifiAddresses: parseInt(parts[16]) === 1,
+
+            deviceName: parts.slice(17).join('|') || 'Unknown Device', // Manejar caso de que no haya nombre
         };
 
         console.log('Parsed settings:', appSettings);
@@ -331,6 +333,7 @@ export class BleService {
             settings.wifiTxPower,
             settings.bleTxPower,
             settings.bleMTU,
+            settings.ignoreLocalWifiAddresses ? '1' : '0',
             settings.deviceName
         ].join('|');
     }

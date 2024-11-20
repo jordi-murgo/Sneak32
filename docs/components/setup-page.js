@@ -28,7 +28,8 @@ export class SneakSetup extends LitElement {
             bleScanDuration: 15,
             ignoreRandomBLE: false,
             bleTxPower: 0,
-            bleMTU: 256
+            bleMTU: 256,
+            ignoreLocalWifiAddresses: false
         };
         this.isLoading = false;
 
@@ -257,6 +258,19 @@ export class SneakSetup extends LitElement {
                                 slot="end"
                                 .checked=${this.settings.onlyManagementFrames}
                                 @ionChange=${(e) => this.updateSetting('onlyManagementFrames', e.detail.checked)}
+                            />
+                        </ion-item>
+
+                        <ion-item>
+                            <ion-label position="stacked">
+                                <h2>Ignore Local WiFi Addresses</h2>
+                                <p>Filter out locally administered MAC addresses</p>
+                            </ion-label>
+                            <ion-toggle
+                                fill="solid"
+                                slot="end"
+                                .checked=${this.settings.ignoreLocalWifiAddresses}
+                                @ionChange=${(e) => this.updateSetting('ignoreLocalWifiAddresses', e.detail.checked)}
                             />
                         </ion-item>
 
