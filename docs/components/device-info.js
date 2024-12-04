@@ -82,6 +82,12 @@ export class SneakDeviceInfo extends LitElement {
             this.requestUpdate();
         });
 
+        document.addEventListener('wifi-networks-error', (event) => {
+            console.log('🥁 DeviceInfo :: WiFi networks loading error');
+            this.isWifiNetworksLoading = false;
+            this.requestUpdate();
+        });
+
         document.addEventListener('wifi-networks-loaded', (event) => {
             console.log('🥁 DeviceInfo :: WiFi networks loaded');
             this.isWifiNetworksLoading = false;
@@ -94,15 +100,28 @@ export class SneakDeviceInfo extends LitElement {
             this.requestUpdate();
         });
 
+        document.addEventListener('wifi-devices-error', (event) => {
+            console.log('🥁 DeviceInfo :: WiFi devices loading error');
+            this.isWifiDevicesLoading = false;
+            this.requestUpdate();
+        });
+
         document.addEventListener('wifi-devices-loaded', (event) => {
             console.log('🥁 DeviceInfo :: WiFi devices loaded');
             this.isWifiDevicesLoading = false;
             this.requestUpdate();
         });
 
+
         document.addEventListener('ble-devices-loading', () => {
             console.log('🥁 DeviceInfo :: BLE devices loading');
             this.isBleDevicesLoading = true;
+            this.requestUpdate();
+        });
+
+        document.addEventListener('ble-devices-error', () => {
+            console.log('🥁 DeviceInfo :: BLE devices loading error');
+            this.isBleDevicesLoading = false;
             this.requestUpdate();
         });
 
