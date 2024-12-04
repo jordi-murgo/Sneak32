@@ -123,8 +123,8 @@ export class SneakDataDashboard extends LitElement {
         }
 
         // Devices Count chart
-        const blePublic = this.bleDevices.filter(device => device.is_public === "true").length;
-        const blePrivate = this.bleDevices.filter(device => device.is_public !== "true").length;
+        const blePublic = this.bleDevices.filter(device => device.is_public === true).length;
+        const blePrivate = this.bleDevices.filter(device => device.is_public !== true).length;
         
         const wifiBeacons = this.networks.filter(network => network.type !== "probe").length;
         const wifiProbes = this.networks.filter(network => network.type === "probe").length;
@@ -523,7 +523,7 @@ export class SneakDataDashboard extends LitElement {
             name: device.name || device.mac,
             value: [device.rssi, device.times_seen],
             itemStyle: {
-                color: device.is_public === "true" ? '#5470c6' : '#91cc75'
+                color: device.is_public === true ? '#5470c6' : '#91cc75'
             }
         }));
 
@@ -539,10 +539,6 @@ export class SneakDataDashboard extends LitElement {
                            `RSSI: ${params.data.value[0]} dBm<br/>` +
                            `Packets: ${params.data.value[1]}`;
                 }
-            },
-            legend: {
-                data: ['Public', 'Random'],
-                top: 30
             },
             grid: {
                 left: '10%',
