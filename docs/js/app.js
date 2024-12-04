@@ -286,7 +286,7 @@ class App {
                 detail: wifiDeviceList 
             }));
         } catch (error) {
-            document.dispatchEvent(new CustomEvent('ble-service-error', { 
+            document.dispatchEvent(new CustomEvent('wifi-devices-error', { 
                 detail: error 
             }));
         }
@@ -300,7 +300,7 @@ class App {
                 detail: bleDeviceList 
             }));
         } catch (error) {
-            document.dispatchEvent(new CustomEvent('ble-service-error', { 
+            document.dispatchEvent(new CustomEvent('ble-devices-error', { 
                 detail: error 
             }));
         }
@@ -314,7 +314,7 @@ class App {
                 detail: wifiNetworkList 
             }));
         } catch (error) {
-            document.dispatchEvent(new CustomEvent('ble-service-error', { 
+            document.dispatchEvent(new CustomEvent('wifi-networks-error', { 
                 detail: error 
             }));
         }
