@@ -16,24 +16,24 @@ export class SneakWifiNetworks extends LitElement {
         this.deviceStatus = { wifiNetworks: 0 };
         this.stations = {};
 
-        this.remoteTimestamp = 0;
-        this.localTimestamp = 0;
-        
         document.addEventListener('wifi-networks-loading', () => {
             console.log('🥁 WifiNetworks :: WiFi networks loading');
             this.isLoading = true;
         });
 
-        document.addEventListener('wifi-networks-loaded', (event) => {
+        document.addEventListener('wifi-networks-loaded', async (event) => {
             console.log('🥁 WifiNetworks :: WiFi networks loaded', event.detail);
+
             this.isLoading = false;
             this.networks = event.detail.ssids;
-            this.remoteTimestamp = event.detail.timestamp * 1000;
             this.localTimestamp = Date.now();
+            this.remoteTimestamp = event.detail.timestamp * 1000;
 
-            this.networks.forEach(async network => {
+            // Decorate networks with local_last_seen and vendor using Promise.all
+            for(const network of this.networks) {
                 network.vendor = await window.vendorDecode(network.mac);
-            });
+                network.local_last_seen = this.localTimestamp - this.remoteTimestamp + (network.last_seen * 1000);
+            }
 
             this.requestUpdate();
         });
@@ -43,23 +43,27 @@ export class SneakWifiNetworks extends LitElement {
             this.isLoading = true;
         });
 
+        document.addEventListener('wifi-devices-error', () => {
+            console.log('🔥 WifiNetworks :: WiFi devices error loading');
+            this.isLoading = true;
+        });
+
         document.addEventListener('wifi-devices-loaded', (event) => {
-            console.log('🥁 WifiNetworks :: WiFi networks loaded', event.detail);
+            console.log('🥁 WifiNetworks :: WiFi devices loaded', event.detail);
             this.isLoading = false;
             this.stations = [];
-            event.detail.stations.forEach(async (station) => {
+
+            for(const station of event.detail.stations) {
                 this.stations[station.bssid] = 1 + (this.stations[station.bssid] || 0);
-            });
+            }
 
             this.requestUpdate();
         });
 
-        // Escuchar el evento de actualización del estado del dispositivo
         document.addEventListener('device-status-update', (event) => {
             console.log('🥁 DeviceInfo :: Device status update', event.detail);
             this.updateDeviceStatus(event.detail.status);
         });
-
     }
 
     updateDeviceStatus(status) {
@@ -71,22 +75,20 @@ export class SneakWifiNetworks extends LitElement {
     }
 
     getLastSeenDate(lastSeen) {
-        const difference = this.remoteTimestamp - lastSeen * 1000;
-        const date = new Date(this.localTimestamp - difference);
+        const date = new Date(lastSeen);
 
-        // Return the date in the format of "2024-12-31 23:30:00"
-        // Obtenir les parts de la data
         var year = date.getFullYear();
 
-        // Afegir 1 al mes ja que getMonth() retorna valors de 0 a 11
-        var month = ('0' + (date.getMonth() + 1)).slice(-2);
+        if (isNaN(year)) {
+            return 'Unknown';
+        }
 
+        var month = ('0' + (date.getMonth() + 1)).slice(-2);
         var day = ('0' + date.getDate()).slice(-2);
         var hours = ('0' + date.getHours()).slice(-2);
         var minutes = ('0' + date.getMinutes()).slice(-2);
         var seconds = ('0' + date.getSeconds()).slice(-2);
 
-        // Construir la cadena de data en el format desitjat
         return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     }
 
@@ -148,29 +150,29 @@ export class SneakWifiNetworks extends LitElement {
                     .isOpen=${this.showActionSheet}
                     .header=${'Delete Options'}
                     .buttons=${[
-                        {
-                            text: `Delete Irrelevant Networks (${this.getIrrelevantNetworks().length})`,
-                            role: 'destructive',
-                            handler: () => {
-                                this.getIrrelevantNetworks().forEach(network => 
-                                    this.deleteNetwork(network.ssid)
-                                );
-                            }
-                        },
-                        {
-                            text: `Delete Weak Networks (${this.getWeakNetworks().length})`,
-                            role: 'destructive',
-                            handler: () => {
-                                this.getWeakNetworks().forEach(network => 
-                                    this.deleteNetwork(network.ssid)
-                                );
-                            }
-                        },
-                        {
-                            text: 'Cancel',
-                            role: 'cancel'
-                        }
-                    ]}
+                {
+                    text: `Delete Irrelevant Networks (${this.getIrrelevantNetworks().length})`,
+                    role: 'destructive',
+                    handler: () => {
+                        this.getIrrelevantNetworks().forEach(network =>
+                            this.deleteNetwork(network.ssid)
+                        );
+                    }
+                },
+                {
+                    text: `Delete Weak Networks (${this.getWeakNetworks().length})`,
+                    role: 'destructive',
+                    handler: () => {
+                        this.getWeakNetworks().forEach(network =>
+                            this.deleteNetwork(network.ssid)
+                        );
+                    }
+                },
+                {
+                    text: 'Cancel',
+                    role: 'cancel'
+                }
+            ]}
                     @didDismiss=${() => this.showActionSheet = false}
                 ></ion-action-sheet>
             </div>
@@ -183,19 +185,19 @@ export class SneakWifiNetworks extends LitElement {
             if (a.rssi !== b.rssi) {
                 return b.rssi - a.rssi;
             }
-            
+
             // Si el RSSI es igual, comparar por times_seen
             if (a.times_seen !== b.times_seen) {
                 return b.times_seen - a.times_seen;
             }
-            
+
             // Si times_seen es igual, comparar por last_seen
             return new Date(b.last_seen) - new Date(a.last_seen);
         });
 
         sortedNetworks.forEach(network => {
-            if(network.mac !== 'FF:FF:FF:FF:FF:FF' && network.mac !== '00:00:00:00:00:00') {
-                network.clients = this.stations[network.mac] -1 || 0;
+            if (network.mac !== 'FF:FF:FF:FF:FF:FF' && network.mac !== '00:00:00:00:00:00') {
+                network.clients = this.stations[network.mac] - 1 || 0;
             }
         });
 
@@ -211,7 +213,7 @@ export class SneakWifiNetworks extends LitElement {
                         <h3>${network.ssid}</h3>
                         ${network.type != 'probe' ? html`<p>MAC: ${network.mac} ${network.vendor ? `(Vendor: ${network.vendor})` : ''}</p>` : ''}   
                         <p>${network.type === 'probe' ? 'Probe Request' : 'Channel: ' + network.channel}, RSSI: ${network.rssi} dBm</p>
-                        <p>Last seen: ${this.getLastSeenDate(network.last_seen)}</p>
+                        <p>Last seen: ${this.getLastSeenDate(network.local_last_seen)}</p>
                     </ion-label>
                     <div class="badge-container">
                         ${network.rssi <= -90 ? html`
@@ -233,42 +235,34 @@ export class SneakWifiNetworks extends LitElement {
         `);
     }
 
-
     getSignalColor(dBm) {
-        // Assegurem que el valor estigui entre -50 i -100
         if (dBm > -50) dBm = -50;
         if (dBm < -100) dBm = -100;
-    
-        // Convertim el valor de dBm a un rang de 0 a 1
-        let ratio = (-dBm - 50) / 50; // -50 serà 0, -100 serà 1
-    
+
+        let ratio = (-dBm - 50) / 50;
         let r, g, b;
-    
+
         if (ratio <= 0.3333) {
-            // Segment 1: de verd/cian a groc
             let segmentRatio = ratio / 0.3333;
             r = Math.round(255 * segmentRatio);
             g = 255;
             b = Math.round(255 * (1 - segmentRatio));
         } else if (ratio <= 0.6666) {
-            // Segment 2: de groc a vermell
             let segmentRatio = (ratio - 0.3333) / 0.3333;
             r = 255;
             g = Math.round(255 * (1 - segmentRatio));
             b = 0;
         } else {
-            // Segment 3: de vermell a gris
             let segmentRatio = (ratio - 0.6666) / 0.3334;
             r = Math.round(255 + (21 - 255) * segmentRatio);
             g = Math.round(0 + (210 - 0) * segmentRatio);
             b = Math.round(0 + (210 - 0) * segmentRatio);
         }
-    
-        // Asegurar que los valores RGB estén dentro del rango válido (0-255)
+
         r = Math.max(0, Math.min(255, r));
         g = Math.max(0, Math.min(255, g));
         b = Math.max(0, Math.min(255, b));
-    
+
         return `rgb(${r},${g},${b})`;
     }
 
@@ -313,15 +307,15 @@ export class SneakWifiNetworks extends LitElement {
         // Prepare data to export
         const exportData = this.networks.map(network => ({
             ...network,
-            clients: network.mac !== 'FF:FF:FF:FF:FF:FF' && network.mac !== '00:00:00:00:00:00' 
-                ? (this.stations[network.mac] - 1 || 0) 
+            clients: network.mac !== 'FF:FF:FF:FF:FF:FF' && network.mac !== '00:00:00:00:00:00'
+                ? (this.stations[network.mac] - 1 || 0)
                 : 0,
             last_seen_formatted: this.getLastSeenDate(network.last_seen),
         }));
 
         // Create JSON content
         const jsonContent = JSON.stringify(exportData, null, 2);
-        
+
         // Generate filename with current date/time
         const now = new Date();
         const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
@@ -333,11 +327,11 @@ export class SneakWifiNetworks extends LitElement {
         const link = document.createElement('a');
         link.href = url;
         link.download = filename;
-        
+
         // Trigger download
         document.body.appendChild(link);
         link.click();
-        
+
         // Cleanup
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
@@ -396,7 +390,6 @@ export class SneakWifiNetworks extends LitElement {
             font-size: 1.2em;
         }
 
-        /* Asegurar que los badges sean visibles */
         ion-badge {
             display: inline-flex;
             align-items: center;
@@ -406,12 +399,10 @@ export class SneakWifiNetworks extends LitElement {
             border-radius: 4px;
         }
 
-        /* Add this new style */
         ion-item-option {
             --button-color: var(--color);
         }
 
-        /* Estilos para los ion-buttons */
         ion-button {
             --padding-start: 12px;
             --padding-end: 12px;
@@ -456,4 +447,4 @@ export class SneakWifiNetworks extends LitElement {
     `;
 }
 
-customElements.define('sneak-wifi-networks', SneakWifiNetworks); 
+customElements.define('sneak-wifi-networks', SneakWifiNetworks);

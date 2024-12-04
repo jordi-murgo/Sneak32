@@ -3,52 +3,68 @@ import { LitElement, html, css } from 'https://cdn.jsdelivr.net/npm/lit-element@
 export class SneakWifiDevices extends LitElement {
     static properties = {
         devices: { type: Array },
-        isLoadning: { type: Boolean },
+        isLoading: { type: Boolean },
         deviceStatus: { type: Object }
     };
 
     constructor() {
         super();
         this.devices = [];
-        this.isLoadning = false;
+        this.isLoading = false;
         this.deviceStatus = { devices: 0 };
-        this.remoteTimestamp = 0;
-        this.localTimestamp = 0;
         this.networks = {};
 
         document.addEventListener('wifi-devices-loading', () => {
             console.log('🎯 WifiDevices :: Devices loading');
-            this.isLoadning = true;
+            this.isLoading = true;
         });
 
-        document.addEventListener('wifi-devices-loaded', (event) => {
-            console.log('🎯 WifiDevices :: Devices loaded', event.detail);
-            this.isLoadning = false;
-            this.devices = event.detail.stations;
-            this.remoteTimestamp = event.detail.timestamp * 1000;
-            this.localTimestamp = Date.now();
 
-            this.devices.forEach(station => {
-                station.vendor = window.vendorDecode(station.mac);
+        document.addEventListener('wifi-devices-error', () => {
+            console.log('🔥 WifiDevices :: Devices error loading');
+            this.isLoading = false;
+        });
+
+        document.addEventListener('wifi-devices-loaded', async (event) => {
+            console.log('🎯 WifiDevices :: Devices loaded', event.detail);
+            this.isLoading = false;
+            this.devices = event.detail.stations;
+
+            this.localTimestamp = Date.now();
+            this.remoteTimestamp = event.detail.timestamp * 1000;
+
+            // Decorate devices with vendor and local_last_seen
+            for (let station of this.devices) {
+                station.vendor = await window.vendorDecode(station.mac);
                 station.is_public = !this.isLocalMac(station.mac);
-            });
+                station.local_last_seen = this.localTimestamp - this.remoteTimestamp + (station.last_seen * 1000);
+            }
+
+            console.log('🎯 WifiDevices :: Decorated Devices', this.devices);
 
             this.requestUpdate();
         });
 
         document.addEventListener('wifi-networks-loading', () => {
             console.log('🎯 WifiDevices :: Networks loading');
-            this.isLoadning = true;
+            this.isLoading = true;
+        });
+
+        document.addEventListener('wifi-networks-error', () => {
+            console.log('🎯 WifiDevices :: Networks error loading');
+            this.isLoading = false;
         });
 
         document.addEventListener('wifi-networks-loaded', (event) => {
             console.log('🥁 WifiNetworks :: WiFi networks loaded', event.detail);
-            this.isLoadning = false;
-            event.detail.ssids.forEach(network => {
+            this.isLoading = false;
+
+            for(let network of event.detail.ssids) {
                 if(network.mac !== "FF:FF:FF:FF:FF:FF" && network.mac !== "00:00:00:00:00:00") {
                     this.networks[network.mac] = network.ssid;
                 }
-            });
+            }
+            
             this.requestUpdate();
         });
 
@@ -67,22 +83,20 @@ export class SneakWifiDevices extends LitElement {
     }
 
     getLastSeenDate(lastSeen) {
-        const difference = this.remoteTimestamp - lastSeen * 1000;
-        const date = new Date(this.localTimestamp - difference);
+        const date = new Date(lastSeen);
 
-        // Return the date in the format of "2024-12-31 23:30:00"
-        // Obtenir les parts de la data
         var year = date.getFullYear();
 
-        // Afegir 1 al mes ja que getMonth() retorna valors de 0 a 11
-        var month = ('0' + (date.getMonth() + 1)).slice(-2);
+        if (isNaN(year)) {
+            return 'Unknown';
+        }
 
+        var month = ('0' + (date.getMonth() + 1)).slice(-2);
         var day = ('0' + date.getDate()).slice(-2);
         var hours = ('0' + date.getHours()).slice(-2);
         var minutes = ('0' + date.getMinutes()).slice(-2);
         var seconds = ('0' + date.getSeconds()).slice(-2);
 
-        // Construir la cadena de data en el format desitjat
         return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     }
 
@@ -94,10 +108,10 @@ export class SneakWifiDevices extends LitElement {
     render() {
         return html`
             <div class="wifi-devices-content">
-                ${this.isLoadning ? html`
+                ${this.isLoading ? html`
                     <div class="loading-overlay">
                         <ion-spinner></ion-spinner>
-                        <ion-label>Loadning...</ion-label>
+                        <ion-label>Loading...</ion-label>
                     </div>
                 ` : ''}
                 
@@ -112,14 +126,14 @@ export class SneakWifiDevices extends LitElement {
                     <ion-item>
                         <ion-button 
                             @click=${this.startLoad}
-                            ?disabled=${this.isLoadning}
+                            ?disabled=${this.isLoading}
                         >
                             <ion-icon slot="start" name="refresh-outline"></ion-icon>
                             Reload
                         </ion-button>
                         <ion-button   
                             @click=${this.downloadDevices}
-                            ?disabled=${this.isLoadning}
+                            ?disabled=${this.isLoading}
                         >
                             <ion-icon slot="start" name="download-outline"></ion-icon>
                             Download
@@ -127,7 +141,7 @@ export class SneakWifiDevices extends LitElement {
                         <ion-button 
                             color="warning"
                             @click=${this.saveDevices}
-                            ?disabled=${this.isLoadning}
+                            ?disabled=${this.isLoading}
                         >
                             <ion-icon slot="start" name="save-outline"></ion-icon>
                             Save
@@ -135,7 +149,7 @@ export class SneakWifiDevices extends LitElement {
                         <ion-button 
                             color="danger"
                             @click=${this.deleteDevices}
-                            ?disabled=${this.isLoadning}
+                            ?disabled=${this.isLoading}
                         >
                             <ion-icon slot="start" name="trash-outline"></ion-icon>
                             Delete
@@ -166,7 +180,7 @@ export class SneakWifiDevices extends LitElement {
                         <ion-label>
                             <h3>MAC: ${station.mac}${isAp ? html` (AP)` : ''}${ssid ? `, Network: ${ssid}` : ''}</h3>
                             <p>Channel: ${station.channel}, RSSI: ${station.rssi} dBm ${station.vendor ? html`(Vendor: ${station.vendor})` : ''}</p>
-                            <p>Last seen: ${this.getLastSeenDate(station.last_seen)}</p>
+                            <p>Last seen: ${this.getLastSeenDate(station.local_last_seen)}</p>
                         </ion-label>
                         <div class="badge-container">
                             ${station.rssi <= -90 ? html`
@@ -193,8 +207,7 @@ export class SneakWifiDevices extends LitElement {
         // Prepare data to export
         const exportData = this.devices.map(device => ({
             ...device,
-            network: this.networks[device.bssid] || null,
-            last_seen_formatted: this.getLastSeenDate(device.last_seen)
+            network: this.networks[device.bssid] || null
         }));
 
         // Create JSON content
@@ -245,35 +258,29 @@ export class SneakWifiDevices extends LitElement {
     }
 
     getSignalColor(dBm) {
-        // Assegurem que el valor estigui entre -50 i -100
         if (dBm > -50) dBm = -50;
         if (dBm < -100) dBm = -100;
     
-        // Convertim el valor de dBm a un rang de 0 a 1
-        let ratio = (-dBm - 50) / 50; // -50 serà 0, -100 serà 1
+        let ratio = (-dBm - 50) / 50;
         let r, g, b;
     
         if (ratio <= 0.3333) {
-            // Segment 1: de verd/cian a groc
             let segmentRatio = ratio / 0.3333;
             r = Math.round(255 * segmentRatio);
             g = 255;
             b = Math.round(255 * (1 - segmentRatio));
         } else if (ratio <= 0.6666) {
-            // Segment 2: de groc a vermell
             let segmentRatio = (ratio - 0.3333) / 0.3333;
             r = 255;
             g = Math.round(255 * (1 - segmentRatio));
             b = 0;
         } else {
-            // Segment 3: de vermell a gris
             let segmentRatio = (ratio - 0.6666) / 0.3334;
             r = Math.round(255 + (21 - 255) * segmentRatio);
             g = Math.round(0 + (210 - 0) * segmentRatio);
             b = Math.round(0 + (210 - 0) * segmentRatio);
         }
     
-        // Asegurar que los valores RGB estén dentro del rango válido (0-255)
         r = Math.max(0, Math.min(255, r));
         g = Math.max(0, Math.min(255, g));
         b = Math.max(0, Math.min(255, b));
@@ -403,4 +410,4 @@ export class SneakWifiDevices extends LitElement {
     `;
 }
 
-customElements.define('sneak-wifi-devices', SneakWifiDevices); 
+customElements.define('sneak-wifi-devices', SneakWifiDevices);

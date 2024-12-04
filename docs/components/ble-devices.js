@@ -12,24 +12,32 @@ export class SneakBleDevices extends LitElement {
         this.devices = [];
         this.isLoading = false;
         this.deviceStatus = { bleDevices: 0 };
-        this.remoteTimestamp = 0;
-        this.localTimestamp = 0;
 
         document.addEventListener('ble-devices-loading', () => {
             console.log('🔵 BleDevices :: Devices loading');
             this.isLoading = true;
         });
 
-        document.addEventListener('ble-devices-loaded', (event) => {
+        document.addEventListener('ble-devices-error', () => {
+            console.log('🔵 BleDevices :: Devices error');
+            this.isLoading = false;
+        });
+
+        document.addEventListener('ble-devices-loaded', async (event) => {
             console.log('🔵 BleDevices :: Devices loaded', event.detail);
             this.isLoading = false;
             this.devices = event.detail.ble_devices;
-            this.remoteTimestamp = event.detail.timestamp * 1000;
-            this.localTimestamp = Date.now();
 
-            this.devices.forEach(device => {
-                device.vendor = window.vendorDecode(device.mac);
-            });
+            this.localTimestamp = Date.now();
+            this.remoteTimestamp = event.detail.timestamp * 1000;
+
+            // Decorate devices with vendor and local_last_seen 
+            for (const device of this.devices) {
+                device.vendor = await window.vendorDecode(device.mac);
+                device.local_last_seen = this.localTimestamp - this.remoteTimestamp + (device.last_seen * 1000);
+            }
+            
+            console.log('🔵 BleDevices :: Decorated Devices', this.devices);
 
             this.requestUpdate();
         });
@@ -49,10 +57,14 @@ export class SneakBleDevices extends LitElement {
     }
 
     getLastSeenDate(lastSeen) {
-        const difference = this.remoteTimestamp - lastSeen * 1000;
-        const date = new Date(this.localTimestamp - difference);
+        const date = new Date(lastSeen);
 
         var year = date.getFullYear();
+
+        if (isNaN(year)) {
+            return 'Unknown';
+        }
+
         var month = ('0' + (date.getMonth() + 1)).slice(-2);
         var day = ('0' + date.getDate()).slice(-2);
         var hours = ('0' + date.getHours()).slice(-2);
@@ -68,7 +80,7 @@ export class SneakBleDevices extends LitElement {
                 ${this.isLoading ? html`
                     <div class="loading-overlay">
                         <ion-spinner></ion-spinner>
-                        <ion-label>Loadning...</ion-label>
+                        <ion-label>Loading...</ion-label>
                     </div>
                 ` : ''}
                 
@@ -133,7 +145,7 @@ export class SneakBleDevices extends LitElement {
                     <ion-label>
                         <h3>${device.name}</h3>
                         <p>MAC: ${device.mac } ${device.vendor ? `(Vendor: ${device.vendor})` : ''}</p>
-                        <p>RSSI: ${device.rssi} dBm, Last seen: ${this.getLastSeenDate(device.last_seen)}</p>
+                        <p>RSSI: ${device.rssi} dBm, Last seen: ${this.getLastSeenDate(device.local_last_seen)}</p>
                     </ion-label>
                     <div class="badge-container">
                         ${device.rssi <= -90 ? html`
@@ -187,7 +199,6 @@ export class SneakBleDevices extends LitElement {
         // Prepare data to export
         const exportData = this.devices.map(device => ({
             ...device,
-            last_seen_formatted: this.getLastSeenDate(device.last_seen)
         }));
         
         // Create JSON content
@@ -354,4 +365,4 @@ export class SneakBleDevices extends LitElement {
     `;
 }
 
-customElements.define('sneak-ble-devices', SneakBleDevices); 
+customElements.define('sneak-ble-devices', SneakBleDevices);
