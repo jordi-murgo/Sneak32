@@ -172,10 +172,9 @@ Choose the antenna type based on your specific needs for range, data capture, an
 
 5. **Connect to the device via Bluetooth LE:**
 
-   ![ESP-32-Manager](images/sneak-32-manager.png)
+   ![Sneak32 Manager](images/manager-device-info.png)
 
-   - Use the Smeak32 Manager [https://jordi-murgo.github.io/sneak-32-manager](https://jordi-murgo.github.io/sneak-32-manager)
-   - Or compile your own version [https://github.com/jordi-murgo/sneak-32-manager](https://github.com/jordi-murgo/sneak-32-manager)
+   - Use the Smeak32 Manager present in [docs directory](docs/index.html) or the deployed [Sneak32 Manager](https://jordi-murgo.github.io/Sneak32/)
    - Click "Search for Device" and select your Sneak32 device.
 
 6. **Configure device options** through the interface:
