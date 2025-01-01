@@ -240,10 +240,14 @@ Sneak32 provides detailed JSON output including:
 - **Social Movement Protection**: Use Sneak32 to detect devices attempting to connect to known networks or making suspicious probe requests, helping to identify potential infiltrators.
 - **Research Applications**: Sneak32 allows security researchers to collect device data without being detected, thanks to its passive mode.
 
-## 🕶️ Operating Modes
+## 🕶️ Stealth Mode
 
-- **Passive Mode**: Does not perform active scans or announce networks, simply listens to communications without being detected.
-- **Active Mode**: Announces fake networks (SSIDs) to entice devices to connect, or performs "active scans" to obtain information from nearby BLE devices.
+- **RECON**: 
+  - **Stealth ON**: Captures wifi and BLE data passively, without sending scan requests.
+  - **Stealth OFF**: Sends scan requests to capture wifi and BLE data.
+- **DEFENSE**: 
+  - **Stealth ON**: Only listens for communications without actively broadcasting or scanning.
+  - **Stealth OFF**: Broadcasts known SSIDs and performs active BLE scans to detect devices that might be trying to connect to known networks.
 
 ## 🔐 Security Considerations
 
