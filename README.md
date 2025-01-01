@@ -8,121 +8,183 @@
 
 - [Overview](#-overview)
 - [Application in Infiltrator Detection](#-application-in-infiltrator-detection)
-- [Operation Modes](#-operation-modes)
+- [Modes of Operation](#-modes-of-operation)
+  - [Core Operation Phases](#core-operation-phases)
+  - [Stealth Mode Options](#stealth-mode-options)
+  - [Mode Selection Guide](#mode-selection-guide)
 - [Features](#-features)
-- [Hardware and Software Compatibility](#-hardware-and-software-compatibility)
-- [Hardware Requirements](#-hardware-requirements)
+- [Hardware](#-hardware)
+  - [Compatibility](#compatibility)
+  - [Requirements](#requirements)
+  - [Antenna Considerations](#antenna-considerations)
 - [Software Dependencies](#-software-dependencies)
 - [Setup and Configuration](#-setup-and-configuration)
 - [Data Output](#-data-output)
-- [Usage Strategies in Sensitive Environments](#️-usage-strategies-in-sensitive-environments)
-- [Operating Modes](#️-operating-modes)
+- [Usage Strategies](#️-usage-strategies-in-sensitive-environments)
 - [Security Considerations](#-security-considerations)
+- [Future Improvements](#-future-improvements)
 - [Contributing](#-contributing)
 - [License](#-license)
 - [Author](#-author)
 - [Version History](#-version-history)
 - [Contact and Support](#-contact-and-support)
 
-## 🕵️‍♂️ Overview
+## 🥷 Overview
 
 Sneak32 is an advanced WiFi and Bluetooth Low Energy (BLE) scanning and detection tool built on the ESP32 platform. It offers powerful capabilities for network analysis, device tracking, and security research.
 
 ## 🎯 Application in Infiltrator Detection
 
-Sneak32 is ideal for detecting devices that may be associated with surveillance or infiltration in social movements or sensitive environments. The tool allows you to capture WiFi and BLE device data in one location (RECON phase) and then analyze connections in your secure space (DETECTION phase) to identify suspicious presences.
+Sneak32 is ideal for detecting devices that may be associated with surveillance or infiltration in social movements or sensitive environments. The tool allows you to capture WiFi and BLE device data in one location (RECON phase) and then analyze connections in your secure space (DEFENSE phase) to identify suspicious presences.
 
-## 🔍 Operation Modes
+## 🔍 Modes of Operation
 
-- **RECON Phase:**
-  - Captures SSIDs (from Beacons and Probe Requests), WiFi client MAC addresses, and BLE device advertisements in hostile or unsecured terrains.
-  - Ideal for collecting data without drawing attention (passive and stealth modes).
-  - Captures WiFi management, control, and data frames.
-  - Configurable to focus on management frames only.
-  - BLE scanning can be passive or active depending on the mode.
-  - In Stealth mode, the device doesn't advertise itself via BLE until it detects a preconfigured device name in BLE advertisements.
+### Core Operation Phases
 
-- **DETECTION Phase:**
-  - Once data is collected in the RECON phase, Sneak32 can be used in your secure space to monitor for the presence of suspicious devices, identified by their WiFi/BLE MAC addresses or by the SSIDs in their WiFi probe requests.
-  - Uses passive scans for discreet monitoring.
-  - In active mode, periodically broadcasts all prohibited SSIDs to force visibility of devices that might attempt to connect, even if they haven't emitted a Probe Request.
+#### 1. RECON Phase
+- **Purpose:** Capture and collect data in potentially hostile or unsecured environments
+- **Capabilities:**
+  - Captures WiFi data:
+    - SSIDs from Beacons and Probe Requests
+    - Client MAC addresses
+    - Management, control, and data frames
+  - Captures BLE device advertisements
+- **Scanning Modes:**
+  - **Passive Scan:** 
+    - WiFi: Only listens for beacons and probe requests
+    - BLE: Only listens for advertisements
+    - No active requests sent
+  - **Active Scan:**
+    - WiFi: Sends probe requests to discover hidden networks
+    - BLE: Performs active scanning
+    - Maximizes data collection but increases visibility
+  - **Stealth Mode:** 
+    - Complete radio silence except for essential operations
+    - No response to BLE scans (except last paired device)
+    - Minimal RF footprint for maximum concealment
+
+#### 2. DEFENSE Phase
+- **Purpose:** Monitor secure spaces for previously identified suspicious devices
+- **Capabilities:**
+  - Monitors for specific WiFi/BLE MAC addresses
+  - Detects devices based on their WiFi probe requests
+  - Can force device visibility through SSID broadcasting
+- **Operation Modes:**
+  - **Passive Defense:**
+    - Silent monitoring of all communications
+    - No active scanning or broadcasting
+    - Pure listening mode for maximum stealth
+  - **Active Defense:**
+    - Broadcasts known suspicious SSIDs to trigger auto-connect attempts
+    - Performs active BLE scanning to detect target devices
+    - Forces suspicious devices to reveal themselves
+  - **Stealth Mode:**
+    - Complete radio silence except for essential operations
+    - No response to BLE scans (except last paired device)
+    - Pure passive monitoring
+
+### Mode Selection Guide
+
+Choose your operation mode based on:
+1. **Mission Phase:**
+   - RECON: For initial data gathering in hostile environments
+   - DEFENSE: For monitoring secure spaces
+   
+2. **Stealth Requirements:**
+   - **Stealth Mode:** When absolute concealment is critical
+     - No BLE responses (except to last paired device)
+     - Minimal RF emissions
+     - Maximum concealment
+   
+3. **Scanning Intensity:**
+   - **Passive:** When stealth is important but full radio silence isn't required
+     - No active requests
+     - Only listens for broadcasts
+   - **Active:** When maximum data collection is priority
+     - Sends probe/scan requests
+     - Broadcasts known SSIDs (in DEFENSE)
+     - Higher chance of detection
+
+4. **Risk vs Data Collection:**
+   - Higher scanning intensity = More data but increased detection risk
+   - Lower scanning intensity = Less data but better concealment
 
 ## 🚀 Features
 
-- **Dual-Mode Operation:**
-  - Scan Mode: Continuously scans for WiFi networks, devices, and BLE devices.
-  - Detection Mode: Monitors for specific WiFi networks or devices.
-
 - **WiFi Capabilities:**
-  - Detects WiFi networks (SSIDs) and connected devices.
-  - Captures management, control, and data frames.
-  - Configurable to focus on management frames only.
-  - Detects WiFi devices based on MAC address.
+  - Passive monitoring of networks and devices
+  - Active scanning with probe requests (in Active mode)
+  - Management, control, and data frame capture
+  - SSID broadcasting for target device detection (in Active DEFENSE)
+  - MAC address filtering and classification
 
 - **BLE Capabilities:**
-  - Scans for nearby BLE devices.
-  - Option to ignore random BLE addresses.
-  - Detects specific BLE devices.
+  - Passive advertisement monitoring
+  - Active scanning (configurable)
+  - Selective scan response (Stealth mode: only to last paired device)
+  - Public/Random address classification
+  - RSSI-based proximity detection
 
 - **Customizable Settings:**
-  - Adjustable scan intervals for WiFi and BLE.
-  - Configurable RSSI threshold for signal filtering.
-  - Passive scan option.
-  - Stealth mode to minimize detectability.
-  - Device name configuration based on chip model and MAC address.
+  - Independent WiFi/BLE scan intervals
+  - RSSI threshold filtering
+  - Operation mode selection
+  - Target device/network lists
+  - Auto-configuration options
 
 - **Data Management:**
-  - JSON data output for easy parsing and analysis.
-  - Option to save all data or only relevant data.
-  - Configurable autosave interval.
-  - Flash storage for data persistence.
+  - JSON-formatted output
+  - Configurable data filtering
+  - Flash storage with persistence
+  - Adjustable save intervals
+  - Data export capabilities
 
 - **User Interface:**
-  - Web-based interface (HTML/JavaScript) for configuration and data retrieval.
-  - Real-time status updates.
-  - Event logging for monitoring device activities.
-  - Bluetooth LE connection with specific characteristics for commands, data transfer, and settings.
+  - Web-based configuration panel
+  - Real-time status monitoring
+  - Device control interface
+  - Event logging system
+  - BLE-based secure communication
 
-## 💻 Hardware and Software Compatibility
+## 💻 Hardware
 
-Sneak32 has been tested with the **ESP32-C3** board, a low-cost RISC-V microcontroller (less than $3), which offers:
+### Compatibility
+Sneak32 has been extensively tested with the **ESP32-C3** board, a low-cost RISC-V microcontroller (less than $3), which offers:
+- WiFi 802.11 b/g/n (2.4 GHz) and Bluetooth 5.0 LE
+- 4MB Flash memory and 400KB SRAM
+- 80 MHz (Low Power) and 160 MHz (High Performance) CPU clock
 
-- WiFi 802.11 b/g/n (2.4 GHz) and Bluetooth 5.0 LE.
-- 4MB Flash memory and 400KB SRAM.
-- Support for **Arduino IDE**, **PlatformIO**, and **Espressif IDF**, facilitating programming and customization of the device according to each project's needs.
+**Board Compatibility:**
+- ✅ ESP32 (WROOM-32*/MINI-1/PICO-D4): Full support
+- ✅ ESP32-S3: Full support (recommended for high performance & data capacity)
+- ✅ ESP32-C3: Full support (recommended for low power consumption)
+- ❌ ESP32-S2: Not supported (no BLE)
+- ❌ ESP32-H2: Not supported (no WiFi)
+- ❌ ESP32-C6: Not supported (no Arduino-PlatformIO framework support yet)
 
-## 🖥️ Hardware Requirements
-
-- ESP32 development board (recommended: ESP32-C3-SuperMini or other ESP32 variants with PCB antenna or external antenna)
+### Requirements
+- ESP32 development board (recommended: ESP32-C3-SuperMini or variants with PCB/external antenna)
 - (Optional) RGB LED for visual status indication
 - (Optional) Battery for portable operation
 
-![ESP32-C3-SuperMini](images/esp32-c3-supermini.png)
-
-The ESP32-C3-SuperMini is a good choice for this project due to its compact size, low cost, and low power consumption. However, it's important to note that this model uses a ceramic chip antenna, which may limit its range and data capture capabilities compared to models with PCB antennas or external antennas.
-
-For optimal performance and range:
-
-- Consider ESP32 variants with PCB antennas or external antenna connectors.
-- Models with external antennas generally offer the best range and data capture capabilities.
-
-Other ESP32 variants are compatible with the program by specifying the appropriate board in the `platformio.ini` file.
-
 ### Antenna Considerations
+Choose based on your specific needs:
 
-1. **Ceramic Chip Antenna (e.g., ESP32-C3-SuperMini):**
-   - Pros: Compact, low cost
-   - Cons: Limited range, may capture fewer data points
+1. **Ceramic Chip Antenna (ESP32-C3-SuperMini):**
+   - ✅ Compact and low cost
+   - ✅ Good for close-range monitoring
+   - ❌ Limited range and capture capabilities
 
 2. **PCB Antenna:**
-   - Pros: Better range than ceramic chip antennas, still relatively compact
-   - Cons: May not match the range of external antennas
+   - ✅ Better range than ceramic
+   - ✅ Still relatively compact
+   - ❌ Not as powerful as external antenna
 
 3. **External Antenna:**
-   - Pros: Best range and data capture capabilities
-   - Cons: Larger form factor, may require additional components
-
-Choose the antenna type based on your specific needs for range, data capture, and form factor.
+   - ✅ Best range and data capture
+   - ✅ Ideal for wide-area monitoring
+   - ❌ Larger form factor
+   - ❌ Additional components needed
 
 ## 📚 Software Dependencies
 
@@ -144,13 +206,11 @@ Choose the antenna type based on your specific needs for range, data capture, an
 
 2. **Install necessary dependencies:**
 
-   If using PlatformIO:
+  - First install [PlatformIO CLI](https://platformio.org/install/cli) or [PlatformIO VSCode Extension](https://platformio.org/install/ide?install=vscode)
 
    ```bash
    pio lib install
    ```
-
-   If using Arduino IDE, install the libraries through the Library Manager.
 
 3. **Compile and flash** the firmware to your ESP32 device:
 
@@ -234,22 +294,13 @@ Sneak32 provides detailed JSON output including:
   }
   ```
 
-## ⚔️ Usage Strategies in Sensitive Environments
+## ⚔️ Usage Strategies
 
 - **Public Environment Monitoring**: Install Sneak32 in public meeting places to capture data from unknown devices and analyze connection patterns.
 - **Social Movement Protection**: Use Sneak32 to detect devices attempting to connect to known networks or making suspicious probe requests, helping to identify potential infiltrators.
 - **Research Applications**: Sneak32 allows security researchers to collect device data without being detected, thanks to its passive mode.
 
-## 🕶️ Stealth Mode
-
-- **RECON**: 
-  - **Stealth ON**: Captures wifi and BLE data passively, without sending scan requests.
-  - **Stealth OFF**: Sends scan requests to capture wifi and BLE data.
-- **DEFENSE**: 
-  - **Stealth ON**: Only listens for communications without actively broadcasting or scanning.
-  - **Stealth OFF**: Broadcasts known SSIDs and performs active BLE scans to detect devices that might be trying to connect to known networks.
-
-## 🔐 Security Considerations
+## 🕶 Security Considerations
 
 **Warning:** This project is intended **solely** for educational purposes and authorized network analysis. Unauthorized use of network scanning tools may violate local laws and international regulations.
 
@@ -306,8 +357,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🤝 Contributing
 
 Contributions are welcome!
+
 ## 👤 Author
 
-**Your Name** - [@jordi-murgo](https://github.com/jordi-murgo)
+**Jordi Murgo** - [@jordi-murgo](https://github.com/jordi-murgo)
 
 Feel free to contact me for any questions or feedback.
