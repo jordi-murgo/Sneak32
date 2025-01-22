@@ -17,8 +17,8 @@ void FlashStorage::saveWifiDevices()
     WifiDeviceList &list = stationsList;
 
     preferences.begin(NAMESPACE, false);
-    std::vector<WifiDevice> devices = list.getClonedList();
-    std::vector<WifiDeviceStruct> deviceStructs(devices.size());
+    std::vector<WifiDevice, DynamicPsramAllocator<WifiDevice>> devices = list.getClonedList();
+    std::vector<WifiDeviceStruct, DynamicPsramAllocator<WifiDeviceStruct>> deviceStructs(devices.size());
 
     for (size_t i = 0; i < devices.size(); ++i)
     {
@@ -36,7 +36,7 @@ void FlashStorage::saveWifiDevices()
     size_t serializedSize = deviceStructs.size() * sizeof(WifiDeviceStruct);
     preferences.putBytes(WIFI_DEVICES_KEY, deviceStructs.data(), serializedSize);
     preferences.end();
-    Serial.printf("Saved %zu WiFi devices\n", deviceStructs.size());
+    log_d("Saved %zu WiFi devices", deviceStructs.size());
 }
 
 void FlashStorage::saveBLEDevices()
@@ -44,12 +44,13 @@ void FlashStorage::saveBLEDevices()
     BLEDeviceList &list = bleDeviceList;
 
     preferences.begin(NAMESPACE, false);
-    std::vector<BLEFoundDevice> devices = list.getClonedList();
-    std::vector<BLEDeviceStruct> deviceStructs(devices.size());
+    const auto &devices = list.getList();
+    std::vector<BLEFoundDevice, DynamicPsramAllocator<BLEFoundDevice>> tempDevices(devices.begin(), devices.end());
+    std::vector<BLEDeviceStruct, DynamicPsramAllocator<BLEDeviceStruct>> deviceStructs(tempDevices.size());
 
-    for (size_t i = 0; i < devices.size(); ++i)
+    for (size_t i = 0; i < tempDevices.size(); ++i)
     {
-        const auto &device = devices[i];
+        const auto &device = tempDevices[i];
         auto &deviceStruct = deviceStructs[i];
 
         memcpy(deviceStruct.address, device.address.getBytes(), 6);
@@ -65,7 +66,7 @@ void FlashStorage::saveBLEDevices()
     size_t serializedSize = deviceStructs.size() * sizeof(BLEDeviceStruct);
     preferences.putBytes(BLE_DEVICES_KEY, deviceStructs.data(), serializedSize);
     preferences.end();
-    Serial.printf("Saved %zu BLE devices\n", deviceStructs.size());
+    log_d("Saved %zu BLE devices", deviceStructs.size());
 }
 
 void FlashStorage::saveWifiNetworks()
@@ -73,8 +74,8 @@ void FlashStorage::saveWifiNetworks()
     WifiNetworkList &list = ssidList;
 
     preferences.begin(NAMESPACE, false);
-    std::vector<WifiNetwork> networks = list.getClonedList();
-    std::vector<WifiNetworkStruct> networkStructs(networks.size());
+    std::vector<WifiNetwork, DynamicPsramAllocator<WifiNetwork>> networks = list.getClonedList();
+    std::vector<WifiNetworkStruct, DynamicPsramAllocator<WifiNetworkStruct>> networkStructs(networks.size());
 
     for (size_t i = 0; i < networks.size(); ++i)
     {
@@ -97,7 +98,7 @@ void FlashStorage::saveWifiNetworks()
     size_t serializedSize = networkStructs.size() * sizeof(WifiNetworkStruct);
     preferences.putBytes(WIFI_NETWORKS_KEY, networkStructs.data(), serializedSize);
     preferences.end();
-    Serial.printf("Saved %zu WiFi networks\n", networkStructs.size());
+    log_d("Saved %zu WiFi networks", networkStructs.size());
 }
 
 void FlashStorage::loadWifiDevices()
@@ -106,34 +107,37 @@ void FlashStorage::loadWifiDevices()
 
     preferences.begin(NAMESPACE, true);
     size_t serializedSize = preferences.getBytesLength(WIFI_DEVICES_KEY);
-    Serial.printf("Loading WiFi devices. Serialized size: %zu bytes\n", serializedSize);
+    log_d("Loading WiFi devices. Serialized size: %zu bytes", serializedSize);
     if (serializedSize > 0)
     {
         if (serializedSize % sizeof(WifiDeviceStruct) != 0)
         {
-            Serial.printf("Error: Serialized size (%zu) is not a multiple of WifiDeviceStruct size (%zu)\n", serializedSize, sizeof(WifiDeviceStruct));
+            log_e("Error: Serialized size (%zu) is not a multiple of WifiDeviceStruct size (%zu)",
+                 serializedSize, sizeof(WifiDeviceStruct));
             preferences.end();
             return;
         }
         std::vector<WifiDeviceStruct> deviceStructs(serializedSize / sizeof(WifiDeviceStruct));
         preferences.getBytes(WIFI_DEVICES_KEY, deviceStructs.data(), serializedSize);
-        Serial.printf("Loaded %zu devices from flash\n", deviceStructs.size());
+        log_d("Loaded %zu devices from flash", deviceStructs.size());
         for (const auto &deviceStruct : deviceStructs)
         {
-            Serial.printf("Loaded Device: %02X:%02X:%02X:%02X:%02X:%02X, BSSID: %02X:%02X:%02X:%02X:%02X:%02X, RSSI: %d, Channel: %d, Last seen: %ld, Times seen: %u\n",
-                          deviceStruct.address[0], deviceStruct.address[1], deviceStruct.address[2],
-                          deviceStruct.address[3], deviceStruct.address[4], deviceStruct.address[5],
-                          deviceStruct.bssid[0], deviceStruct.bssid[1], deviceStruct.bssid[2],
-                          deviceStruct.bssid[3], deviceStruct.bssid[4], deviceStruct.bssid[5],
-                          deviceStruct.rssi, deviceStruct.channel, deviceStruct.last_seen, deviceStruct.times_seen);
-            WifiDevice device(MacAddress(deviceStruct.address), MacAddress(deviceStruct.bssid), deviceStruct.rssi, deviceStruct.channel, deviceStruct.last_seen, deviceStruct.times_seen);
+            log_v("Loaded Device: MAC=%02X:%02X:%02X:%02X:%02X:%02X, BSSID=%02X:%02X:%02X:%02X:%02X:%02X, RSSI=%d, Ch=%d, Last=%ld, Times=%u",
+                  deviceStruct.address[0], deviceStruct.address[1], deviceStruct.address[2],
+                  deviceStruct.address[3], deviceStruct.address[4], deviceStruct.address[5],
+                  deviceStruct.bssid[0], deviceStruct.bssid[1], deviceStruct.bssid[2],
+                  deviceStruct.bssid[3], deviceStruct.bssid[4], deviceStruct.bssid[5],
+                  deviceStruct.rssi, deviceStruct.channel, deviceStruct.last_seen, deviceStruct.times_seen);
+            WifiDevice device(MacAddress(deviceStruct.address), MacAddress(deviceStruct.bssid), 
+                            deviceStruct.rssi, deviceStruct.channel, deviceStruct.last_seen, 
+                            deviceStruct.times_seen);
             list.addDevice(device);
         }
-        Serial.printf("Successfully loaded %zu WiFi devices\n", list.size());
+        log_d("Successfully loaded %zu WiFi devices", list.size());
     }
     else
     {
-        Serial.println("No WiFi devices to load");
+        log_d("No WiFi devices to load");
     }
     preferences.end();
 }
@@ -144,12 +148,13 @@ void FlashStorage::loadBLEDevices()
 
     preferences.begin(NAMESPACE, true);
     size_t serializedSize = preferences.getBytesLength(BLE_DEVICES_KEY);
-    Serial.printf("Loading BLE devices. Serialized size: %zu bytes\n", serializedSize);
+    log_d("Loading BLE devices. Serialized size: %zu bytes", serializedSize);
     if (serializedSize > 0)
     {
         if (serializedSize % sizeof(BLEDeviceStruct) != 0)
         {
-            Serial.printf("Error: Serialized size (%zu) is not a multiple of BLEDeviceStruct size (%zu)\n", serializedSize, sizeof(BLEDeviceStruct));
+            log_e("Error: Serialized size (%zu) is not a multiple of BLEDeviceStruct size (%zu)",
+                 serializedSize, sizeof(BLEDeviceStruct));
             preferences.end();
             return;
         }
@@ -158,14 +163,15 @@ void FlashStorage::loadBLEDevices()
         for (const auto &deviceStruct : deviceStructs)
         {
             BLEFoundDevice device(MacAddress(deviceStruct.address), deviceStruct.rssi,
-                                  String(deviceStruct.name), deviceStruct.isPublic, deviceStruct.last_seen, deviceStruct.times_seen);
-            list.addDevice(device);
+                                String(deviceStruct.name), deviceStruct.isPublic, 
+                                deviceStruct.last_seen, deviceStruct.times_seen);
+            list.updateOrAddDevice(device.address, device.rssi, device.name, device.isPublic);
         }
-        Serial.printf("Loaded %zu BLE devices\n", deviceStructs.size());
+        log_d("Loaded %zu BLE devices", deviceStructs.size());
     }
     else
     {
-        Serial.println("No BLE devices to load");
+        log_d("No BLE devices to load");
     }
     preferences.end();
 }
@@ -176,12 +182,13 @@ void FlashStorage::loadWifiNetworks()
 
     preferences.begin(NAMESPACE, true);
     size_t serializedSize = preferences.getBytesLength(WIFI_NETWORKS_KEY);
-    Serial.printf("Loading WiFi networks. Serialized size: %zu bytes\n", serializedSize);
+    log_d("Loading WiFi networks. Serialized size: %zu bytes", serializedSize);
     if (serializedSize > 0)
     {
         if (serializedSize % sizeof(WifiNetworkStruct) != 0)
         {
-            Serial.printf("Error: Serialized size (%zu) is not a multiple of WifiNetworkStruct size (%zu)\n", serializedSize, sizeof(WifiNetworkStruct));
+            log_e("Error: Serialized size (%zu) is not a multiple of WifiNetworkStruct size (%zu)",
+                 serializedSize, sizeof(WifiNetworkStruct));
             preferences.end();
             return;
         }
@@ -193,67 +200,61 @@ void FlashStorage::loadWifiNetworks()
                                 String(networkStruct.type), networkStruct.last_seen, networkStruct.times_seen);
             list.addNetwork(network);
         }
-        Serial.printf("Loaded %zu WiFi networks\n", networkStructs.size());
+        log_d("Loaded %zu WiFi networks", networkStructs.size());
     }
     else
     {
-        Serial.println("No WiFi networks to load");
+        log_d("No WiFi networks to load");
     }
     preferences.end();
 }
 
 void FlashStorage::saveAll()
 {
-    FlashStorage::saveWifiDevices();
-    FlashStorage::saveBLEDevices();
-    FlashStorage::saveWifiNetworks();
-}
+    log_i("Saving all data to flash storage...");
 
-
-void FlashStorage::loadAll()
-{
     try
     {
-        Serial.println("Starting to load all data from flash storage");
-        stationsList.clear();
-        Serial.println("Loading WiFi devices...");
-        FlashStorage::loadWifiDevices();
-        Serial.printf("Loaded %zu WiFi devices\n", stationsList.size());
-
-        bleDeviceList.clear();
-        Serial.println("Loading BLE devices...");
-        FlashStorage::loadBLEDevices();
-        Serial.printf("Loaded %zu BLE devices\n", bleDeviceList.size());
-
-        ssidList.clear();
-        Serial.println("Loading WiFi networks...");
-        FlashStorage::loadWifiNetworks();
-        Serial.printf("Loaded %zu WiFi networks\n", ssidList.size());
-
-        Serial.println("All data loaded successfully from flash storage");
+        saveWifiNetworks();
+        saveWifiDevices();
+        saveBLEDevices();
+        log_i("All data saved successfully");
     }
     catch (const std::exception &e)
     {
-        Serial.printf("Error loading from flash storage: %s\n", e.what());
-        // Clear all lists in case of an error
-        stationsList.clear();
-        bleDeviceList.clear();
-        ssidList.clear();
-        Serial.println("All lists cleared due to error");
+        log_e("Error saving data: %s", e.what());
+        throw;
+    }
+}
+
+void FlashStorage::loadAll()
+{
+    log_i("Loading all data from flash storage...");
+
+    try
+    {
+        loadWifiNetworks();
+        loadWifiDevices();
+        loadBLEDevices();
+        log_i("All data loaded successfully");
+    }
+    catch (const std::exception &e)
+    {
+        log_e("Error loading data: %s", e.what());
+        throw;
     }
 }
 
 void FlashStorage::clearAll()
 {
-    // Clear the preferences namespace
     preferences.begin(NAMESPACE, false);
     preferences.clear();
     preferences.end();
 
-    // Clear the lists
     stationsList.clear();
     bleDeviceList.clear();
     ssidList.clear();
 
-    Serial.println("All data cleared from flash storage");
+    log_i("All data cleared from flash storage");
 }
+

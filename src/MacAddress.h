@@ -34,4 +34,8 @@ public:
     bool operator!=(const MacAddress& other) const {
         return !(*this == other);
     }
+
+    bool isLocallyAdministered() const {
+        return address[0] & 0x02;
+    }
 };

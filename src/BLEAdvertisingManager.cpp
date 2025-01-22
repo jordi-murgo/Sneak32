@@ -7,7 +7,7 @@ BLEAdvertising* BLEAdvertisingManager::pAdvertising = BLEDevice::getAdvertising(
 uint8_t BLEAdvertisingManager::advertisingMode = 0xFF;
 
 void BLEAdvertisingManager::setup() {
-    Serial.println(">> BLEAdvertisingManager::setup");
+    log_i(">> BLEAdvertisingManager::setup");
     pAdvertising = BLEDevice::getAdvertising();
 
     pAdvertising->addServiceUUID(SNEAK32_SERVICE_UUID);
@@ -20,7 +20,7 @@ void BLEAdvertisingManager::setup() {
         // Clear the whitelist, only one device is allowed
         esp_ble_gap_clear_whitelist();
         BLEDevice::whiteListAdd(authorizedAddress);
-        Serial.printf("Added authorized address to whitelist: %s\n", appPrefs.authorized_address);
+        log_i("Added authorized address to whitelist: %s", appPrefs.authorized_address);
     }
 
     if (appPrefs.stealth_mode && strlen(appPrefs.authorized_address) == 17) {
@@ -31,17 +31,17 @@ void BLEAdvertisingManager::setup() {
 }
 
 void BLEAdvertisingManager::start() {
-    Serial.println(">> BLEAdvertisingManager::start");
+    log_i(">> BLEAdvertisingManager::start");
     pAdvertising->start();
 }
 
 void BLEAdvertisingManager::stop() {
-    Serial.println(">> BLEAdvertisingManager::stop");
+    log_i(">> BLEAdvertisingManager::stop");
     pAdvertising->stop();
 }
 
 void BLEAdvertisingManager::updateAdvertisingData() {
-    Serial.println(">> BLEAdvertisingManager::updateAdvertisingData");
+    log_i(">> BLEAdvertisingManager::updateAdvertisingData");
     pAdvertising->stop();
     setup();
     pAdvertising->start();
@@ -49,7 +49,7 @@ void BLEAdvertisingManager::updateAdvertisingData() {
 
 void BLEAdvertisingManager::configureStealthMode() {
     if (advertisingMode != ADV_TYPE_DIRECT_IND_LOW) {
-        Serial.println(">> BLEAdvertisingManager::configureStealthMode");
+        log_i(">> BLEAdvertisingManager::configureStealthMode");
     }
     advertisingMode = ADV_TYPE_DIRECT_IND_LOW;
 
@@ -63,7 +63,7 @@ void BLEAdvertisingManager::configureStealthMode() {
 
 void BLEAdvertisingManager::configureNormalMode() {
     if (advertisingMode != ADV_TYPE_IND) {
-        Serial.println(">> BLEAdvertisingManager::configureNormalMode");
+        log_i(">> BLEAdvertisingManager::configureNormalMode");
     }
     advertisingMode = ADV_TYPE_IND;
 

@@ -22,7 +22,7 @@ void SettingsCallbacks::onWrite(BLECharacteristic *pCharacteristic)
     int8_t wifi_tx_power = appPrefs.wifiTxPower;
     int8_t ble_tx_power = appPrefs.bleTxPower;
 
-    Serial.printf("SettingsCallbacks::onWrite -> %s\n", value.c_str());
+    log_i("SettingsCallbacks::onWrite -> %s", value.c_str());
 
     // Read values
     if (std::getline(ss, token, '|'))
@@ -88,6 +88,8 @@ void SettingsCallbacks::onWrite(BLECharacteristic *pCharacteristic)
 
     if (operation_mode != appPrefs.operation_mode)
     {
+        log_i("Operation mode changed from %d to %d", operation_mode, appPrefs.operation_mode);
+
         switch (appPrefs.operation_mode)
         {
         case OPERATION_MODE_SCAN:
@@ -149,7 +151,7 @@ void SettingsCallbacks::onRead(BLECharacteristic *pCharacteristic)
 
 void SettingsCallbacks::updateBLEDeviceName(const char *newName)
 {
-    Serial.printf("Updating BLE device name to: %s\n", newName);
+    log_i("Updating BLE device name to: %s", newName);
 
     // Stop advertising
     BLEDevice::stopAdvertising();
@@ -160,5 +162,5 @@ void SettingsCallbacks::updateBLEDeviceName(const char *newName)
     // Restart advertising
     BLEDevice::startAdvertising();
 
-    Serial.println("BLE device name updated and advertising restarted");
+    log_i("BLE device name updated and advertising restarted");
 }

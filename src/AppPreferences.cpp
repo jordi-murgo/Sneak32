@@ -10,7 +10,8 @@ Preferences preferences;
 AppPreferencesData appPrefs;
 
 void printPreferences() {
-
+    log_i("Current preferences:");
+    
     String operationModeName = "Unknown";
     switch (appPrefs.operation_mode) {
         case 0: operationModeName = "OFF"; break;
@@ -18,30 +19,28 @@ void printPreferences() {
         case 2: operationModeName = "DETECTION"; break;
     }
 
-    Serial.printf(" - device_name: %s\n", appPrefs.device_name);
-    Serial.printf(" - operation_mode: %s\n", operationModeName.c_str());
-    Serial.printf(" - autosave_interval: %u min\n", appPrefs.autosave_interval);
-    Serial.printf(" - minimal_rssi: %d dBm\n", appPrefs.minimal_rssi);
-    Serial.printf(" - passive_scan: %s\n", appPrefs.passive_scan ? "true" : "false");
-    Serial.printf(" - stealth_mode: %s\n", appPrefs.stealth_mode ? "true" : "false");
-    Serial.printf(" - authorized_address: %s\n", appPrefs.authorized_address);
-    Serial.printf(" - cpu_speed: %u\n", appPrefs.cpu_speed);
-    Serial.printf(" - led_mode: %u\n", appPrefs.led_mode);
-
-    Serial.printf(" - wifi_channel_dwell_time: %u ms\n", appPrefs.wifi_channel_dwell_time);
-    Serial.printf(" - only_mgmt: %s\n", appPrefs.only_management_frames ? "true" : "false");
-    Serial.printf(" - wifi_tx_power: %u\n", appPrefs.wifiTxPower);
-    Serial.printf(" - ignore_local_wifi_addresses: %s\n", appPrefs.ignore_local_wifi_addresses ? "true" : "false");
-
-    Serial.printf(" - ble_tx_power: %u\n", appPrefs.bleTxPower);
-    Serial.printf(" - ble_scan_delay: %u s\n", appPrefs.ble_scan_delay);
-    Serial.printf(" - ble_scan_duration: %u s\n", appPrefs.ble_scan_duration);
-    Serial.printf(" - ignore_random_ble: %s\n", appPrefs.ignore_random_ble_addresses ? "true" : "false");
-    Serial.printf(" - ble_mtu: %u\n", appPrefs.bleMTU);
+    log_i(" - device_name: %s", appPrefs.device_name);
+    log_i(" - operation_mode: %s", operationModeName.c_str());
+    log_i(" - autosave_interval: %u min", appPrefs.autosave_interval);
+    log_i(" - minimal_rssi: %d dBm", appPrefs.minimal_rssi);
+    log_i(" - passive_scan: %s", appPrefs.passive_scan ? "true" : "false");
+    log_i(" - stealth_mode: %s", appPrefs.stealth_mode ? "true" : "false");
+    log_i(" - authorized_address: %s", appPrefs.authorized_address);
+    log_i(" - cpu_speed: %u", appPrefs.cpu_speed);
+    log_i(" - led_mode: %u", appPrefs.led_mode);
+    log_i(" - wifi_channel_dwell_time: %u ms", appPrefs.wifi_channel_dwell_time);
+    log_i(" - only_mgmt: %s", appPrefs.only_management_frames ? "true" : "false");
+    log_i(" - wifi_tx_power: %u", appPrefs.wifiTxPower);
+    log_i(" - ignore_local_wifi_addresses: %s", appPrefs.ignore_local_wifi_addresses ? "true" : "false");
+    log_i(" - ble_tx_power: %u", appPrefs.bleTxPower);
+    log_i(" - ble_scan_delay: %u s", appPrefs.ble_scan_delay);
+    log_i(" - ble_scan_duration: %u s", appPrefs.ble_scan_duration);
+    log_i(" - ignore_random_ble: %s", appPrefs.ignore_random_ble_addresses ? "true" : "false");
+    log_i(" - ble_mtu: %u", appPrefs.bleMTU);
 }
 
 void loadAppPreferences() {
-    Serial.println("Loading App Preferences");
+    log_i("Loading App Preferences");
     preferences.begin(Keys::NAMESPACE, false);
 
     // Generate default device name
@@ -87,12 +86,12 @@ void loadAppPreferences() {
     
     preferences.end();
 
-    Serial.println("App Preferences loaded");
+    log_i("App Preferences loaded");
     printPreferences();
 }
 
 void saveAppPreferences() {
-    Serial.println("Saving App Preferences");
+    log_i("Saving App Preferences");
     preferences.begin(Keys::NAMESPACE, false);
     preferences.putString(Keys::DEVICE_NAME, appPrefs.device_name);
     preferences.putInt(Keys::OP_MODE, appPrefs.operation_mode);
@@ -114,6 +113,6 @@ void saveAppPreferences() {
     preferences.putUInt(Keys::BLE_MTU, appPrefs.bleMTU);
     preferences.end();
 
-    Serial.println("App Preferences saved");
+    log_i("App Preferences saved");
     printPreferences();
 }

@@ -43,13 +43,13 @@ void BLEStatusUpdaterClass::update()
     String statusStringWithUptime = statusString + String(uptime);
 
     pStatusCharacteristic->setValue(statusStringWithUptime.c_str());
-    Serial.printf("Status updated -> %s\n", statusStringWithUptime.c_str());
+    log_d("Status updated -> %s", statusStringWithUptime.c_str());
 
     if (deviceConnected)
     {
         if (last_statusString.isEmpty() || last_statusString != statusString)
         {
-            Serial.println("Notifying status");
+            log_d("Notifying status");
             pStatusCharacteristic->notify();
             last_statusString = statusString;
         }

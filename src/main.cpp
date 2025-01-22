@@ -34,8 +34,9 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
+#include <nvs_flash.h>
 #include <esp_wifi_types.h>
-#include "esp_log.h"
+#include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <vector>
@@ -117,13 +118,24 @@ time_t base_time = 0;
 
 // Function to update base_time from a list
 template <typename T>
-void updateBaseTime(const std::vector<T> &list)
+void updateBaseTime(const std::vector<T, DynamicPsramAllocator<T>> &list)
 {
   for (const auto &item : list)
   {
     base_time = std::max(base_time, item.last_seen);
   }
 }
+
+void printMemoryStats() {
+    log_d("\nMemory Statistics:");
+    log_d("Total PSRAM: %d bytes", ESP.getPsramSize());
+    log_d("Free PSRAM: %d bytes", ESP.getFreePsram());
+    log_d("Total heap: %d bytes", ESP.getHeapSize());
+    log_d("Free heap: %d bytes", ESP.getFreeHeap());
+    log_w("Minimum free heap: %d bytes", ESP.getMinFreeHeap());
+    log_d("");
+}
+
 
 /**
  * @brief Prints the list of detected SSIDs and BLE devices.
@@ -182,14 +194,14 @@ void printSSIDAndBLELists()
   listString += "Total BLE devices: " + String(bleDeviceList.size()) + "\n";
   listString += "----------------------------------------------------------------------\n";
 
-  Serial.println(listString);
+  log_i("\n%s", listString.c_str());
 }
 
 void firmwareInfo()
 {
-  Serial.println("\n\n----------------------------------------------------------------------");
-  Serial.println(getFirmwareInfoString());
-  Serial.println("----------------------------------------------------------------------\n");
+  log_d("\n\n----------------------------------------------------------------------");
+  log_d("%s", getFirmwareInfoString().c_str());
+  log_d("----------------------------------------------------------------------\n");
 }
 
 void checkAndRestartAdvertising()
@@ -199,7 +211,7 @@ void checkAndRestartAdvertising()
 
   if (millis() - lastAdvertisingRestart > advertisingRestartInterval)
   {
-    Serial.println("Restarting BLE advertising");
+    log_i("Restarting BLE advertising");
     BLEDevice::stopAdvertising();
     delay(100);
     BLEDevice::startAdvertising();
@@ -215,25 +227,86 @@ void checkAndRestartAdvertising()
  */
 void setup()
 {
-  Serial.begin(115200);
-  Serial.setDebugOutput(true);
+  log_i("Starting...");
 
-  delay(5000);
+  // Initialize NVS
+  esp_err_t ret = nvs_flash_init();
+  if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
+  {
+    log_w("Erasing NVS flash...");
+    ESP_ERROR_CHECK(nvs_flash_erase());
+    ret = nvs_flash_init();
+  }
+  ESP_ERROR_CHECK(ret);
 
-  Serial.println("Starting serial ...");
+  // Initialize PSRAM
+  if (!psramFound())
+  {
+    log_e("PSRAM not found!");
+    while (1)
+    {
+        delay(100);
+    }
+  }
+  log_i("PSRAM size: %d bytes", ESP.getPsramSize());
 
-  // Encuentra la partición NVS
-  const esp_partition_t* nvs_partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_NVS, NULL);
+  // Load preferences
+  loadAppPreferences();
 
-  if (nvs_partition != NULL) {
-    Serial.print("Partición NVS encontrada. Tamaño: ");
-    Serial.print(nvs_partition->size);  // Tamaño en bytes
-    Serial.print(" bytes. Offset: ");
-    Serial.println(nvs_partition->address);  // Dirección de inicio (offset)
-  } else {
-    Serial.println("No se encontró la partición NVS.");
+  // Initialize BLE
+  BLEDevice::init(appPrefs.device_name);
+  esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT, (esp_power_level_t)appPrefs.bleTxPower);
+
+  // Set WiFi power
+  esp_wifi_set_max_tx_power((wifi_power_t)appPrefs.wifiTxPower);
+
+  // Setup BLE services and characteristics
+  setupBLE();
+
+  // Start operation mode
+  switch (appPrefs.operation_mode)
+  {
+  case OPERATION_MODE_SCAN:
+    log_i("Starting in SCAN mode");
+    WifiScanner.setup();
+    BLEScanner.setup();
+    break;
+  case OPERATION_MODE_DETECTION:
+    log_i("Starting in DETECTION mode");
+    WifiDetector.setup();
+    BLEDetector.setup();
+    break;
+  default:
+    log_i("Starting in OFF mode");
+    break;
+  }
+
+  log_i("Setup complete");
+
+  // Initialize PSRAM with proper configuration
+  if(!psramInit()) {
+    log_e("PSRAM initialization failed!");
+    ESP_ERROR_CHECK(esp_spiram_init());
+    ESP_ERROR_CHECK(esp_spiram_add_to_heapalloc());
   }
   
+  size_t psram_size = ESP.getPsramSize();
+  size_t free_psram = ESP.getFreePsram();
+  
+  log_d("PSRAM Size: %d bytes", psram_size);
+  log_d("Free PSRAM: %d bytes", free_psram);
+
+  // Encuentra la partición NVS
+  const esp_partition_t *nvs_partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_NVS, NULL);
+
+  if (nvs_partition != NULL)
+  {
+    log_d("NVS partition found. Size: %d bytes, Offset: %d", 
+          nvs_partition->size, nvs_partition->address);
+  } else {
+    log_e("NVS partition not found!");
+  }
+
   ledManager.begin();
   ledManager.setPixelColor(0, LedManager::COLOR_GREEN);
   ledManager.show();
@@ -242,16 +315,10 @@ void setup()
 
   firmwareInfo();
 
-  Serial.println("Loading preferences");
-  loadAppPreferences();
-
-  // Set WiFi and BLE TX power
-  esp_wifi_set_max_tx_power((wifi_power_t) appPrefs.wifiTxPower);
-  esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT, (esp_power_level_t) appPrefs.bleTxPower);
-
   // Set CPU frequency
-  if(appPrefs.cpu_speed != getCpuFrequencyMhz()) {
-    Serial.printf("Setting CPU frequency to %u MHz\n", appPrefs.cpu_speed);
+  if (appPrefs.cpu_speed != getCpuFrequencyMhz())
+  {
+    log_i("Setting CPU frequency to %u MHz", appPrefs.cpu_speed);
     setCpuFrequencyMhz(appPrefs.cpu_speed);
   }
 
@@ -261,7 +328,7 @@ void setup()
   }
   catch (const std::exception &e)
   {
-    Serial.printf("Error loading from flash storage: %s\n", e.what());
+    log_e("Error loading from flash storage: %s", e.what());
 
     // Handle the error (e.g., clear the lists, use default values, etc.)
     stationsList.clear();
@@ -274,7 +341,7 @@ void setup()
   updateBaseTime(bleDeviceList.getClonedList());
   updateBaseTime(stationsList.getClonedList());
   base_time++;
-  Serial.printf("Base time set to: %ld\n", base_time);
+  log_i("Base time set to: %ld", base_time);
 
   // Setup BLE Core (Advertising and Service Characteristics)
   setupBLE();
@@ -289,7 +356,7 @@ void setup()
     WifiScanner.setup();
     BLEScanner.setup();
   }
-  
+
   // Add a delay after setting up detectors
   delay(1000);
 
@@ -315,8 +382,14 @@ void scan_mode_loop()
   currentChannel = (currentChannel % 14) + 1;
   esp_wifi_set_channel(currentChannel, WIFI_SECOND_CHAN_NONE);
 
-  Serial.printf(">> Time: %lu, WiFi Ch: %2d, SSIDs: %zu, Stations: %zu, BLE: %zu, Heap: %d\n",
-                millis() / 1000, currentChannel, ssidList.size(), stationsList.size(), bleDeviceList.size(), ESP.getFreeHeap());
+  // Mostrar heap lliure específic a SRAM (INTERNAL)
+  size_t freeInternal = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+  // Mostrar heap lliure a PSRAM (SPIRAM)
+  size_t freePsram = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
+
+  log_d(">> Time: %lu, WiFi Ch: %2d, SSIDs: %zu, Stations: %zu, BLE: %zu, Heap: %d, Heap PSRAM: %d",
+        millis() / 1000, currentChannel, ssidList.size(), stationsList.size(), 
+        bleDeviceList.size(), freeInternal, freePsram);
 
   delay(appPrefs.wifi_channel_dwell_time);
 
@@ -332,30 +405,37 @@ void scan_mode_loop()
   // Save all data to flash storage every autosave_interval minutes
   if (millis() - lastSaved >= appPrefs.autosave_interval * 60 * 1000)
   {
-    Serial.println("Saving all data to flash storage");
+    log_i("Saving all data to flash storage");
     try
     {
       FlashStorage::saveAll();
-      lastSaved = millis(); // Update lastSaved only if save was successful
-      Serial.println("Data saved successfully");
+      lastSaved = millis();
+      log_i("Data saved successfully");
     }
-    catch (const std::exception& e)
+    catch (const std::exception &e)
     {
-      Serial.printf("Error saving to flash storage: %s\n", e.what());
+      log_e("Error saving to flash storage: %s", e.what());
     }
   }
 
   bool bootButtonPressed = digitalRead(BOOT_BUTTON_PIN) == LOW;
 
-  if (!deviceConnected) {
-    if(appPrefs.stealth_mode) {
-      if(bootButtonPressed) {
-        Serial.println(">>> Boot button pressed, disabling stealth mode");
+  if (!deviceConnected)
+  {
+    if (appPrefs.stealth_mode)
+    {
+      if (bootButtonPressed)
+      {
+        log_i(">>> Boot button pressed, disabling stealth mode");
         BLEAdvertisingManager::configureNormalMode();
-      } else {
+      }
+      else
+      {
         BLEAdvertisingManager::configureStealthMode();
       }
-    } else {
+    }
+    else
+    {
       BLEAdvertisingManager::configureNormalMode();
     }
   }
@@ -376,23 +456,26 @@ void detection_mode_loop()
   if (appPrefs.passive_scan)
   {
     WifiDetector.setChannel(1);
-    Serial.println(">> Passive WiFi scan");
+    log_i(">> Passive WiFi scan");
   }
   else
   {
     // Add bounds checking for currentSSIDIndex
-    if (currentSSIDIndex >= clonedList.size()) {
+    if (currentSSIDIndex >= clonedList.size())
+    {
       currentSSIDIndex = 0;
     }
 
     const auto &currentNetwork = clonedList[currentSSIDIndex];
     // Configure ESP32 to broadcast the selected SSID
     // WifiDetector.setupAP(currentNetwork.ssid.c_str(), nullptr, 1);
-    if (&currentNetwork && currentNetwork.ssid && currentNetwork.ssid.length() > 0) {
+    if (&currentNetwork && currentNetwork.ssid && currentNetwork.ssid.length() > 0)
+    {
       WifiDetector.setupAP(currentNetwork.ssid.c_str(), nullptr, 1);
-      Serial.printf(">> Detection Mode (%02d/%02d) >> Alarm: %d, Broadcasting SSID: \"%s\", Last detection: %d\n",
-                    currentSSIDIndex + 1, clonedList.size(), WifiDetector.isSomethingDetected(), currentNetwork.ssid.c_str(),
-                    millis() / 1000 - WifiDetector.getLastDetectionTime());
+      log_i(">> Detection Mode (%02d/%02d) >> Alarm: %d, Broadcasting SSID: \"%s\", Last detection: %d",
+            currentSSIDIndex + 1, clonedList.size(), WifiDetector.isSomethingDetected(), 
+            currentNetwork.ssid.c_str(),
+            millis() / 1000 - WifiDetector.getLastDetectionTime());
     }
 
     currentSSIDIndex++;
@@ -412,24 +495,35 @@ void detection_mode_loop()
  */
 void loop()
 {
-  if (appPrefs.operation_mode == OPERATION_MODE_SCAN)
-  {
-    scan_mode_loop();
-  }
-  else if (appPrefs.operation_mode == OPERATION_MODE_DETECTION)
-  {
-    detection_mode_loop();
-  }
-  else
-  {
-    // ON / OFF Red LED
-    Serial.println("Operation mode == OFF");
-    ledManager.setPixelColor(0, LedManager::COLOR_RED);
-    ledManager.show();
-    delay(appPrefs.wifi_channel_dwell_time);
-    ledManager.setPixelColor(0, LedManager::COLOR_OFF);
-    ledManager.show();
-    delay(appPrefs.wifi_channel_dwell_time);
-  }
-  BLEStatusUpdater.update();
+    static unsigned long lastMemoryPrint = 0;
+    const unsigned long MEMORY_PRINT_INTERVAL = 30000; // 30 segundos
+
+    if (millis() - lastMemoryPrint >= MEMORY_PRINT_INTERVAL) {
+        printMemoryStats();
+        lastMemoryPrint = millis();
+    }
+
+    if (appPrefs.operation_mode == OPERATION_MODE_SCAN)
+    {
+        scan_mode_loop();
+    }
+    else if (appPrefs.operation_mode == OPERATION_MODE_DETECTION)
+    {
+        detection_mode_loop();
+    }
+    else
+    {
+        // ON / OFF Red LED
+        log_i("Operation mode == OFF");
+        ledManager.setPixelColor(0, LedManager::COLOR_RED);
+        ledManager.show();
+        delay(appPrefs.wifi_channel_dwell_time);
+        ledManager.setPixelColor(0, LedManager::COLOR_OFF);
+        ledManager.show();
+        delay(appPrefs.wifi_channel_dwell_time);
+    }
+    BLEStatusUpdater.update();
 }
+
+
+

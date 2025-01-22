@@ -9,7 +9,7 @@
 #include "WifiDeviceList.h"
 #include "WifiNetworkList.h"
 #include "AppPreferences.h"
-#include "MACAddress.h"
+#include "MacAddress.h"
 #include "WifiScan.h"
 #include "WifiDetect.h"
 #include "BLEScan.h"
@@ -63,47 +63,44 @@ public:
             if (!savedAddress.isEmpty())
             {
                 authorizedClientAddress = new BLEAddress(savedAddress.c_str());
-                Serial.printf("Loaded authorized address in MySecurity: %s\n", savedAddress.c_str());
+                log_i("Loaded authorized address in MySecurity: %s", savedAddress.c_str());
             }
             else
             {
-                Serial.println("No authorized address found in preferences");
+                log_i("No authorized address found in preferences");
             }
             preferences.end();
         }
         else
         {
-            Serial.println("Failed to open preferences namespace in MySecurity");
+            log_e("Failed to open preferences namespace in MySecurity");
         }
     }
 
     uint32_t onPassKeyRequest() override
     {
-        Serial.println("Passkey Request");
+        log_i("Passkey Request");
         // Generar una passkey aleatoria de 6 dígitos
         uint32_t passKey = random(100000, 999999);
-        Serial.print("Generated Passkey: ");
-        Serial.println(passKey);
+        log_i("Generated Passkey: %u", passKey);
         return passKey;
     }
 
     void onPassKeyNotify(uint32_t pass_key) override
     {
-        Serial.print("Passkey to be entered: ");
-        Serial.println(pass_key);
+        log_i("Passkey to be entered: %u", pass_key);
     }
 
     bool onConfirmPIN(uint32_t pass_key) override
     {
-        Serial.print("Confirm Passkey: ");
-        Serial.println(pass_key);
+        log_i("Confirm Passkey: %u", pass_key);
         // Considera implementar una forma más robusta de confirmación
         return true;
     }
 
     bool onSecurityRequest() override
     {
-        Serial.println("Security Request Received");
+        log_i("Security Request Received");
         return true;
     }
 
@@ -111,9 +108,9 @@ public:
     {
         if (auth_cmpl.success)
         {
-            Serial.println("Pairing Successful");
+            log_i("Pairing Successful");
             BLEAddress clientAddress = BLEAddress(auth_cmpl.bd_addr);
-            Serial.printf("Paired Client MAC: %s\n", clientAddress.toString().c_str());
+            log_i("Paired Client MAC: %s", clientAddress.toString().c_str());
 
             strncpy(appPrefs.authorized_address, clientAddress.toString().c_str(), sizeof(appPrefs.authorized_address));
 
@@ -123,17 +120,17 @@ public:
             { // Modo lectura y escritura
                 if (preferences.putString(PREF_AUTH_KEY, clientAddress.toString().c_str()))
                 {
-                    Serial.println("Authorized address saved successfully");
+                    log_i("Authorized address saved successfully");
                 }
                 else
                 {
-                    Serial.println("Failed to save authorized address");
+                    log_e("Failed to save authorized address");
                 }
                 preferences.end();
             }
             else
             {
-                Serial.println("Failed to open preferences namespace in onAuthenticationComplete");
+                log_e("Failed to open preferences namespace in onAuthenticationComplete");
             }
 
             // Actualizar la dirección autorizada en memoria
@@ -147,8 +144,7 @@ public:
         }
         else
         {
-            Serial.println("Pairing Failed");
-            Serial.printf("Failure Reason: %d\n", auth_cmpl.fail_reason);
+            log_e("Pairing Failed. Reason: %d", auth_cmpl.fail_reason);
         }
     }
 };
@@ -158,7 +154,7 @@ class MyServerCallbacks : public BLEServerCallbacks
     void onConnect(BLEServer *pServer) override
     {
         deviceConnected = true;
-        Serial.println("Device connected");
+        log_i("Device connected");
 
         // Asegurarse de que authorizedClientAddress está cargado
         if (authorizedClientAddress == nullptr)
@@ -170,69 +166,67 @@ class MyServerCallbacks : public BLEServerCallbacks
                 if (!savedAddress.isEmpty())
                 {
                     authorizedClientAddress = new BLEAddress(savedAddress.c_str());
-                    Serial.printf("Loaded authorized address: %s\n", savedAddress.c_str());
+                    log_i("Loaded authorized address: %s", savedAddress.c_str());
                 }
                 else
                 {
-                    Serial.println("No authorized address found in preferences");
+                    log_w("No authorized address found in preferences");
                 }
                 preferences.end();
             }
             else
             {
-                Serial.println("Failed to open preferences namespace in onConnect");
+                log_e("Failed to open preferences namespace in onConnect");
             }
         }
 
         try
         {
             auto peerDevices = pServer->getPeerDevices(true);
-            Serial.printf("Number of peer devices: %d\n", peerDevices.size());
+            log_d("Number of peer devices: %d", peerDevices.size());
 
             for (auto &peerDevice : peerDevices)
             {
                 uint16_t id = peerDevice.first;
                 conn_status_t status = peerDevice.second;
-                Serial.printf("Peer device ID: %d, Connected: %d\n", id, status.connected);
+                log_d("Peer device ID: %d, Connected: %d", id, status.connected);
 
                 if (status.peer_device != nullptr)
                 {
                     BLEClient *client = (BLEClient *)status.peer_device;
                     BLEAddress clientAddress = client->getPeerAddress();
-                    Serial.printf("Connected client address: %s\n", clientAddress.toString().c_str());
+                    log_d("Connected client address: %s", clientAddress.toString().c_str());
 
                     // Verificar si el dispositivo está autorizado
                     if (authorizedClientAddress != nullptr && *authorizedClientAddress == clientAddress)
                     {
-                        Serial.println("Authorized client reconnected - skipping security");
-                        // No iniciar emparejamiento
+                        log_i("Authorized client reconnected - skipping security");
                         return;
                     }
 
-                    Serial.println("New client connected. Pairing will be handled by the BLE stack.");
+                    log_i("New client connected. Pairing will be handled by the BLE stack.");
                     // La pila BLE manejará el emparejamiento automáticamente
                 }
                 else
                 {
-                    Serial.println("Failed to get valid client address");
+                    log_e("Failed to get valid client address");
                 }
             }
         }
-
         catch (std::exception &e)
         {
-            Serial.printf("Exception in onConnect: %s\n", e.what());
+            log_e("Exception in onConnect: %s", e.what());
         }
         catch (...)
         {
-            Serial.println("Unknown exception in onConnect");
+            log_e("Unknown exception in onConnect");
         }
     }
 
     void onDisconnect(BLEServer *pServer) override
     {
         deviceConnected = false;
-        Serial.println("Device disconnected");
+        log_i("Device disconnected");
 
         // Reiniciar el Advertising
         BLEAdvertisingManager::start();
@@ -250,22 +244,42 @@ class ListSizesCallbacks : public BLECharacteristicCallbacks
 // Implementación de funciones
 void setupBLE()
 {
-    Serial.println("Initializing BLE");
+    log_i("Setting up BLE...");
+
+    // Create the BLE Device
     BLEDevice::init(appPrefs.device_name);
+    esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT, (esp_power_level_t)appPrefs.bleTxPower);
+
+    log_i("Setting BLE MTU to %d", appPrefs.bleMTU);
+    BLEDevice::setMTU(appPrefs.bleMTU);
 
     BLEDevice::setEncryptionLevel(ESP_BLE_SEC_ENCRYPT);
     BLEDevice::setSecurityCallbacks(new MySecurity());
-    BLEDevice::setPower((esp_power_level_t) appPrefs.bleTxPower, ESP_BLE_PWR_TYPE_DEFAULT);
-    BLEDevice::setMTU(517); // Set to the Maximum MTU size
+    BLEDevice::setPower((esp_power_level_t)appPrefs.bleTxPower, ESP_BLE_PWR_TYPE_DEFAULT);
 
     // Ajustar parámetros de conexión para mayor estabilidad
     esp_ble_conn_update_params_t conn_params = {
-        .min_int = 0x10,     // x 1.25ms = 20ms
-        .max_int = 0x20,     // x 1.25ms = 40ms
-        .latency = 0,        // Número de eventos que pueden saltarse
-        .timeout = 400       // Supervisión timeout en unidades de 10ms
+        .min_int = 0x10,    // x 1.25ms = 20ms
+        .max_int = 0x20,    // x 1.25ms = 40ms
+        .latency = 0,       // Sin latencia para mayor estabilidad
+        .timeout = 1000     // 10 segundos de timeout
     };
-    esp_ble_gap_update_conn_params(&conn_params);
+    
+    esp_err_t result;
+    int retries = 3;
+    do {
+        result = esp_ble_gap_update_conn_params(&conn_params);
+        if (result != ESP_OK) {
+            log_w("Failed to update connection parameters: %s, retrying...", esp_err_to_name(result));
+            delay(100);  // Pequeña espera antes de reintentar
+        }
+    } while (result != ESP_OK && --retries > 0);
+
+    if (result != ESP_OK) {
+        log_e("Failed to update connection parameters after all retries: %s", esp_err_to_name(result));
+    } else {
+        log_i("Connection parameters updated successfully");
+    }
 
     // Configurar parámetros de seguridad
     esp_ble_auth_req_t auth_req = ESP_LE_AUTH_REQ_SC_BOND; // Conexión segura con bonding
@@ -289,7 +303,7 @@ void setupBLE()
     pSecurity->setCapability(ESP_IO_CAP_NONE);
     pSecurity->setInitEncryptionKey(ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK);
 
-    Serial.println("Creating Scanner BLE service and characteristics");
+    log_i("Creating Scanner BLE service and characteristics");
     BLEService *pScannerService = pServer->createService(SNEAK32_SERVICE_UUID);
 
     pStatusCharacteristic = pScannerService->createCharacteristic(
@@ -323,14 +337,14 @@ void setupBLE()
         BLECharacteristic::PROPERTY_READ);
     pFirmwareInfoCharacteristic->setValue(getFirmwareInfoString().c_str());
 
-    Serial.println("Starting BLE service");
+    log_i("Starting BLE service");
     pScannerService->start();
 
-    Serial.println("Configuring BLE advertising");
+    log_i("Configuring BLE advertising");
     BLEAdvertisingManager::setup();
 
-    Serial.println("Starting BLE advertising");
+    log_i("Starting BLE advertising");
     BLEAdvertisingManager::start();
 
-    Serial.println("BLE Initialized");
+    log_i("BLE Initialized");
 }

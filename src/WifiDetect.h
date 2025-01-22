@@ -4,10 +4,12 @@
 #include <esp_wifi.h>
 #include <esp_wifi_types.h>
 #include <vector>
-#include "MACAddress.h"
 #include <mutex>
 
-class WifiDetectClass {
+#include "MacAddress.h"
+
+class WifiDetectClass
+{
 public:
     WifiDetectClass();
     void setup();
@@ -43,8 +45,7 @@ private:
     void deregisterWifiEventHandlers();
 
     std::mutex detectionMutex;
-    static WifiDetectClass* instance;
+    static WifiDetectClass *instance;
 };
 
 extern WifiDetectClass WifiDetector;
-

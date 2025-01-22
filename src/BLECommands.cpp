@@ -71,25 +71,25 @@ void BLECommands::onWrite(BLECharacteristic* characteristic) {
 
     // Parse command
     String value = String(characteristic->getValue().c_str());
-    Serial.println("BLE Command received: " + value);
+    log_i("BLE Command received: %s", value.c_str());
     pCli->parse(value.c_str());
 }
 
 void BLECommands::respond(String text) {
     if (pCharacteristic != nullptr) {
         pCharacteristic->setValue(text.c_str());
-        Serial.println("BLE Response: " + text);
+        log_i("BLE Response: %s", text.c_str());
     } else {
-        Serial.println("ERROR: Cannot send BLE response, characteristic is null");
+        log_e("Cannot send BLE response, characteristic is null");
     }
 }
 
 void BLECommands::respond(uint8_t *value, size_t length) {
     if (pCharacteristic != nullptr) {
         pCharacteristic->setValue(value, length);
-        Serial.println("BLE Response: " + String(value, length));
+        log_i("BLE Response: %s", String((char*)value, length).c_str());
     } else {
-        Serial.println("ERROR: Cannot send BLE response, characteristic is null");
+        log_e("Cannot send BLE response, characteristic is null");
     }
 }
 
@@ -111,25 +111,25 @@ void clearDataCallback(cmd* cmdPtr) {
 }
 
 void saveDataCallback(cmd* cmdPtr) {
-    Serial.println("Save data command received");
+    log_i("Save data command received");
     FlashStorage::saveAll();
     BLECommands::respond("Data saved");
 }
 
 void saveWifiNetworksCallback(cmd* cmdPtr) {
-    Serial.println("Save WiFi networks command received");
+    log_i("Save WiFi networks command received");
     FlashStorage::saveWifiNetworks();
     BLECommands::respond("WiFi networks saved");
 }   
 
 void saveWifiDevicesCallback(cmd* cmdPtr) {
-    Serial.println("Save WiFi devices command received");
+    log_i("Save WiFi devices command received");
     FlashStorage::saveWifiDevices();
     BLECommands::respond("WiFi devices saved");
 }
 
 void saveBleDevicesCallback(cmd* cmdPtr) {
-    Serial.println("Save BLE devices command received");
+    log_i("Save BLE devices command received");
     FlashStorage::saveBLEDevices();
     BLECommands::respond("BLE devices saved");
 }
@@ -143,7 +143,7 @@ void testMtuCallback(cmd* cmdPtr) {
         return;
     }
 
-    Serial.println("Test MTU command received, sent " + String(mtuSize) + " bytes");
+    log_i("Test MTU command received, sent %d bytes", mtuSize);
     uint8_t *mtuBuffer = (uint8_t *)malloc(mtuSize);
     memset(mtuBuffer, 'A', mtuSize);    
     BLECommands::respond(mtuBuffer, mtuSize);

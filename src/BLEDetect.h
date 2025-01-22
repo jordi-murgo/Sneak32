@@ -5,11 +5,12 @@
 #include <BLEScan.h>
 #include <BLEAdvertisedDevice.h>
 #include "AppPreferences.h"
-#include "MACAddress.h"
+#include "MacAddress.h"
 #include <vector>
 #include <mutex>
 
-class BLEDetectClass {
+class BLEDetectClass
+{
 public:
     BLEDetectClass(); // Default constructor
     void setup();
@@ -23,19 +24,21 @@ public:
     size_t getDetectedDevicesCount();
 
 private:
-    class BLEDetectAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks {
-        private:
-            BLEDetectClass* parent;
-        public:
-            BLEDetectAdvertisedDeviceCallbacks(BLEDetectClass* parent) : parent(parent) {}
-            void onResult(BLEAdvertisedDevice advertisedDevice) override;
+    class BLEDetectAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
+    {
+    private:
+        BLEDetectClass *parent;
+
+    public:
+        BLEDetectAdvertisedDeviceCallbacks(BLEDetectClass *parent) : parent(parent) {}
+        void onResult(BLEAdvertisedDevice advertisedDevice) override;
     };
 
     void detect_loop();
-    
+
     TaskHandle_t detectTaskHandle = nullptr;
-    BLEScan* pBLEScan = nullptr;
-    BLEDetectAdvertisedDeviceCallbacks* callbacks = nullptr;
+    BLEScan *pBLEScan = nullptr;
+    BLEDetectAdvertisedDeviceCallbacks *callbacks = nullptr;
     bool isDetecting = false;
 
     time_t lastDetectionTime;

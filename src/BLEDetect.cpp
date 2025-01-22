@@ -12,19 +12,19 @@ BLEDetectClass::BLEDetectClass() : isDetecting(false), pBLEScan(nullptr) {
 
 void BLEDetectClass::setup()
 {
-    Serial.println("Setting up BLE Detector");
+    log_i("Setting up BLE Detector");
     pBLEScan = BLEDevice::getScan();
     start();
-    Serial.println("BLE Detector setup complete");
+    log_i("BLE Detector setup complete");
 }
 
 void BLEDetectClass::start()
 {
-    Serial.println("Starting BLE Detection task");
+    log_i("Starting BLE Detection task");
     pBLEScan = BLEDevice::getScan();
     if (pBLEScan == nullptr)
     {
-        Serial.println("Error: Failed to initialize pBLEScan");
+        log_e("Failed to initialize pBLEScan");
         return;
     }
     pBLEScan->setAdvertisedDeviceCallbacks(new BLEDetectAdvertisedDeviceCallbacks(this));
@@ -37,12 +37,12 @@ void BLEDetectClass::start()
             { static_cast<BLEDetectClass *>(parameter)->detect_loop(); },
             "BLE_Detect_Task", 4096, this, 1, &detectTaskHandle, 0);
     }
-    Serial.println("BLE Detection task started");
+    log_i("BLE Detection task started");
 }
 
 void BLEDetectClass::stop()
 {
-    Serial.println("Stopping BLE Detection task");
+    log_i("Stopping BLE Detection task");
     isDetecting = false;
     if (pBLEScan != nullptr)
     {
@@ -54,7 +54,7 @@ void BLEDetectClass::stop()
         vTaskDelete(detectTaskHandle);
         detectTaskHandle = nullptr;
     }
-    Serial.println("BLE Detection task stopped");
+    log_i("BLE Detection task stopped");
 }
 
 void BLEDetectClass::cleanDetectionData()
@@ -84,7 +84,7 @@ void BLEDetectClass::BLEDetectAdvertisedDeviceCallbacks::onResult(BLEAdvertisedD
 
         if (bleDeviceList.is_device_in_list(deviceMac))
         {
-            Serial.printf("Detected BLE device: %s\n", deviceMac.toString().c_str());
+            log_i("Detected BLE device: %s", deviceMac.toString().c_str());
             parent->lastDetectionTime = millis() / 1000;
 
             auto it = std::find(parent->detectedDevices.begin(), parent->detectedDevices.end(), deviceMac);
@@ -121,29 +121,29 @@ bool BLEDetectClass::isSomethingDetected()
  */
 void BLEDetectClass::detect_loop()
 {
-    Serial.println("BLEDetectClass::detect_loop - Started");
+    log_i("BLEDetectClass::detect_loop - Started");
     while (isDetecting)
     {
         try
         {
-            Serial.printf(">> BLEDetectClass::detect_loop - Starting BLE Detection pause during %d seconds\n", appPrefs.ble_scan_delay);
+            log_d(">> BLEDetectClass::detect_loop - Starting BLE Detection pause during %d seconds", appPrefs.ble_scan_delay);
             delay(appPrefs.ble_scan_delay * 1000);
             
-            Serial.printf(">> BLEDetectClass::detect_loop - Starting BLE Detection during %d seconds\n", appPrefs.ble_scan_duration);
+            log_d(">> BLEDetectClass::detect_loop - Starting BLE Detection during %d seconds", appPrefs.ble_scan_duration);
             
             if (pBLEScan == nullptr)
             {
-                Serial.println("Error: pBLEScan is null. Reinitializing...");
+                log_e("pBLEScan is null. Reinitializing...");
                 pBLEScan = BLEDevice::getScan();
                 if (pBLEScan == nullptr)
                 {
-                    Serial.println("Failed to reinitialize pBLEScan. Skipping this iteration.");
+                    log_e("Failed to reinitialize pBLEScan. Skipping this iteration.");
                     continue;
                 }
             }
             
             BLEScanResults foundDevices = pBLEScan->start(appPrefs.ble_scan_duration, false);
-            Serial.printf(">> BLEDetectClass::detect_loop - BLE Detection complete. %d devices found.\n", foundDevices.getCount());
+            log_i(">> BLEDetectClass::detect_loop - BLE Detection complete. %d devices found", foundDevices.getCount());
             pBLEScan->clearResults();
             
             {
@@ -156,12 +156,12 @@ void BLEDetectClass::detect_loop()
         }
         catch (const std::exception& e)
         {
-            Serial.printf("Exception in BLEDetectClass::detect_loop: %s\n", e.what());
+            log_e("Exception in BLEDetectClass::detect_loop: %s", e.what());
         }
         catch (...)
         {
-            Serial.println("Unknown exception in BLEDetectClass::detect_loop");
+            log_e("Unknown exception in BLEDetectClass::detect_loop");
         }
     }
-    Serial.println("BLEDetectClass::detect_loop - Ended");
+    log_i("BLEDetectClass::detect_loop - Ended");
 }

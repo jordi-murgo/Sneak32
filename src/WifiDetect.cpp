@@ -1,10 +1,11 @@
 #include <Arduino.h>
 #include <mutex>
+#include <WiFi.h>
 
 #include "WifiDetect.h"
 #include "WifiDeviceList.h"
 #include "WifiNetworkList.h"
-#include "MACAddress.h"
+#include "MacAddress.h"
 #include "AppPreferences.h"
 #include "esp_event.h"
 #include "esp_wifi.h"
@@ -18,36 +19,39 @@ WifiDetectClass WifiDetector;
 
 #define SSID_MAX_LEN 33
 
-WifiDetectClass* WifiDetectClass::instance = nullptr;
+WifiDetectClass *WifiDetectClass::instance = nullptr;
 
-WifiDetectClass::WifiDetectClass() {
+WifiDetectClass::WifiDetectClass()
+{
     instance = this;
 }
 
 void WifiDetectClass::setup()
 {
-    WiFi.mode(WIFI_AP_STA);
-    WiFi.setTxPower(WIFI_POWER_8_5dBm); // Super Mini se calienta con más potencia.
+    log_i("Setting up WiFi Detector");
+    WiFi.mode(WIFI_MODE_STA);
+    WiFi.setTxPower(WIFI_POWER_8_5dBm);
+    esp_wifi_set_promiscuous(true);
+    esp_wifi_set_promiscuous_rx_cb(&promiscuous_rx_cb);
     start();
-    Serial.println("WifiDetectClass: Setup completed");
+    log_i("WiFi Detector setup complete");
 }
 
 void WifiDetectClass::start()
 {
-    Serial.println("WifiDetectClass: Starting");
+    log_i("Starting WiFi Detection task");
     setFilter(appPrefs.only_management_frames);
     registerWifiEventHandlers();
     esp_wifi_set_promiscuous(true);
-    Serial.println("WifiDetectClass: Started");
+    log_i("WiFi Detection task started");
 }
 
 void WifiDetectClass::stop()
 {
-    Serial.println("WifiDetectClass: Stopping");
-    WiFi.softAPdisconnect(true);
+    log_i("Stopping WiFi Detection task");
     deregisterWifiEventHandlers();
     esp_wifi_set_promiscuous(false);
-    Serial.println("WifiDetectClass: Stopped");
+    log_i("WiFi Detection task stopped");
 }
 
 void WifiDetectClass::setFilter(bool onlyManagementFrames)
@@ -110,11 +114,13 @@ void WifiDetectClass::addDetectedNetwork(const String &ssid)
 
     // Verificar si la red ya está en la lista detectedNetworks
     auto it = std::find(detectedNetworks.begin(), detectedNetworks.end(), ssid);
-    if (it == detectedNetworks.end()) {
+    if (it == detectedNetworks.end())
+    {
         // La red no está en la lista, así que la añadimos
         detectedNetworks.push_back(ssid);
         lastDetectionTime = millis() / 1000;
-        if (detectedNetworks.size() != last_detected_networks_size) { 
+        if (detectedNetworks.size() != last_detected_networks_size)
+        {
             last_detected_networks_size = detectedNetworks.size();
             BLEStatusUpdater.update();
         }
@@ -128,11 +134,13 @@ void WifiDetectClass::addDetectedDevice(const MacAddress &device)
 
     // Verificar si el dispositivo ya está en la lista detectedDevices
     auto it = std::find(detectedDevices.begin(), detectedDevices.end(), device);
-    if (it == detectedDevices.end()) {
+    if (it == detectedDevices.end())
+    {
         // El dispositivo no está en la lista, así que lo añadimos
         detectedDevices.push_back(device);
         lastDetectionTime = millis() / 1000;
-        if (detectedDevices.size() != last_detected_devices_size) { 
+        if (detectedDevices.size() != last_detected_devices_size)
+        {
             last_detected_devices_size = detectedDevices.size();
             BLEStatusUpdater.update();
         }
@@ -182,7 +190,7 @@ void WifiDetectClass::process_management_frame(const uint8_t *payload, int paylo
     {
         if (ssidList.is_ssid_in_list(String(ssid)))
         {
-            Serial.printf("SSID detected (%s): %s\n", frameType.c_str(), String(ssid).c_str());
+            log_i("SSID detected (%s): %s", frameType.c_str(), String(ssid).c_str());
             addDetectedNetwork(String(ssid));
         }
     }
@@ -191,7 +199,7 @@ void WifiDetectClass::process_management_frame(const uint8_t *payload, int paylo
     {
         if (stationsList.is_device_in_list(MacAddress(src_addr)))
         {
-            Serial.printf("Device detected (%s): %s\n", frameType.c_str(), MacAddress(src_addr).toString().c_str());
+            log_i("Device detected (%s): %s", frameType.c_str(), MacAddress(src_addr).toString().c_str());
             addDetectedDevice(MacAddress(src_addr));
         }
     }
@@ -220,7 +228,7 @@ void WifiDetectClass::process_control_frame(const uint8_t *payload, int payload_
 
     if (stationsList.is_device_in_list(MacAddress(src_addr)))
     {
-        Serial.printf("Device detected (%02x): %s\n", subtype, MacAddress(src_addr).toString().c_str());
+        log_i("Device detected (%02x): %s", subtype, MacAddress(src_addr).toString().c_str());
         addDetectedDevice(MacAddress(src_addr));
     }
 }
@@ -231,7 +239,7 @@ void WifiDetectClass::process_data_frame(const uint8_t *payload, int payload_len
 
     if (stationsList.is_device_in_list(MacAddress(src_addr)))
     {
-        Serial.printf("Device detected (data): %s\n", MacAddress(src_addr).toString().c_str());
+        log_i("Device detected (data): %s", MacAddress(src_addr).toString().c_str());
         addDetectedDevice(MacAddress(src_addr));
     }
 }
@@ -355,9 +363,10 @@ size_t WifiDetectClass::getDetectedNetworksCount()
  */
 void WifiDetectClass::promiscuous_rx_cb(void *buf, wifi_promiscuous_pkt_type_t type)
 {
-  if (instance) {
-    instance->handle_rx(buf, type);
-  }
+    if (instance)
+    {
+        instance->handle_rx(buf, type);
+    }
 }
 
 void WifiDetectClass::handle_rx(void *buf, wifi_promiscuous_pkt_type_t type)

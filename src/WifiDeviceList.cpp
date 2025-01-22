@@ -15,21 +15,9 @@ void WifiDeviceList::updateOrAddDevice(const MacAddress &address, const MacAddre
 {
   std::lock_guard<std::mutex> lock(deviceMutex);
 
-  // Local addresses start with bit 2 set
-  if (appPrefs.ignore_local_wifi_addresses && address.getBytes()[0] & 0x02)
+  if (appPrefs.ignore_local_wifi_addresses && address.isLocallyAdministered())
   {
-    return;
-  }
-
-  uint8_t nullAddress[6] = {0, 0, 0, 0, 0, 0};
-  if (memcmp(address.getBytes(), nullAddress, 6) == 0)
-  {
-    return;
-  }
-
-  uint8_t broadcastAddress[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-  if (memcmp(address.getBytes(), broadcastAddress, 6) == 0)
-  {
+    log_d("Ignoring locally administered MAC: %s", address.toString().c_str());
     return;
   }
 
@@ -44,19 +32,20 @@ void WifiDeviceList::updateOrAddDevice(const MacAddress &address, const MacAddre
   if (it != deviceList.end())
   {
     it->rssi = std::max(it->rssi, rssi);
-    it->bssid = bssid;
     it->channel = channel;
+    it->bssid = bssid;
     it->last_seen = now;
     it->times_seen++;
+    log_d("Device updated: %s", address.toString().c_str());
   }
   else
   {
-    WifiDevice newDevice(address, bssid, rssi, channel, now);
+    WifiDevice newDevice(address, bssid, rssi, channel, now, 1);
 
     if (deviceList.size() < maxSize)
     {
       deviceList.push_back(newDevice);
-      Serial.printf("Added new WiFi device: %s\n", newDevice.address.toString().c_str());
+      log_i("New device found: %s", address.toString().c_str());
     }
     else
     {
@@ -65,8 +54,9 @@ void WifiDeviceList::updateOrAddDevice(const MacAddress &address, const MacAddre
                                      {
                                        return a.last_seen < b.last_seen;
                                      });
-      Serial.printf("Replacing WiFi device: %s (seen %u times) with new device: %s\n",
-                    oldest->address.toString().c_str(), oldest->times_seen, newDevice.address.toString().c_str());
+      log_d("Replacing device: %s (seen %u times) with new device: %s",
+             oldest->address.toString().c_str(), oldest->times_seen,
+             newDevice.address.toString().c_str());
       *oldest = newDevice;
     }
   }
@@ -77,57 +67,28 @@ size_t WifiDeviceList::size() const
   return deviceList.size();
 }
 
-std::vector<WifiDevice> WifiDeviceList::getClonedList() const
+std::vector<WifiDevice, DynamicPsramAllocator<WifiDevice>> WifiDeviceList::getClonedList() const
 {
-  return deviceList; // Return a copy of the list to avoid locking issues
+    std::vector<WifiDevice, DynamicPsramAllocator<WifiDevice>> result;
+    result.reserve(deviceList.size());
+    for (const auto& device : deviceList) {
+        result.push_back(device);
+    }
+    return result;
 }
 
 void WifiDeviceList::addDevice(const WifiDevice &device)
 {
   std::lock_guard<std::mutex> lock(deviceMutex);
   deviceList.push_back(device);
-  Serial.printf("Added new WiFi device: %s\n", device.address.toString().c_str());
+  log_i("Added new WiFi device: %s", device.address.toString().c_str());
 }
 
 void WifiDeviceList::clear()
 {
   std::lock_guard<std::mutex> lock(deviceMutex);
+  log_i("WiFi device list cleared");
   deviceList.clear();
-  Serial.println("WiFi device list cleared");
-}
-
-void WifiDeviceList::remove_irrelevant_stations()
-{
-  std::lock_guard<std::mutex> lock(deviceMutex);
-
-  if (deviceList.empty())
-  {
-    return;
-  }
-
-  size_t initial_size = deviceList.size();
-  Serial.printf("Removing irrelevant stations. List size: %zu\n", initial_size);
-
-  uint32_t total_seens = 0;
-  for (const auto &device : deviceList)
-  {
-    total_seens += device.times_seen;
-  }
-
-  uint32_t min_seens = static_cast<uint32_t>(round(total_seens / static_cast<double>(deviceList.size()) / 3.0));
-
-  deviceList.erase(
-      std::remove_if(deviceList.begin(), deviceList.end(),
-                     [min_seens](const WifiDevice &device)
-                     {
-                       Serial.printf("Irrelevant device: %s, seen: %u (min_seens: %u), rssi: %d (minimal_rssi: %d)\n",
-                                     device.address.toString().c_str(), device.times_seen, min_seens, device.rssi, appPrefs.minimal_rssi);
-                       return device.times_seen < min_seens || device.rssi < appPrefs.minimal_rssi;
-                     }),
-      deviceList.end());
-
-  Serial.printf("Removed %zu irrelevant stations. New list size: %zu\n", initial_size - deviceList.size(), deviceList.size());
-  Serial.println("WifiDeviceList::remove_irrelevant_stations - Exiting");
 }
 
 bool WifiDeviceList::is_device_in_list(const MacAddress &address)
