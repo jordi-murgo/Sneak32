@@ -24,6 +24,7 @@ struct AppPreferencesData {
     uint32_t ble_scan_duration;   
     char authorized_address[18];
     uint8_t bleTxPower;
+    bool mode_ble;                     // New field to control BLE functionality
 
     // CPU
     uint8_t cpu_speed;
@@ -58,6 +59,7 @@ namespace Keys {
     const char* const WIFI_TX_POWER = "wifi_tx_power";
     const char* const BLE_TX_POWER = "ble_tx_power";
     const char* const BLE_MTU = "ble_mtu";
+    const char* const MODE_BLE = "mode_ble";
 }
 
 // Declaraciones de funciones

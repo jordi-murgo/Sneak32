@@ -32,7 +32,7 @@ public:
   BLEDeviceList &operator=(const BLEDeviceList &) = delete;
 
   // Public methods
-  void updateOrAddDevice(const MacAddress &address, int8_t rssi, const String &name, bool isPublic);
+  bool updateOrAddDevice(const MacAddress &address, int8_t rssi, const String &name, bool isPublic);
   size_t size() const
   {
     std::lock_guard<std::mutex> lock(deviceMutex);

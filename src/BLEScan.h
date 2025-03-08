@@ -1,5 +1,6 @@
 #pragma once
 
+// Incluimos las bibliotecas BLE necesarias para la funcionalidad completa
 #include <BLEDevice.h>
 #include <BLEUtils.h>
 #include <BLEScan.h>
@@ -9,11 +10,16 @@
 #include "freertos/task.h"
 #include <mutex>
 
-class BLEScanClass;  // Forward declaration
+// Declaración de la función utilizada por otros módulos
+void printHexDump(const uint8_t *data, size_t length);
+
+// Forward declarations
+class BLEScanClass;
 
 class BLEScanAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks {
 public:
     BLEScanAdvertisedDeviceCallbacks(BLEScanClass* scan);
+    // Restauramos el override para la correcta herencia
     void onResult(BLEAdvertisedDevice advertisedDevice) override;
 private:
     BLEScanClass* scan;
@@ -21,15 +27,21 @@ private:
 
 class BLEScanClass {
 public:
+    BLEScanClass();
+    ~BLEScanClass();
+
     void setup();
-    void start();
+    bool start();
     void stop();
+    void scan_loop();
     std::mutex mtx;
 
 private:
-    void scan_loop();
+    // Static task function for FreeRTOS task creation
+    static void scanTask(void* parameter);
     
     TaskHandle_t scanTaskHandle = nullptr;
+    // Restauramos los punteros a objetos BLE para la implementación completa
     BLEScan* pBLEScan = nullptr;
     BLEScanAdvertisedDeviceCallbacks* callbacks = nullptr;
     bool isScanning = false;

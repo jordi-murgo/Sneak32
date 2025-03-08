@@ -1,225 +1,239 @@
+/**
+ * @file BLEScan.cpp
+ * @brief Implementation of BLE scanning functionality with defensive programming
+ */
+
 #include "BLEScan.h"
 #include "BLEDeviceList.h"
 #include "MacAddress.h"
 #include "AppPreferences.h"
+// Se restauran las referencias a la librería BLE
+#include <BLEDevice.h>
+#include <BLEUtils.h>
+#include <BLEScan.h>
+#include <BLEAdvertisedDevice.h>
 
 extern BLEDeviceList bleDeviceList;
 extern AppPreferencesData appPrefs;
 
 BLEScanClass BLEScanner;
+// Constructor con inicialización segura
+BLEScanClass::BLEScanClass() {
+    // Inicialización segura de todos los punteros
+    pBLEScan = nullptr;
+    callbacks = nullptr;
+    scanTaskHandle = nullptr;
+    isScanning = false;
+}
 
-BLEScanAdvertisedDeviceCallbacks::BLEScanAdvertisedDeviceCallbacks(BLEScanClass *scan) : scan(scan) {}
+// Destructor con liberación segura
+BLEScanClass::~BLEScanClass() {
+    // Asegurarse de liberar recursos
+    stop();
+    
+    // Limpieza segura del callback
+    if (callbacks != nullptr) {
+        delete callbacks;
+        callbacks = nullptr;
+    }
+}
 
-void BLEScanClass::setup()
-{
-    isr_log_i("Setting up BLE Scanner");
+// Constructor del callback que almacena una referencia al scanner
+BLEScanAdvertisedDeviceCallbacks::BLEScanAdvertisedDeviceCallbacks(BLEScanClass* scan) : scan(scan) {}
+
+// Setup - Inicializa el scanner BLE
+void BLEScanClass::setup() {
+    log_i("Setting up BLE Scanner");
+    
+    // Verificar si BLE está inicializado
+    if (!BLEDevice::getInitialized()) {
+        log_e("BLE no está inicializado, no se puede configurar el scanner");
+        return;
+    }
+    
     pBLEScan = BLEDevice::getScan();
+    if (pBLEScan == nullptr) {
+        log_e("No se pudo obtener el scanner BLE");
+        return;
+    }
+    
     callbacks = new BLEScanAdvertisedDeviceCallbacks(this);
     start();
-    isr_log_i("BLE Scanner setup complete");
+    
+    log_i("BLE Scanner setup complete");
 }
 
-void BLEScanClass::start()
-{
-    isr_log_i("Starting BLE Scan task");
+// Start - Inicia el scanner BLE
+bool BLEScanClass::start() {
+    log_i("Starting BLE Scan task");
+    
+    if (pBLEScan == nullptr) {
+        log_e("El scanner BLE no está inicializado");
+        return false;
+    }
+    
     pBLEScan->setAdvertisedDeviceCallbacks(callbacks);
     pBLEScan->setActiveScan(true);
-    if (!isScanning)
-    {
+    
+    if (!isScanning) {
         isScanning = true;
         xTaskCreatePinnedToCore(
-            [](void *parameter)
-            { static_cast<BLEScanClass *>(parameter)->scan_loop(); },
-            "BLE_Scan_Task", 4096, this, 1, &scanTaskHandle, 0);
+            [](void* parameter) {
+                static_cast<BLEScanClass*>(parameter)->scan_loop();
+            },
+            "BLE_Scan_Task",
+            4096,
+            this,
+            1,
+            &scanTaskHandle,
+            0
+        );
     }
-    isr_log_i("BLE Scan task started");
+    
+    log_i("BLE Scan task started");
+    return true;
 }
 
-void BLEScanClass::stop()
-{
-    isr_log_i("Stopping BLE Scan task");
-    pBLEScan->stop();
-    pBLEScan->setAdvertisedDeviceCallbacks(nullptr);
-    if (isScanning)
-    {
-        isScanning = false;
-        vTaskDelete(scanTaskHandle);
-        scanTaskHandle = nullptr;
+// Stop - Detiene el scanner BLE
+void BLEScanClass::stop() {
+    log_i("Stopping BLE Scan task");
+    
+    if (pBLEScan != nullptr) {
         pBLEScan->stop();
+        pBLEScan->setAdvertisedDeviceCallbacks(nullptr);
     }
-    isr_log_i("BLE Scan task stopped");
+    
+    if (isScanning) {
+        isScanning = false;
+        if (scanTaskHandle != nullptr) {
+            vTaskDelete(scanTaskHandle);
+            scanTaskHandle = nullptr;
+        }
+        if (pBLEScan != nullptr) {
+            pBLEScan->stop();
+        }
+    }
+    
+    log_i("BLE Scan task stopped");
 }
 
-void BLEScanClass::scan_loop()
-{
-    isr_log_i("ScanLoop started");
-    while (true)
-    {
+// Scan Loop - Bucle principal del scanner BLE
+void BLEScanClass::scan_loop() {
+    log_i("ScanLoop started");
+    
+    while (true) {
+        // Esperar entre escaneos según la configuración
         delay(appPrefs.ble_scan_delay * 1000);
-        isr_log_d("Starting BLE Scan");
-        pBLEScan->setInterval(100);
-        pBLEScan->setWindow(90);
-        pBLEScan->setActiveScan(!appPrefs.passive_scan);
-        BLEScanResults foundDevices = pBLEScan->start(appPrefs.ble_scan_duration, false);
-        isr_log_i("BLE Scan complete. %d devices found", foundDevices.getCount());
+        
+        log_i("Starting BLE Scan");
+        
+        // Configurar parámetros de escaneo
+        if (pBLEScan != nullptr) {
+            pBLEScan->setInterval(100);
+            pBLEScan->setWindow(90);
+            pBLEScan->setActiveScan(!appPrefs.passive_scan);
+            
+            // Realizar el escaneo
+            BLEScanResults foundDevices = pBLEScan->start(appPrefs.ble_scan_duration, false);
+            
+            log_i("BLE Scan complete. %d devices found.", foundDevices.getCount());
+        } else {
+            log_e("pBLEScan is null in scan_loop");
+        }
     }
 }
 
-void printHexDump(const uint8_t *data, size_t length)
-{
-    char ascii[17];
-    char formatted_ascii[17];
-    char line[100];  // Buffer para construir cada línea
-
-    for (size_t i = 0; i < length; i++)
-    {
-        // Print offset at the start of each line
-        if (i % 16 == 0)
-        {
-            if (i != 0)
-            {
-                isr_log_v("  |%s|", formatted_ascii);
-            }
-            snprintf(line, sizeof(line), "%08x  ", i);
-            isr_log_v("%s", line);
-            // Initialize ascii buffer for new line
-            memset(ascii, 0, sizeof(ascii));
-            memset(formatted_ascii, ' ', sizeof(formatted_ascii) - 1);
-            formatted_ascii[16] = '\0';
-        }
-
-        // Print hex value
-        snprintf(line, sizeof(line), "%02x ", data[i]);
-        isr_log_v("%s", line);
-
-        // Store ASCII representation
-        ascii[i % 16] = (data[i] >= 32 && data[i] <= 126) ? data[i] : '.';
-        formatted_ascii[i % 16] = ascii[i % 16];
-
-        // Print extra space between 8th and 9th bytes
-        if ((i + 1) % 8 == 0 && (i + 1) % 16 != 0)
-        {
-            isr_log_v(" ");
-        }
-    }
-
-    // Print padding spaces if the last line is incomplete
-    if (length % 16 != 0)
-    {
-        size_t padding = 16 - (length % 16);
-        for (size_t i = 0; i < padding; i++)
-        {
-            isr_log_v("   ");
-            if ((length + i + 1) % 8 == 0 && (length + i + 1) % 16 != 0)
-            {
-                isr_log_v(" ");
-            }
-        }
-        isr_log_v("  |%s|", formatted_ascii);
-    }
-    else if (length > 0)
-    {
-        isr_log_v("  |%s|", formatted_ascii);
-    }
-}
-
-void BLEScanAdvertisedDeviceCallbacks::onResult(BLEAdvertisedDevice advertisedDevice)
-{
-    try
-    {
+/**
+ * Handles BLE scan results
+ * @param advertisedDevice The discovered BLE device
+ */
+void BLEScanAdvertisedDeviceCallbacks::onResult(BLEAdvertisedDevice advertisedDevice) {
+    try {
+        // Verificar el RSSI mínimo configurado
         int rssi = advertisedDevice.getRSSI();
-
-        if (rssi >= appPrefs.minimal_rssi)
-        {
-            // Move string operations outside of the critical section
+        if (rssi >= appPrefs.minimal_rssi) {
+            // Extraer información del dispositivo fuera de la sección crítica
             std::string addressStr = advertisedDevice.getAddress().toString();
             std::string nameStr = advertisedDevice.haveName() ? advertisedDevice.getName() : "";
-            std::string appearanceStr = std::to_string(advertisedDevice.getAppearance());
-            std::string uuidStr = advertisedDevice.haveServiceUUID() ? advertisedDevice.getServiceUUID().toString() : "";
-
+            
+            // Copiar la dirección BLE
             esp_bd_addr_t bleaddr;
             memcpy(bleaddr, advertisedDevice.getAddress().getNative(), sizeof(esp_bd_addr_t));
-
+            
+            // Determinar el tipo de dirección
             boolean isPublic = false;
             String addressType;
-            switch (advertisedDevice.getAddressType())
-            {
-            case BLE_ADDR_TYPE_PUBLIC:
-                addressType = "public";
-                isPublic = true;
-                break;
-            case BLE_ADDR_TYPE_RANDOM:
-                addressType = "random";
-                break;
-            case BLE_ADDR_TYPE_RPA_PUBLIC:
-                addressType = "RPA-public";
-                isPublic = true;
-                break;
-            case BLE_ADDR_TYPE_RPA_RANDOM:
-                addressType = "RPA-random";
-                break;
-            default:
-                addressType = "unknown";
-                break;
+            
+            switch (advertisedDevice.getAddressType()) {
+                case BLE_ADDR_TYPE_PUBLIC:
+                    addressType = "public";
+                    isPublic = true;
+                    break;
+                case BLE_ADDR_TYPE_RANDOM:
+                    addressType = "random";
+                    break;
+                case BLE_ADDR_TYPE_RPA_PUBLIC:
+                    addressType = "RPA-public";
+                    isPublic = true;
+                    break;
+                case BLE_ADDR_TYPE_RPA_RANDOM:
+                    addressType = "RPA-random";
+                    break;
+                default:
+                    addressType = "unknown";
+                    break;
             }
-
-            // Base output always includes address and type
-            isr_log_d("Address: %s (%s)",
-                  addressStr.c_str(), addressType.c_str());
-
-            // Optional fields only if they have value
-            if (!nameStr.empty())
-            {
-                isr_log_v(", Name: '%s'", nameStr.c_str());
+            
+            // Construir una sola línea de información con los datos esenciales
+            String deviceInfo = "BLE Device: ";
+            deviceInfo += addressStr.c_str();
+            deviceInfo += " (";
+            deviceInfo += addressType;
+            deviceInfo += "), RSSI: ";
+            deviceInfo += rssi;
+            
+            if (!nameStr.empty()) {
+                deviceInfo += ", Name: '";
+                deviceInfo += nameStr.c_str();
+                deviceInfo += "'";
             }
-
-            uint16_t appearance = advertisedDevice.getAppearance();
-            if (appearance != 0)
-            {
-                isr_log_v(", Appearance: %d", appearance);
+            
+            // Servicios importantes (sin mostrar todos)
+            if (advertisedDevice.haveServiceUUID()) {
+                deviceInfo += ", Service UUID: ";
+                deviceInfo += advertisedDevice.getServiceUUID().toString().c_str();
             }
-
-            if (advertisedDevice.haveServiceUUID())
-            {
-                isr_log_v(", Service UUID: %s", uuidStr.c_str());
-            }
-
-            // Print payload in hexdump format
-            if (advertisedDevice.getPayloadLength() > 0)
-            {
-                isr_log_v("Payload hexdump:");
-                printHexDump(advertisedDevice.getPayload(), advertisedDevice.getPayloadLength());
-            }
-
-            if (addressStr == "00:00:00:00:00:00")
-            {
-                // This is an invalid address, ignore it
+            
+            // Imprimir la información del dispositivo en una sola línea de log
+            log_i("%s", deviceInfo.c_str());
+            
+            // Descartar direcciones inválidas
+            if (addressStr == "00:00:00:00:00:00") {
+                // Esta es una dirección inválida, ignorarla
                 return;
             }
-
-            if (!isPublic && appPrefs.ignore_random_ble_addresses)
-            {
-                // This is a random BLE address, ignore it
+            
+            // Verificar configuración para direcciones aleatorias
+            if (!isPublic && appPrefs.ignore_random_ble_addresses) {
+                // Esta es una dirección BLE aleatoria, ignorarla
+                log_i("Ignoring random BLE address due to configuration");
                 return;
             }
-
-            // Use a lock_guard for exception-safe locking
+            
+            // Usar lock_guard para bloqueo seguro ante excepciones
             {
                 std::lock_guard<std::mutex> lock(scan->mtx);
-
-                if (!appPrefs.ignore_random_ble_addresses || isPublic)
-                {
-                    bleDeviceList.updateOrAddDevice(MacAddress(bleaddr), rssi, String(nameStr.c_str()), isPublic);
+                if (!appPrefs.ignore_random_ble_addresses || isPublic) {
+                    bool added = bleDeviceList.updateOrAddDevice(MacAddress(bleaddr), rssi, String(nameStr.c_str()), isPublic);
+                    if (bleDeviceList.size() % 10 == 0) {
+                        log_i("Total devices: %d", bleDeviceList.size());
+                    }
                 }
             }
         }
-    }
-    catch (const std::exception &e)
-    {
-        isr_log_e("Exception in onResult: %s", e.what());
-    }
-    catch (...)
-    {
-        isr_log_e("Unknown exception in onResult");
+    } catch (const std::exception &e) {
+        log_e("Exception in onResult: %s", e.what());
+    } catch (...) {
+        log_e("Unknown exception in onResult");
     }
 }

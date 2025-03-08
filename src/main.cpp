@@ -37,8 +37,12 @@
 #include <nvs_flash.h>
 #include <esp_wifi_types.h>
 #include <esp_log.h>
+#include <esp_core_dump.h>  // Para la funcionalidad de core dump
+#include <esp_task_wdt.h>   // Para la configuración del watchdog
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
+#include <freertos/task.h>
+#include <string.h>
 #include <vector>
 #include <algorithm>
 #include <time.h>
@@ -46,6 +50,7 @@
 #include <Preferences.h>
 #include <BLEScan.h>
 #include <BLEAdvertisedDevice.h>
+#include "BLEDeviceWrapper.h" // Added for BLEDeviceWrapper access
 
 #include "LedManager.h"
 
@@ -53,9 +58,10 @@
 #include "Preferences.h"
 #include "WifiScan.h"
 
-#define MAX_STATIONS 255
-#define MAX_SSIDS 200
-#define MAX_BLE_DEVICES 100
+// These definitions are now in TaskManager.h
+// #define MAX_STATIONS 255
+// #define MAX_SSIDS 200
+// #define MAX_BLE_DEVICES 100
 
 #include "BLEDeviceList.h"
 #include "WifiDeviceList.h"
@@ -69,6 +75,7 @@
 #include "BLEAdvertisingManager.h"
 #include "FirmwareInfo.h"
 #include "BLEStatusUpdater.h"
+#include "TaskManager.h"
 
 // Define the boot button pin (adjust if necessary)
 #define BOOT_BUTTON_PIN 0
@@ -102,6 +109,9 @@ time_t my_universal_time = 0;
 extern bool deviceConnected;
 
 void printSSIDAndBLELists();
+void printTaskStats();
+void printMemoryStats();
+void printSystemInfo();
 
 #ifdef PIN_NEOPIXEL
 LedManager ledManager(PIN_NEOPIXEL, 1);
@@ -111,6 +121,7 @@ LedManager ledManager(LED_BUILTIN);
 
 // Add these global variables at the beginning of the file
 unsigned long lastPrintTime = 0;
+unsigned long lastDeviceListPrintTime = 0;
 const unsigned long printInterval = 30000; // 30 seconds in milliseconds
 
 // Base time for the last_seen field in the lists
@@ -126,14 +137,159 @@ void updateBaseTime(const std::vector<T, DynamicPsramAllocator<T>> &list)
   }
 }
 
+void printTaskStats() {
+    // Get the number of tasks
+    UBaseType_t uxTaskCount = uxTaskGetNumberOfTasks();
+    
+    // Print task statistics header
+    log_i("-------------------------------------");
+    log_i("FreeRTOS Task List (similar to ps):");
+    log_i("-------------------------------------");
+    log_i("Task Name          State Prio   Stack    ");
+    log_i("------------------ ----- ------ --------");
+
+    // Get information about all tasks using vTaskList if available
+    #if defined(CONFIG_FREERTOS_VTASKLIST_INCLUDE_COREID) || defined(CONFIG_FREERTOS_USE_TRACE_FACILITY)
+        // These configurations might enable vTaskList in some ESP-IDF versions
+        // But we still can't use it directly because it's still not exposed in Arduino-ESP32
+        // This is just a placeholder for future ESP-IDF versions
+        log_i("Cannot access full task list in current ESP-IDF/Arduino version");
+    #endif
+
+    // Since we can't get the full task list, we'll at least show the current task
+    // and provide some system information
+    TaskHandle_t currentTask = xTaskGetCurrentTaskHandle();
+    if (currentTask) {
+        const char* taskName = pcTaskGetName(currentTask);
+        UBaseType_t stackHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
+        UBaseType_t taskPriority = uxTaskPriorityGet(currentTask);
+        
+        // Calculate stack usage (estimate)
+        UBaseType_t estimatedStackSize = 4096; // Default
+        if (strstr(taskName, "WiFiScan") != NULL) estimatedStackSize = STACK_SIZE_WIFI_SCAN;
+        else if (strstr(taskName, "BLEScan") != NULL) estimatedStackSize = STACK_SIZE_BLE_SCAN;
+        else if (strstr(taskName, "DeviceMgmt") != NULL) estimatedStackSize = STACK_SIZE_DEVICE_MGMT;
+        else if (strstr(taskName, "DataProcess") != NULL) estimatedStackSize = STACK_SIZE_DATA_PROCESS;
+        else if (strstr(taskName, "BLEService") != NULL) estimatedStackSize = STACK_SIZE_BLE_SERVICE;
+        else if (strstr(taskName, "Status") != NULL) estimatedStackSize = STACK_SIZE_STATUS;
+        
+        int stackUsagePercent = 0;
+        if (stackHighWaterMark > 0 && estimatedStackSize > 0) {
+            stackUsagePercent = 100 - ((stackHighWaterMark * 100) / estimatedStackSize);
+            if (stackUsagePercent < 0) stackUsagePercent = 0;
+            if (stackUsagePercent > 100) stackUsagePercent = 100;
+        }
+        
+        // Print current task info
+        log_i("%-18s %c %2d     %4lu(%2d%%)", 
+             taskName,
+             'R', // Running
+             taskPriority,
+             stackHighWaterMark * sizeof(StackType_t),
+             stackUsagePercent);
+    }
+    
+    // Try to get task handles from TaskManager for key tasks
+    TaskManager& taskManager = TaskManager::getInstance();
+    
+    // List known tasks from TaskManager if available
+    // Note: We need to add accessors in TaskManager to expose these
+    // This is a sketch of how it could work with the right accessors
+    log_i("%-18s %s %2d     %4s", "WiFiScan", "-", TASK_PRIORITY_WIFI_SCAN, "-");
+    log_i("%-18s %s %2d     %4s", "BLEScan", "-", TASK_PRIORITY_BLE_SCAN, "-");
+    log_i("%-18s %s %2d     %4s", "DeviceMgmt", "-", TASK_PRIORITY_DEVICE_MGMT, "-");
+    log_i("%-18s %s %2d     %4s", "BLEService", "-", TASK_PRIORITY_BLE_SERVICE, "-");
+    log_i("%-18s %s %2d     %4s", "Status", "-", TASK_PRIORITY_STATUS, "-");
+    
+    // Print legend
+    log_i("-------------------------------------");
+    log_i("Status: R=running B=blocked S=suspended r=ready");
+    log_i("Prio: task priority");
+    log_i("Stack: free bytes (percent used)");
+    log_i("-------------------------------------");
+    
+    // Print scheduler state
+    log_i("Task Scheduler is %s", 
+          xTaskGetSchedulerState() == taskSCHEDULER_RUNNING ? "RUNNING" : 
+         (xTaskGetSchedulerState() == taskSCHEDULER_SUSPENDED ? "SUSPENDED" : "NOT STARTED"));
+    
+    // Print general system info
+    log_i("Total tasks: %u", uxTaskCount);
+    log_i("Minimum free stack (this task): %u bytes", uxTaskGetStackHighWaterMark(NULL) * sizeof(StackType_t));
+    
+    log_i("");
+}
+
 void printMemoryStats() {
-    log_d("\nMemory Statistics:");
-    log_d("Total PSRAM: %d bytes", ESP.getPsramSize());
-    log_d("Free PSRAM: %d bytes", ESP.getFreePsram());
-    log_d("Total heap: %d bytes", ESP.getHeapSize());
-    log_d("Free heap: %d bytes", ESP.getFreeHeap());
+    log_i("Memory Statistics:");
+    log_i("Total PSRAM: %d bytes", ESP.getPsramSize());
+    log_i("Free PSRAM: %d bytes", ESP.getFreePsram());
+    log_i("Total heap: %d bytes", ESP.getHeapSize());
+    log_i("Free heap: %d bytes", ESP.getFreeHeap());
     log_w("Minimum free heap: %d bytes", ESP.getMinFreeHeap());
-    log_d("");
+    log_i("");
+}
+
+void printSystemInfo() {
+    // Ensure this message is visible in the console
+    Serial.println("\n\n======== SYSTEM INFORMATION (PS COMMAND) ========");
+    log_i("======== SYSTEM INFORMATION (ps) ========");
+    
+    // CPU information
+    log_i("CPU Information:");
+    log_i("  Cores: %d (%s)", ESP.getChipCores(), ESP.getChipModel());
+    log_i("  Frequency: %d MHz", ESP.getCpuFreqMHz());
+    log_i("  Chip model: %s", ESP.getChipModel());
+    log_i("  Chip revision: %d", ESP.getChipRevision());
+    log_i("  SDK version: %s", ESP.getSdkVersion());
+    log_i("");
+    
+    // Print memory information
+    printMemoryStats();
+    
+    // Add heap info from ESP-IDF
+    size_t freeInternal = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+    size_t freePsram = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
+    size_t minFreeInternal = heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL);
+    size_t minFreePsram = psramFound() ? heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM) : 0;
+    
+    log_i("Heap Information (ESP-IDF):");
+    log_i("  Internal heap: %d bytes free (%d min free)", freeInternal, minFreeInternal);
+    if (psramFound()) {
+        log_i("  PSRAM: %d bytes free (%d min free)", freePsram, minFreePsram);
+    }
+    log_i("");
+    
+    // Print task statistics (similar to "ps")
+    printTaskStats();
+    
+    // Runtime information
+    log_i("Runtime Information:");
+    log_i("  Uptime: %lu seconds", millis() / 1000);
+    log_i("  Free sketch space: %lu bytes", ESP.getFreeSketchSpace());
+    log_i("  System tick rate: %d Hz", configTICK_RATE_HZ);
+    
+    // Get partition info
+    esp_partition_iterator_t it = esp_partition_find(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, NULL);
+    if (it) {
+        log_i("Flash Partition Information:");
+        do {
+            const esp_partition_t* part = esp_partition_get(it);
+            log_i("  %s: %s [0x%X - 0x%X] (%d KB)", 
+                 part->label, part->type == ESP_PARTITION_TYPE_APP ? "App" : "Data", 
+                 part->address, part->address + part->size, part->size / 1024);
+        } while ((it = esp_partition_next(it)) != NULL);
+        esp_partition_iterator_release(it);
+    }
+    log_i("");
+    
+    // Print network information
+    log_i("Network Statistics:");
+    log_i("  WiFi networks: %d", ssidList.size());
+    log_i("  WiFi devices: %d", stationsList.size()); 
+    log_i("  BLE devices: %d", bleDeviceList.size());
+    log_i("======================================");
+    log_i("");
 }
 
 
@@ -195,11 +351,17 @@ void printSSIDAndBLELists()
   listString += "----------------------------------------------------------------------\n";
 
   log_i("\n%s", listString.c_str());
+  
+  // Print system information with ps-like output 
+  printSystemInfo();
+  
+  // Update last device list print time
+  lastDeviceListPrintTime = millis();
 }
 
 void firmwareInfo()
 {
-  log_d("\n\n----------------------------------------------------------------------");
+  log_d("----------------------------------------------------------------------");
   log_d("%s", getFirmwareInfoString().c_str());
   log_d("----------------------------------------------------------------------\n");
 }
@@ -227,6 +389,67 @@ void checkAndRestartAdvertising()
  */
 void setup()
 {
+  // Initialize Serial communication
+  Serial.begin(115200);
+  delay(2000); // Give time for serial to initialize
+  
+  // Inicializar Core Dump
+  log_i("Initializing Core Dump...");
+  esp_err_t err = ESP_OK;
+  
+#ifdef USE_CORE_DUMP
+  // Configurar core dump si está habilitado
+  #if !defined(CONFIG_ESP_COREDUMP_ENABLE)
+    log_i("Habilitando core dump manualmente (no configurado en SDK)");
+    // Intentamos configurar manualmente - esto podría no funcionar
+    // si el SDK no se compiló con soporte para core dump
+  #endif
+
+  // Verificar si ya existe un core dump
+  size_t core_addr = 0;
+  size_t core_size = 0;
+  err = esp_core_dump_image_get(&core_addr, &core_size);
+  if (err == ESP_OK && core_size > 0) {
+    log_e("¡Se encontró un core dump previo! Dirección: 0x%x, Tamaño: %d bytes", core_addr, core_size);
+    log_e("Recuerda extraerlo con 'espcoredump.py info_corefile'");
+    
+    // Breve parpadeo de LED rojo para indicar core dump detectado
+    for (int i=0; i<5; i++) {
+      ledManager.setPixelColor(0, LedManager::COLOR_RED);
+      ledManager.show();
+      delay(200);
+      ledManager.setPixelColor(0, 0);
+      ledManager.show();
+      delay(200);
+    }
+  } else if (err != ESP_OK) {
+    log_w("Error al verificar core dump: %d", err);
+  } else {
+    log_i("No se encontró core dump previo");
+  }
+#else
+  log_w("Core Dump no habilitado en la configuración");
+#endif
+
+  // Configuración del watchdog
+#ifdef SNEAK_TASK_WDT_TIMEOUT_S
+  // Aplicamos nuestra configuración personalizada del watchdog
+  log_i("Configurando watchdog a %d segundos", SNEAK_TASK_WDT_TIMEOUT_S);
+  
+  // Primero desactivamos el watchdog actual
+  esp_task_wdt_deinit();
+  
+  // Luego lo inicializamos con el nuevo timeout
+  // Los parámetros son: tiempo de timeout en segundos, y si debe causar panic
+  ESP_ERROR_CHECK(esp_task_wdt_init(SNEAK_TASK_WDT_TIMEOUT_S, true));
+  
+  // Añadimos el core actual al watchdog
+  ESP_ERROR_CHECK(esp_task_wdt_add(NULL));
+#endif
+  
+  // [RESTORED] WiFi functionality
+  log_i("WiFi functionality restored for scanning");
+
   log_i("Starting...");
 
   // Initialize NVS
@@ -239,40 +462,74 @@ void setup()
   }
   ESP_ERROR_CHECK(ret);
 
-  // Initialize PSRAM
-  if (!psramFound())
-  {
-    log_e("PSRAM not found!");
-    while (1)
-    {
-        delay(100);
-    }
+  // Check for PSRAM and inform user
+  if (psramFound()) {
+    log_i("PSRAM found: %d bytes, using for data storage", ESP.getPsramSize());
+  } else {
+    log_w("PSRAM not found! Using regular memory for storage (reduced capacity)");
+    // Reducir los límites máximos de dispositivos para evitar problemas de memoria
+    // Estos valores se ajustarán en el DynamicPsramAllocator
   }
-  log_i("PSRAM size: %d bytes", ESP.getPsramSize());
 
   // Load preferences
   loadAppPreferences();
 
-  // Initialize BLE
-  BLEDevice::init(appPrefs.device_name);
-  esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT, (esp_power_level_t)appPrefs.bleTxPower);
+  // Initialize BLE controller and services
+  if (appPrefs.mode_ble) {
+    log_i("Setting up BLE (Bluetooth Low Energy)");
+    
+    // [ADDED] Información detallada sobre estado de BLE
+    if (BLEDevice::getInitialized()) {
+      log_i("BLE ya inicializado previamente");
+    }
+    
+    log_i("Intentando inicializar BLE con nombre: %s", appPrefs.device_name);
+    
+    if (!setupBLE()) {
+      log_e("BLE initialization failed, disabling BLE functionality");
+      appPrefs.mode_ble = false;
+      // Update preferences to match this runtime setting
+      saveAppPreferences();
+    } else {
+      log_i("BLE initialized successfully");
+      
+      // [ADDED] Configuración de potencia de transmisión
+      esp_err_t err = esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT, ESP_PWR_LVL_P9);
+      if (err == ESP_OK) {
+        log_i("BLE TX power set to maximum");
+      } else {
+        log_e("Error setting BLE TX power: %d", err);
+      }
+      
+      // [ADDED] Verificar si el controlador BLE está realmente activo
+      if (!btStarted()) {
+        log_e("BT controller no iniciado, intentando iniciar manualmente");
+        if (btStart()) {
+          log_i("BT controller iniciado manualmente con éxito");
+        } else {
+          log_e("Error al iniciar manualmente BT controller");
+        }
+      } else {
+        log_i("BT controller ya está activo");
+      }
+    }
+  }
 
-  // Set WiFi power
-  esp_wifi_set_max_tx_power((wifi_power_t)appPrefs.wifiTxPower);
-
-  // Setup BLE services and characteristics
-  setupBLE();
+  // [DEBUG] WiFi disabled for testing
+  log_i("[DEBUG] WiFi functionality disabled for testing");
 
   // Start operation mode
   switch (appPrefs.operation_mode)
   {
   case OPERATION_MODE_SCAN:
     log_i("Starting in SCAN mode");
+    // [RESTORED] WiFi scan
     WifiScanner.setup();
     BLEScanner.setup();
     break;
   case OPERATION_MODE_DETECTION:
     log_i("Starting in DETECTION mode");
+    // [RESTORED] WiFi detection
     WifiDetector.setup();
     BLEDetector.setup();
     break;
@@ -283,18 +540,17 @@ void setup()
 
   log_i("Setup complete");
 
-  // Initialize PSRAM with proper configuration
-  if(!psramInit()) {
-    log_e("PSRAM initialization failed!");
-    ESP_ERROR_CHECK(esp_spiram_init());
-    ESP_ERROR_CHECK(esp_spiram_add_to_heapalloc());
+  // Mostrar información sobre la memoria disponible
+  if (psramFound()) {
+    size_t psram_size = ESP.getPsramSize();
+    size_t free_psram = ESP.getFreePsram();
+    log_i("PSRAM disponible: %d bytes de %d bytes", free_psram, psram_size);
   }
   
-  size_t psram_size = ESP.getPsramSize();
-  size_t free_psram = ESP.getFreePsram();
-  
-  log_d("PSRAM Size: %d bytes", psram_size);
-  log_d("Free PSRAM: %d bytes", free_psram);
+  // Mostrar información del heap principal
+  size_t free_heap = ESP.getFreeHeap();
+  size_t total_heap = ESP.getHeapSize();
+  log_i("Heap disponible: %d bytes de %d bytes", free_heap, total_heap);
 
   // Encuentra la partición NVS
   const esp_partition_t *nvs_partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_NVS, NULL);
@@ -343,17 +599,75 @@ void setup()
   base_time++;
   log_i("Base time set to: %ld", base_time);
 
-  // Setup BLE Core (Advertising and Service Characteristics)
-  setupBLE();
+  // Setup BLE Core (Advertising and Service Characteristics) if not already initialized
+  if (appPrefs.mode_ble && !BLEDeviceWrapper::isInitialized()) {
+    log_i("Setting up BLE Core after flash load");
+    
+    // Add a delay before BLE initialization
+    delay(500);
+    
+    // Try to initialize BLE with timeout protection
+    unsigned long startTime = millis();
+    const unsigned long BLE_INIT_TIMEOUT = 10000; // 10 seconds timeout
+    
+    bool bleInitSuccess = false;
+    
+    // Create a separate task for BLE initialization to avoid blocking the main task
+    TaskHandle_t bleInitTaskHandle = NULL;
+    xTaskCreatePinnedToCore(
+      [](void* parameter) {
+        bool* success = (bool*)parameter;
+        *success = setupBLE();
+        vTaskDelete(NULL);
+      },
+      "BLEInit",
+      8192,
+      &bleInitSuccess,
+      1,
+      &bleInitTaskHandle,
+      0 // Run on Core 0
+    );
+    
+    // Wait for BLE initialization with timeout
+    while (!bleInitSuccess && (millis() - startTime < BLE_INIT_TIMEOUT)) {
+      delay(100);
+      
+      // Check if the task is still running
+      if (bleInitTaskHandle == NULL || eTaskGetState(bleInitTaskHandle) == eDeleted) {
+        break;
+      }
+    }
+    
+    // If timeout occurred, delete the task
+    if (bleInitTaskHandle != NULL && eTaskGetState(bleInitTaskHandle) != eDeleted) {
+      vTaskDelete(bleInitTaskHandle);
+      log_e("BLE initialization timed out");
+    }
+    
+    if (!bleInitSuccess) {
+      log_e("BLE initialization failed after flash load");
+      appPrefs.mode_ble = false;
+      saveAppPreferences();
+      
+      // Visual indication of BLE failure
+      ledManager.setPixelColor(0, LedManager::COLOR_RED);
+      ledManager.show();
+      delay(2000);
+      ledManager.setPixelColor(0, LedManager::COLOR_OFF);
+      ledManager.show();
+    }
+  }
 
   if (appPrefs.operation_mode == OPERATION_MODE_DETECTION)
   {
+    // [RESTORED] WiFi detection
     WifiDetector.setup();
     BLEDetector.setup();
   }
   else if (appPrefs.operation_mode == OPERATION_MODE_SCAN)
   {
-    WifiScanner.setup();
+    // [RESTORED] WiFi scan
+    WifiScanner.setup(); 
     BLEScanner.setup();
   }
 
@@ -378,9 +692,18 @@ void scan_mode_loop()
 {
   static unsigned long lastSaved = 0;
   static int currentChannel = 0;
+  static unsigned long lastAdvertisingAttempt = 0;
+  static int advertisingFailCount = 0;
+  static bool advertisingEnabled = true;
+  static unsigned long advertisingDisableTime = 0;
+  static bool firstScanCycle = true;
 
   currentChannel = (currentChannel % 14) + 1;
   esp_wifi_set_channel(currentChannel, WIFI_SECOND_CHAN_NONE);
+
+  // [RESTORED] Activar escaneo WiFi
+  // Note: WiFi scanning is always active in scan mode, regardless of BLE settings
+  WifiScanner.setChannel(currentChannel);
 
   // Mostrar heap lliure específic a SRAM (INTERNAL)
   size_t freeInternal = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
@@ -395,7 +718,177 @@ void scan_mode_loop()
 
   checkTransmissionTimeout();
 
-  checkAndRestartAdvertising();
+  // Skip BLE advertising on first scan cycle to allow system to stabilize
+  if (firstScanCycle && currentChannel == 14) {
+    firstScanCycle = false;
+    log_i("First scan cycle completed, BLE advertising will be enabled on next cycle");
+    return;
+  }
+  
+  // Programación defensiva: Verificar si BLE está habilitado y realmente iniciarlo
+  // Solo en el canal 1 para hacer el intento de forma regular pero no excesiva
+  if (appPrefs.mode_ble && currentChannel == 1) {
+    log_i("============= BLE SCAN DEBUG INFO (CANAL 1) =============");
+    log_i("Estado de BLE en ciclo canal 1:");
+    log_i("* BT controlador activo: %s", btStarted() ? "SÍ" : "NO");
+    log_i("* BLEDevice inicializado: %s", BLEDevice::getInitialized() ? "SÍ" : "NO"); 
+    log_i("* Dispositivos BLE detectados: %d", bleDeviceList.size());
+    log_i("* Heap libre: %d bytes", freeInternal);
+    
+    // NUNCA detenga un controlador BT que ya funciona
+    if (!btStarted()) {
+      // El controlador BT no está activo, intentar iniciarlo
+      log_i("⚠️ BT controller no iniciado, iniciando ahora...");
+      if (btStart()) {
+        log_i("✅ BT controller iniciado exitosamente");
+      } else {
+        log_e("❌ ERROR CRÍTICO: No se pudo iniciar el controlador BT");
+        // Si fallamos aquí, no tiene sentido continuar
+        log_i("=========================================================");
+        return;
+      }
+    } else {
+      log_i("✅ BT controller ya está activo - MANTENIENDO EL ESTADO ACTUAL");
+    }
+    
+    // Si llegamos aquí, el controlador BT debería estar activo
+    
+    // Paso 1: Configuración agresiva
+    log_i("1️⃣ Configurando parámetros BLE");
+    appPrefs.minimal_rssi = -100;  // Máxima sensibilidad
+    appPrefs.passive_scan = false; // Escaneo activo 
+    appPrefs.ble_scan_duration = 30; // 30 segundos de escaneo
+    
+    // Paso 2: Configurar potencia de transmisión al máximo
+    log_i("2️⃣ Configurando potencia BT al máximo");
+    esp_err_t err = esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT, ESP_PWR_LVL_P9);
+    if (err != ESP_OK) {
+      log_e("⚠️ Error configurando potencia BT: %d", err);
+    }
+    
+    // Paso 3: Verificar inicialización de BLE
+    bool needBleInit = false;
+    if (!BLEDevice::getInitialized()) {
+      log_i("⚠️ BLEDevice no inicializado, inicializando...");
+      needBleInit = true;
+    } else {
+      log_i("✅ BLEDevice ya inicializado - MANTENIENDO EL ESTADO ACTUAL");
+    }
+    
+    // Solo inicializar si es necesario
+    if (needBleInit) {
+      if (BLEDeviceWrapper::init(appPrefs.device_name)) {
+        log_i("✅ BLE inicializado satisfactoriamente");
+      } else {
+        log_e("❌ Error crítico en inicialización BLE");
+        // Si fallamos aquí, no tiene sentido continuar
+        log_i("=========================================================");
+        return;
+      }
+    }
+    
+    // Paso 4: Configurar e iniciar escaneo
+    log_i("3️⃣ Configurando e iniciando escáner BLE");
+    BLEScanner.setup();
+    
+    if (BLEScanner.start()) {
+      log_i("✅ Escaneo BLE iniciado correctamente");
+    } else {
+      log_e("❌ Error al iniciar escaneo BLE");
+    }
+    
+    // Final del bloque de debug info
+    log_i("=========================================================");
+  }
+
+  // Gestión robusta del advertising BLE - only attempt on channel 1 to reduce frequency
+  if (!deviceConnected && advertisingEnabled && currentChannel == 1)
+  {
+    // Solo intentar iniciar el advertising cada 30 segundos para evitar reinicios continuos
+    if (millis() - lastAdvertisingAttempt >= 30000)
+    {
+      lastAdvertisingAttempt = millis();
+      
+      // Check heap before attempting BLE operations
+      if (freeInternal < 40000) {
+        log_w("Low heap memory (%d bytes), skipping BLE advertising attempt", freeInternal);
+        return;
+      }
+      
+      // Perform a memory cleanup before BLE operations
+      log_i("Performing memory cleanup before BLE advertising");
+      ESP.getMinFreeHeap(); // Force memory defragmentation
+      
+      // Add a delay after memory cleanup
+      delay(100);
+      
+      bool advertisingConfigured = false;
+      
+      // Usar un bloque try-catch para evitar que los errores de BLE afecten al resto del sistema
+      try
+      {
+        if (appPrefs.stealth_mode)
+        {
+          if (digitalRead(BOOT_BUTTON_PIN) == LOW)
+          {
+            log_i(">>> Boot button pressed, disabling stealth mode");
+            BLEAdvertisingManager::configureNormalMode();
+            advertisingConfigured = true;
+          }
+          else
+          {
+            BLEAdvertisingManager::configureStealthMode();
+            advertisingConfigured = true;
+          }
+        }
+        else
+        {
+          BLEAdvertisingManager::configureNormalMode();
+          advertisingConfigured = true;
+        }
+        
+        // Solo intentamos iniciar el advertising si la configuración fue exitosa
+        if (advertisingConfigured) {
+          delay(200); // Pequeña pausa para asegurar que la configuración se complete
+          
+          // Usar un bloque try-catch específico para el inicio del advertising
+          try {
+            if (!BLEAdvertisingManager::startAdvertising()) {
+              log_e("Failed to start advertising");
+              advertisingFailCount++;
+              
+              // Si hay demasiados fallos consecutivos, desactivar el advertising temporalmente
+              if (advertisingFailCount >= 3) {
+                log_w("Too many advertising failures, disabling advertising for 120 seconds");
+                advertisingEnabled = false;
+                advertisingDisableTime = millis();
+              }
+            } else {
+              // Reiniciar el contador de fallos si el advertising se inicia correctamente
+              advertisingFailCount = 0;
+              
+              // Add a longer delay after successful advertising start
+              delay(300);
+            }
+          } catch (...) {
+            log_e("Exception during advertising start");
+            advertisingFailCount++;
+          }
+        }
+      }
+      catch (...)
+      {
+        log_e("Exception during BLE advertising configuration");
+        advertisingFailCount++;
+      }
+    }
+  }
+  else if (!advertisingEnabled && (millis() - advertisingDisableTime >= 120000)) {
+    // Re-enable advertising after timeout (increased to 2 minutes)
+    advertisingEnabled = true;
+    advertisingFailCount = 0;
+    log_i("Re-enabling advertising after timeout");
+  }
 
   if (currentChannel == 14)
   {
@@ -415,28 +908,6 @@ void scan_mode_loop()
     catch (const std::exception &e)
     {
       log_e("Error saving to flash storage: %s", e.what());
-    }
-  }
-
-  bool bootButtonPressed = digitalRead(BOOT_BUTTON_PIN) == LOW;
-
-  if (!deviceConnected)
-  {
-    if (appPrefs.stealth_mode)
-    {
-      if (bootButtonPressed)
-      {
-        log_i(">>> Boot button pressed, disabling stealth mode");
-        BLEAdvertisingManager::configureNormalMode();
-      }
-      else
-      {
-        BLEAdvertisingManager::configureStealthMode();
-      }
-    }
-    else
-    {
-      BLEAdvertisingManager::configureNormalMode();
     }
   }
 }
@@ -495,12 +966,18 @@ void detection_mode_loop()
  */
 void loop()
 {
-    static unsigned long lastMemoryPrint = 0;
-    const unsigned long MEMORY_PRINT_INTERVAL = 30000; // 30 segundos
+    // Alimentar el watchdog al inicio del loop
+    esp_task_wdt_reset();
+    
+    static unsigned long lastStatsPrint = 0;
+    const unsigned long STATS_PRINT_INTERVAL = 15000; // 15 segundos (reducido para ver resultados más rápido)
 
-    if (millis() - lastMemoryPrint >= MEMORY_PRINT_INTERVAL) {
-        printMemoryStats();
-        lastMemoryPrint = millis();
+    if (millis() - lastStatsPrint >= STATS_PRINT_INTERVAL) {
+        // Print system stats with ps-like output
+        log_d("===== Imprimiendo información del sistema (ps) =====");
+        printSystemInfo();
+        
+        lastStatsPrint = millis();
     }
 
     if (appPrefs.operation_mode == OPERATION_MODE_SCAN)
@@ -522,8 +999,11 @@ void loop()
         ledManager.show();
         delay(appPrefs.wifi_channel_dwell_time);
     }
-    BLEStatusUpdater.update();
+    
+    // Only update BLE status if BLE mode is enabled
+    if (appPrefs.mode_ble) {
+        // PROGRAMACIÓN DEFENSIVA: Restauramos la llamada con verificaciones de nulidad implementadas
+        BLEStatusUpdater.update();
+        log_i("BLE status updated with null pointer checks");
+    }
 }
-
-
-

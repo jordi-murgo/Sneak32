@@ -37,6 +37,7 @@ void printPreferences() {
     log_i(" - ble_scan_duration: %u s", appPrefs.ble_scan_duration);
     log_i(" - ignore_random_ble: %s", appPrefs.ignore_random_ble_addresses ? "true" : "false");
     log_i(" - ble_mtu: %u", appPrefs.bleMTU);
+    log_i(" - mode_ble: %s", appPrefs.mode_ble ? "enabled" : "disabled");
 }
 
 void loadAppPreferences() {
@@ -47,6 +48,8 @@ void loadAppPreferences() {
     uint8_t mac[6];
     esp_read_mac(mac, ESP_MAC_WIFI_STA);
     String chipModel = ESP.getChipModel();
+    
+    // Default values
     char default_name[32] = {0};
     snprintf(default_name, sizeof(default_name), "Sneak%s (%02X%02X)", 
              chipModel.c_str() + 3, mac[4], mac[5]);
@@ -57,17 +60,18 @@ void loadAppPreferences() {
     appPrefs.device_name[sizeof(appPrefs.device_name) - 1] = '\0';
 
     appPrefs.operation_mode = preferences.getInt(Keys::OP_MODE, 1); // 0-OFF, 1-SCAN_MODE, 2-DETECTION_MODE
-
-    appPrefs.minimal_rssi = preferences.getInt(Keys::MIN_RSSI, -85);
-
+    appPrefs.minimal_rssi = preferences.getInt(Keys::MIN_RSSI, -100); // Cambiado a -100 para mayor permisividad
     appPrefs.only_management_frames = preferences.getBool(Keys::ONLY_MGMT, false);
     appPrefs.wifi_channel_dwell_time = preferences.getUInt(Keys::WIFI_CHANNEL_DWELL_TIME, 10000);
     appPrefs.ignore_local_wifi_addresses = preferences.getBool(Keys::IGNORE_LOCAL, true);
-
-    appPrefs.ble_scan_delay = preferences.getUInt(Keys::BLE_SCAN_DELAY, 30);
-    appPrefs.ignore_random_ble_addresses = preferences.getBool(Keys::IGNORE_RANDOM, true);
-    appPrefs.ble_scan_duration = preferences.getUInt(Keys::BLE_SCAN_DUR, 15);
-
+    
+    appPrefs.ble_scan_delay = preferences.getUInt(Keys::BLE_SCAN_DELAY, 10); // Reducido para escaneos más frecuentes
+    
+    // MODO SUPER PERMISIVO: Ignoramos la preferencia guardada y siempre aceptamos direcciones aleatorias
+    appPrefs.ignore_random_ble_addresses = false;
+    log_i("⚠️ MODO SUPER PERMISIVO: No ignorando direcciones BLE aleatorias");
+    
+    appPrefs.ble_scan_duration = preferences.getUInt(Keys::BLE_SCAN_DUR, 30); // Aumentado para más tiempo de detección
     appPrefs.autosave_interval = preferences.getUInt(Keys::AUTOSAVE_INT, 60);
 
     appPrefs.passive_scan = preferences.getBool(Keys::PASSIVE_SCAN, false);
@@ -79,13 +83,15 @@ void loadAppPreferences() {
 
     appPrefs.cpu_speed = preferences.getUInt(Keys::CPU_SPEED, 80);
     appPrefs.led_mode = preferences.getBool(Keys::LED_MODE, true);
-    appPrefs.wifiTxPower = preferences.getInt(Keys::WIFI_TX_POWER, WIFI_POWER_8_5dBm);
+    appPrefs.wifiTxPower = preferences.getInt(Keys::WIFI_TX_POWER, WIFI_POWER_19_5dBm);
     appPrefs.bleTxPower = preferences.getInt(Keys::BLE_TX_POWER, ESP_PWR_LVL_P9);
 
-    appPrefs.bleMTU = preferences.getUInt(Keys::BLE_MTU, 256);
+    appPrefs.bleMTU = preferences.getUInt(Keys::BLE_MTU, 512);
+    
+    // Asegurarse que BLE está activado siempre para el escaneo
+    appPrefs.mode_ble = preferences.getBool(Keys::MODE_BLE, true);
     
     preferences.end();
-
     log_i("App Preferences loaded");
     printPreferences();
 }
@@ -111,6 +117,8 @@ void saveAppPreferences() {
     preferences.putInt(Keys::WIFI_TX_POWER, appPrefs.wifiTxPower);
     preferences.putInt(Keys::BLE_TX_POWER, appPrefs.bleTxPower);
     preferences.putUInt(Keys::BLE_MTU, appPrefs.bleMTU);
+    // Save BLE mode setting
+    preferences.putBool(Keys::MODE_BLE, appPrefs.mode_ble);
     preferences.end();
 
     log_i("App Preferences saved");

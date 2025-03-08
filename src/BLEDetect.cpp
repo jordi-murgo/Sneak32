@@ -62,6 +62,7 @@ void BLEDetectClass::cleanDetectionData()
     std::lock_guard<std::mutex> lock(detectedDevicesMutex);
     detectedDevices.clear();
     lastDetectionTime = 0;
+    // PROGRAMACIÓN DEFENSIVA: Restauramos la llamada con verificaciones de nulidad implementadas
     BLEStatusUpdater.update();
 }
 
@@ -91,6 +92,7 @@ void BLEDetectClass::BLEDetectAdvertisedDeviceCallbacks::onResult(BLEAdvertisedD
             if (it == parent->detectedDevices.end())
             {
                 parent->detectedDevices.push_back(deviceMac);
+                // PROGRAMACIÓN DEFENSIVA: Restauramos la llamada con verificaciones de nulidad implementadas
                 BLEStatusUpdater.update();
             }
         }
@@ -150,6 +152,7 @@ void BLEDetectClass::detect_loop()
                 std::lock_guard<std::mutex> lock(detectedDevicesMutex);
                 if (isSomethingDetected())
                 {
+                    // PROGRAMACIÓN DEFENSIVA: Restauramos la llamada con verificaciones de nulidad implementadas
                     BLEStatusUpdater.update();
                 }
             }

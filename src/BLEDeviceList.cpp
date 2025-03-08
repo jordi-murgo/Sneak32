@@ -14,8 +14,8 @@ BLEDeviceList::BLEDeviceList(size_t maxSize) : maxSize(maxSize)
 // Destructor
 BLEDeviceList::~BLEDeviceList() = default;
 
-// Method to update or add a device
-void BLEDeviceList::updateOrAddDevice(const MacAddress &address, int8_t rssi, const String &name, bool isPublic)
+// Method to update or add a device - ahora devuelve bool para indicar éxito
+bool BLEDeviceList::updateOrAddDevice(const MacAddress &address, int8_t rssi, const String &name, bool isPublic)
 {
   std::lock_guard<std::mutex> lock(deviceMutex);
 
@@ -27,11 +27,12 @@ void BLEDeviceList::updateOrAddDevice(const MacAddress &address, int8_t rssi, co
 
   time_t now = millis() / 1000 + base_time;
 
-  if (appPrefs.ignore_random_ble_addresses && !isPublic)
-  {
-    log_d("Ignoring non-public BLE address: %s", address.toString().c_str());
-    return;
-  }
+  // DESACTIVADO PARA DEBUGGING 
+  // if (appPrefs.ignore_random_ble_addresses && !isPublic)
+  // {
+  //   log_d("Ignoring non-public BLE address: %s", address.toString().c_str());
+  //   return false;
+  // }
 
   if (it != deviceList.end())
   {
@@ -45,6 +46,7 @@ void BLEDeviceList::updateOrAddDevice(const MacAddress &address, int8_t rssi, co
     }
     it->isPublic = isPublic; // Update isPublic flag
     log_d("BLE device updated: %s", address.toString().c_str());
+    return true;
   }
   else
   {
@@ -58,12 +60,20 @@ void BLEDeviceList::updateOrAddDevice(const MacAddress &address, int8_t rssi, co
                                        return a.last_seen < b.last_seen;
                                      });
       *oldest = BLEFoundDevice(address, rssi, name, isPublic, now);
+      log_i("Replaced oldest BLE device with: %s", address.toString().c_str());
+      return true;
     }
     else
     {
-      deviceList.emplace_back(address, rssi, name, isPublic, now);
+      try {
+        deviceList.emplace_back(address, rssi, name, isPublic, now);
+        log_i("New BLE device added: %s", address.toString().c_str());
+        return true;
+      } catch (const std::exception& e) {
+        log_e("Error al añadir dispositivo BLE: %s", e.what());
+        return false;
+      }
     }
-    log_i("New BLE device found: %s", address.toString().c_str());
   }
 
   // Remove devices with invalid MAC addresses
@@ -75,6 +85,8 @@ void BLEDeviceList::updateOrAddDevice(const MacAddress &address, int8_t rssi, co
                        return memcmp(device.address.getBytes(), invalid_mac, 6) == 0;
                      }),
       deviceList.end());
+      
+  return true;
 }
 
 void BLEDeviceList::addDevice(const BLEFoundDevice &device)

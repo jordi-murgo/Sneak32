@@ -28,6 +28,9 @@
 #define REQUEST_CLIENT_LIST "client_list"
 #define REQUEST_BLE_LIST "ble_list"
 
+// Global variables that can be accessed from other files
+extern String currentRequestType;
+
 class SendDataOverBLECallbacks : public BLECharacteristicCallbacks
 {
 public:

@@ -10,6 +10,12 @@ void BLEStatusUpdaterClass::update()
     extern BLECharacteristic *pStatusCharacteristic;
     extern bool deviceConnected;
 
+    // PROGRAMACIÓN DEFENSIVA: Verificar que el puntero a la característica no sea nulo antes de usarlo
+    if (pStatusCharacteristic == nullptr) {
+        log_w("BLEStatusUpdater::update() - pStatusCharacteristic es nullptr, no se puede actualizar el estado");
+        return;
+    }
+
     // External variables from BLE.cpp
     extern WifiNetworkList ssidList;
     extern WifiDeviceList stationsList;
@@ -42,16 +48,28 @@ void BLEStatusUpdaterClass::update()
 
     String statusStringWithUptime = statusString + String(uptime);
 
-    pStatusCharacteristic->setValue(statusStringWithUptime.c_str());
-    log_d("Status updated -> %s", statusStringWithUptime.c_str());
-
-    if (deviceConnected)
-    {
-        if (last_statusString.isEmpty() || last_statusString != statusString)
-        {
-            log_d("Notifying status");
-            pStatusCharacteristic->notify();
-            last_statusString = statusString;
+    // PROGRAMACIÓN DEFENSIVA: Volvemos a verificar el puntero antes de usarlo
+    // (podría haber cambiado durante la ejecución de este método)
+    if (pStatusCharacteristic != nullptr) {
+        try {
+            pStatusCharacteristic->setValue(statusStringWithUptime.c_str());
+            log_d("Status updated -> %s", statusStringWithUptime.c_str());
+            
+            if (deviceConnected)
+            {
+                if (last_statusString.isEmpty() || last_statusString != statusString)
+                {
+                    log_d("Notifying status");
+                    pStatusCharacteristic->notify();
+                    last_statusString = statusString;
+                }
+            }
+        } catch (const std::exception& e) {
+            log_e("Excepción capturada al intentar actualizar la característica BLE: %s", e.what());
+        } catch (...) {
+            log_e("Excepción desconocida capturada al intentar actualizar la característica BLE");
         }
+    } else {
+        log_w("BLEStatusUpdater::update() - pStatusCharacteristic se volvió nullptr durante la ejecución");
     }
 } 

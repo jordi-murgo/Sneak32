@@ -82,6 +82,11 @@ void writeMacAddress(uint8_t *buffer, const MacAddress &addr, size_t &offset)
 
 void SendDataOverBLECallbacks::onWrite(BLECharacteristic *pCharacteristic)
 {
+    if (!pCharacteristic) {
+        log_e("Invalid characteristic in onWrite");
+        return;
+    }
+
     std::string value = pCharacteristic->getValue();
 
     if (value.length() > 0)
@@ -90,19 +95,24 @@ void SendDataOverBLECallbacks::onWrite(BLECharacteristic *pCharacteristic)
 
         if (value.length() == 4 && std::all_of(value.begin(), value.end(), ::isxdigit))
         {
-            uint16_t requestedPacket = strtoul(value.substr(0, 4).c_str(), NULL, 16);
-            log_d("Parsed packet number: %d, Current request type: %s",
-                  requestedPacket, currentRequestType.c_str());
+            try {
+                uint16_t requestedPacket = strtoul(value.substr(0, 4).c_str(), NULL, 16);
+                log_d("Parsed packet number: %d, Current request type: %s",
+                    requestedPacket, currentRequestType.c_str());
 
-            if (!currentRequestType.isEmpty())
-            {
-                sendPacket(requestedPacket, currentRequestType);
-                lastPacketRequestTime = millis();
-            }
-            else
-            {
-                log_e("No valid current request type for packet %d", requestedPacket);
-                pCharacteristic->setValue("Error: No active request");
+                if (!currentRequestType.isEmpty())
+                {
+                    sendPacket(requestedPacket, currentRequestType);
+                    lastPacketRequestTime = millis();
+                }
+                else
+                {
+                    log_e("No valid current request type for packet %d", requestedPacket);
+                    pCharacteristic->setValue("Error: No active request");
+                }
+            } catch (const std::exception& e) {
+                log_e("Exception parsing packet number: %s", e.what());
+                pCharacteristic->setValue("Error: Invalid packet number format");
             }
         }
         else
@@ -128,10 +138,12 @@ void SendDataOverBLECallbacks::onWrite(BLECharacteristic *pCharacteristic)
 void checkTransmissionTimeout()
 {
     unsigned long currentTime = millis();
-    if ((currentTime - lastPacketRequestTime > TRANSMISSION_TIMEOUT) || !deviceConnected)
+    if (!deviceConnected || (currentTime - lastPacketRequestTime > TRANSMISSION_TIMEOUT))
     {
-        currentRequestType = "";
-        log_w("Transmission timeout: Resetting current request type");
+        if (!currentRequestType.isEmpty()) {
+            log_w("Transmission timeout: Resetting current request type");
+            currentRequestType = "";
+        }
     }
 }
 
@@ -152,7 +164,15 @@ size_t getItemsPerPacket(const String &requestType)
         recordSize = WIFI_NETWORK_RECORD_SIZE;
     }
 
-    return std::max<size_t>(1, (MAX_PACKET_SIZE - PACKET_HEADER_SIZE) / recordSize);
+    // Calculate effective MTU size for BLE notifications
+    // Some BLE stacks limit notifications to 20 bytes or MTU-3
+    size_t effectiveMtu = std::min<size_t>(appPrefs.bleMTU, 253); // 253 is typical max notify size
+    
+    // Ensure we don't try to send more than what fits in a single notification
+    size_t maxItemsPerPacket = (effectiveMtu - PACKET_HEADER_SIZE) / recordSize;
+    
+    // Always send at least one item, but no more than what fits
+    return std::max<size_t>(1, maxItemsPerPacket);
 }
 
 uint16_t calculateTotalPackets(const String &requestType)
@@ -170,7 +190,7 @@ uint16_t calculateTotalPackets(const String &requestType)
     }
     else if (requestType == REQUEST_BLE_LIST)
     {
-        totalItems = bleDeviceList.getList().size();
+        totalItems = bleDeviceList.getClonedList().size();
     }
     else
     {
@@ -192,13 +212,21 @@ void sendPacket(uint16_t packetNumber, const String &requestType)
     {
         if (packetNumber == 0)
         {
+            // Before calculating total packets, check if the MTU has been set correctly
+            if (appPrefs.bleMTU < 100) {
+                log_w("BLE MTU value is low (%d), using default value", appPrefs.bleMTU);
+                // Use a safer value to avoid truncation issues
+                appPrefs.bleMTU = 512;
+            }
+            
             totalPackets = calculateTotalPackets(requestType);
             char packetsHeader[5];
             snprintf(packetsHeader, sizeof(packetsHeader), "%04X", totalPackets);
             String startMarker = String(PACKET_START_MARKER) + String(packetsHeader);
             pTxCharacteristic->setValue(startMarker.c_str());
             pTxCharacteristic->notify();
-            log_i("Sent start marker: %s", startMarker.c_str());
+            log_i("Sent start marker: %s (MTU: %d, Max packet size: %d)", 
+                  startMarker.c_str(), appPrefs.bleMTU, MAX_PACKET_SIZE);
         }
         else if (packetNumber <= totalPackets)
         {
@@ -246,7 +274,7 @@ void sendPacket(uint16_t packetNumber, const String &requestType)
             }
             else if (requestType == REQUEST_BLE_LIST)
             {
-                const auto &devices = bleDeviceList.getList();
+                std::vector<BLEFoundDevice, DynamicPsramAllocator<BLEFoundDevice>> devices = bleDeviceList.getClonedList();
                 size_t endIndex = std::min(startIndex + itemsPerPacket, devices.size());
                 length = (endIndex - startIndex) * BLE_DEVICE_RECORD_SIZE;
                 buffer = new uint8_t[length];
@@ -274,9 +302,15 @@ void sendPacket(uint16_t packetNumber, const String &requestType)
                 memcpy(fullPacket, header, PACKET_HEADER_SIZE);
                 memcpy(fullPacket + PACKET_HEADER_SIZE, buffer, length);
 
-                pTxCharacteristic->setValue(fullPacket, PACKET_HEADER_SIZE + length);
+                size_t totalLength = PACKET_HEADER_SIZE + length;
+                if (totalLength > appPrefs.bleMTU) {
+                    log_w("Packet size (%d) exceeds MTU (%d) - data may be truncated", 
+                           totalLength, appPrefs.bleMTU);
+                }
+                
+                pTxCharacteristic->setValue(fullPacket, totalLength);
                 pTxCharacteristic->notify();
-
+                
                 delete[] fullPacket;
                 delete[] buffer;
 
