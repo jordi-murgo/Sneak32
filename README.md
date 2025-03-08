@@ -13,6 +13,15 @@
   - [Stealth Mode Options](#stealth-mode-options)
   - [Mode Selection Guide](#mode-selection-guide)
 - [Features](#-features)
+- [Task Architecture](#-task-architecture)
+  - [Task Overview](#task-overview)
+  - [Task Communication](#task-communication)
+  - [Memory Management](#memory-management)
+  - [Task Priorities](#task-priorities)
+- [BLE Communication](#-ble-communication)
+  - [Service UUID](#service-uuid)
+  - [Characteristic UUIDs](#characteristic-uuids)
+  - [BLE Data Protocol](#ble-data-protocol)
 - [Hardware](#-hardware)
   - [Compatibility](#compatibility)
   - [Requirements](#requirements)
@@ -145,6 +154,159 @@ Choose your operation mode based on:
   - Device control interface
   - Event logging system
   - BLE-based secure communication
+
+## 🧩 Task Architecture
+
+### Task Overview
+
+Sneak32 uses a multi-task architecture based on FreeRTOS to efficiently manage its various operations. The system is designed with a modular approach where each major function runs in its own dedicated task with appropriate priorities and stack sizes.
+
+**Core Tasks:**
+
+1. **WiFi Scan Task**
+   - **Purpose**: Captures WiFi packets in promiscuous mode
+   - **Operation**: Processes management, control, and data frames
+   - **Priority**: High (5) - Ensures real-time packet capture
+   - **Stack Size**: 4096 bytes
+   - **Implementation**: Uses ESP32's WiFi promiscuous mode callback system
+
+2. **BLE Scan Task**
+   - **Purpose**: Performs BLE device scanning
+   - **Operation**: Periodically scans for BLE advertisements
+   - **Priority**: High (4) - Ensures timely detection of BLE devices
+   - **Stack Size**: 4096 bytes
+   - **Implementation**: Uses a dedicated task loop with configurable intervals
+
+3. **Device Management Task**
+   - **Purpose**: Maintains device lists and handles data processing
+   - **Operation**: Updates WiFi and BLE device records
+   - **Priority**: Medium (3) - Processes captured data
+   - **Stack Size**: 8192 bytes (larger due to PSRAM list management)
+   - **Implementation**: Receives data from scan tasks via queues
+
+4. **BLE Service Task**
+   - **Purpose**: Manages BLE connectivity for remote control
+   - **Operation**: Handles BLE server operations and client connections
+   - **Priority**: Medium-Low (2) - UI-related operations
+   - **Stack Size**: 4096 bytes
+   - **Implementation**: Manages BLE characteristics and notifications
+
+5. **Status Task**
+   - **Purpose**: Updates system status and handles LED indicators
+   - **Operation**: Periodically updates status information
+   - **Priority**: Low (1) - Background operations
+   - **Stack Size**: 2048 bytes
+   - **Implementation**: Provides visual feedback and system monitoring
+
+### Task Communication
+
+Tasks communicate using FreeRTOS primitives to ensure thread safety and efficient data exchange:
+
+1. **Message Queues**:
+   - `wifiPacketQueue`: Transfers WiFi packet data (capacity: 50 messages)
+   - `bleDeviceQueue`: Transfers BLE device information (capacity: 50 messages)
+   - `commandQueue`: Handles command and control messages (capacity: 10 messages)
+
+2. **Mutex Semaphores**:
+   - `wifiListMutex`: Protects access to WiFi device and network lists
+   - `bleListMutex`: Protects access to BLE device list
+   - `flashMutex`: Ensures atomic access to flash storage operations
+
+3. **Message Structures**:
+   - `WifiPacketMessage`: Contains WiFi packet data, RSSI, channel, and frame type
+   - `BLEDeviceMessage`: Contains BLE device address, name, RSSI, and advertisement data
+   - `CommandMessage`: Contains command codes and parameters for system control
+
+### Memory Management
+
+The system employs a dynamic memory allocation strategy based on available resources:
+
+1. **PSRAM Utilization**:
+   - Automatically detects and utilizes PSRAM if available
+   - Adjusts list capacities based on memory availability:
+     - With PSRAM: 255 WiFi stations, 200 networks, 100 BLE devices
+     - Without PSRAM: 100 WiFi stations, 50 networks, 50 BLE devices
+
+2. **Custom Allocators**:
+   - Uses `DynamicPsramAllocator` for PSRAM-aware memory allocation
+   - Ensures efficient memory usage for device lists
+
+3. **Stack Sizing**:
+   - Task stacks are sized according to their processing requirements
+   - Device Management Task has larger stack (8192 bytes) for handling complex list operations
+
+### Task Priorities
+
+Tasks are assigned priorities based on their real-time requirements:
+
+| Task                 | Priority | Stack Size | Core Affinity |
+|----------------------|----------|------------|---------------|
+| WiFi Scan Task       | 5        | 4096       | PRO_CPU (0)   |
+| BLE Scan Task        | 4        | 4096       | PRO_CPU (0)   |
+| Device Management    | 3        | 8192       | APP_CPU (1)   |
+| Data Processing      | 2        | 4096       | APP_CPU (1)   |
+| BLE Service          | 2        | 4096       | APP_CPU (1)   |
+| Status Updates       | 1        | 2048       | APP_CPU (1)   |
+
+## 📡 BLE Communication
+
+Sneak32 utilizes Bluetooth Low Energy (BLE) for wireless communication with client applications. The BLE implementation follows a service-characteristic model that allows for efficient data exchange and device control.
+
+### Service UUID
+
+Sneak32 exposes a single primary service with the following UUID:
+
+| Service Name | UUID                                 | Description                      |
+|--------------|--------------------------------------|----------------------------------|
+| Sneak32      | `81af4cd7-e091-490a-99ee-caa99032ef4e` | Main service for all functionality |
+
+### Characteristic UUIDs
+
+Within the main service, Sneak32 provides several characteristics for different functions:
+
+| Characteristic Name | UUID    | Properties       | Description                                          |
+|---------------------|---------|------------------|------------------------------------------------------|
+| Firmware Info       | `0xFFE3` | Read             | Provides firmware version and device information     |
+| Settings            | `0xFFE2` | Read, Write      | Allows reading and modifying device settings         |
+| Data Transfer       | `0xFFE0` | Notify, Write, Indicate | Used for transferring scan data to client applications |
+| Commands            | `0xFFE4` | Write            | Receives commands from client applications           |
+| Status              | `0xFFE1` | Read, Notify     | Provides real-time status updates                    |
+| Response            | `0xFFE5` | Read, Notify     | Returns responses to commands                        |
+
+### BLE Data Protocol
+
+Sneak32 uses a simple protocol for BLE communication:
+
+1. **Commands**: Client applications can send text commands to the Commands characteristic (0xFFE4). Supported commands include:
+   - `VERSION`: Returns firmware version information
+   - `SCAN_START`: Starts BLE scanning
+   - `SCAN_STOP`: Stops BLE scanning
+   - `SET_NAME:[name]`: Changes the device name
+
+2. **Responses**: After processing a command, Sneak32 sends a response through the Response characteristic (0xFFE5).
+
+3. **Data Transfer**: Scan results are sent through the Data Transfer characteristic (0xFFE0) in JSON format. The data includes:
+   - WiFi networks (SSIDs)
+   - WiFi devices (stations)
+   - BLE devices
+
+4. **Status Updates**: The Status characteristic (0xFFE1) provides real-time updates about the device's operation state.
+
+This priority scheme ensures that time-sensitive operations (packet capture) take precedence over background processing and UI updates.
+
+### Watchdog Protection
+
+The system implements task watchdog timers to prevent system lockups:
+
+1. **Task Watchdog Timer (TWDT)**:
+   - Monitors task execution and detects if tasks are stuck
+   - Generates diagnostic information (core dumps) on failure
+   - Helps identify and resolve potential deadlocks or infinite loops
+
+2. **Defensive Programming**:
+   - All tasks implement proper error handling and recovery mechanisms
+   - Critical sections are protected with timeouts to prevent deadlocks
+   - Resource initialization is verified before use
 
 ## 💻 Hardware
 
