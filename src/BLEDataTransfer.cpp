@@ -21,7 +21,7 @@ extern bool deviceConnected;
 
 // Constants
 #define PACKET_START_MARKER "START:"
-#define PACKET_END_MARKER "END"
+#define PACKET_END_MARKER "END:"
 #define PACKET_DELAY 100
 #define PACKET_HEADER_SIZE 4
 #define PACKET_TIMEOUT 5000
@@ -52,10 +52,16 @@ void writeUint32(uint8_t *buffer, uint32_t value, size_t &offset)
 
 void writeUint64(uint8_t *buffer, uint64_t value, size_t &offset)
 {
-    // Convert to network byte order (big-endian)
-    uint64_t netValue = ((uint64_t)htonl(value & 0xFFFFFFFF) << 32) | htonl(value >> 32);
-    memcpy(buffer + offset, &netValue, sizeof(uint64_t));
-    offset += sizeof(uint64_t);
+    // Convert to network byte order (big-endian) manually
+    // The original implementation had the high and low parts swapped
+    buffer[offset++] = (value >> 56) & 0xFF;
+    buffer[offset++] = (value >> 48) & 0xFF;
+    buffer[offset++] = (value >> 40) & 0xFF;
+    buffer[offset++] = (value >> 32) & 0xFF;
+    buffer[offset++] = (value >> 24) & 0xFF;
+    buffer[offset++] = (value >> 16) & 0xFF;
+    buffer[offset++] = (value >> 8) & 0xFF;
+    buffer[offset++] = value & 0xFF;
 }
 
 void writeInt8(uint8_t *buffer, int8_t value, size_t &offset)
@@ -320,7 +326,7 @@ void sendPacket(uint16_t packetNumber, const String &requestType)
                 {
                     delay(PACKET_DELAY);
                     time_t now = millis() / 1000 + base_time;
-                    String endMarker = String(PACKET_END_MARKER) + ":" + String(now);
+                    String endMarker = String(PACKET_END_MARKER) + String(now);
                     pTxCharacteristic->setValue(endMarker.c_str());
                     pTxCharacteristic->notify();
                     log_i("Sent end marker with timestamp: %s", endMarker.c_str());
