@@ -10,7 +10,7 @@
 - [Application in Infiltrator Detection](#-application-in-infiltrator-detection)
 - [Modes of Operation](#-modes-of-operation)
   - [Core Operation Phases](#core-operation-phases)
-  - [Stealth Mode Options](#stealth-mode-options)
+  - [Stealth Mode](#stealth-mode)
   - [Mode Selection Guide](#mode-selection-guide)
 - [Features](#-features)
 - [Hardware](#-hardware)
@@ -20,7 +20,7 @@
 - [Software Dependencies](#-software-dependencies)
 - [Setup and Configuration](#-setup-and-configuration)
 - [Data Output](#-data-output)
-- [Usage Strategies](#️-usage-strategies-in-sensitive-environments)
+- [Usage Strategies](#️-usage-strategies)
 - [Security Considerations](#-security-considerations)
 - [Future Improvements](#-future-improvements)
 - [Contributing](#-contributing)
@@ -199,14 +199,14 @@ Choose based on your specific needs:
 
 1. **Clone the repository:**
 
-  ```bash
-  git clone https://github.com/jordi-murgo/Sneak32.git
-  cd Sneak32
-  ```
+   ```bash
+   git clone https://github.com/jordi-murgo/Sneak32.git
+   cd Sneak32
+   ```
 
 2. **Install necessary dependencies:**
 
-  - First install [PlatformIO CLI](https://platformio.org/install/cli) or [PlatformIO VSCode Extension](https://platformio.org/install/ide?install=vscode)
+   - First install [PlatformIO CLI](https://platformio.org/install/cli) or [PlatformIO VSCode Extension](https://platformio.org/install/ide?install=vscode)
 
    ```bash
    pio lib install
@@ -216,17 +216,17 @@ Choose based on your specific needs:
 
    With PlatformIO:
 
-    ```bash
-    pio run -t upload
-    ```
+   ```bash
+   pio run -t upload
+   ```
 
-    Or selecting environment and serial port:
+   Or selecting environment and serial port:
 
-    ```bash
-    pio run -e esp32-c3-supermini --upload-port /dev/cu.usbmodem101 -t upload
-    ```
+   ```bash
+   pio run -e esp32-c3-supermini --upload-port /dev/cu.usbmodem101 -t upload
+   ```
 
-   With PlatfotmIO Visual Studio Code Extension, use the "Upload" button.
+   With PlatformIO Visual Studio Code Extension, use the "Upload" button.
 
 4. **Power on the device** and verify that the LED (if connected) indicates the correct status.
 
@@ -234,7 +234,7 @@ Choose based on your specific needs:
 
    ![Sneak32 Manager](images/manager-device-info.png)
 
-   - Use the Smeak32 Manager present in [docs directory](docs/index.html) or the deployed [Sneak32 Manager](https://jordi-murgo.github.io/Sneak32/)
+   - Use the Sneak32 Manager present in [docs directory](docs/index.html) or the deployed [Sneak32 Manager](https://jordi-murgo.github.io/Sneak32/)
    - Click "Search for Device" and select your Sneak32 device.
 
 6. **Configure device options** through the interface:
@@ -261,38 +261,38 @@ Sneak32 provides detailed JSON output including:
 - **Example format:**
 
 ```json
-  {
-    "wifi_networks": [
-      {
-        "ssid": "MyWiFiNetwork",
-        "rssi": -45,
-        "channel": 6,
-        "type": "beacon",
-        "times_seen": 5,
-        "last_seen": 1627845600
-      }
-    ],
-    "wifi_devices": [
-      {
-        "mac_address": "A4:B1:C1:D1:E1:F1",
-        "rssi": -50,
-        "channel": 6,
-        "times_seen": 10,
-        "last_seen": 1627845620
-      }
-    ],
-    "ble_devices": [
-      {
-        "name": "MyBLEDevice",
-        "address": "00:1A:7D:DA:71:13",
-        "is_public": true,
-        "rssi": -60,
-        "times_seen": 3,
-        "last_seen": 1627845640
-      }
-    ]
-  }
-  ```
+{
+  "wifi_networks": [
+    {
+      "ssid": "MyWiFiNetwork",
+      "rssi": -45,
+      "channel": 6,
+      "type": "beacon",
+      "times_seen": 5,
+      "last_seen": 1627845600
+    }
+  ],
+  "wifi_devices": [
+    {
+      "mac_address": "A4:B1:C1:D1:E1:F1",
+      "rssi": -50,
+      "channel": 6,
+      "times_seen": 10,
+      "last_seen": 1627845620
+    }
+  ],
+  "ble_devices": [
+    {
+      "name": "MyBLEDevice",
+      "address": "00:1A:7D:DA:71:13",
+      "is_public": true,
+      "rssi": -60,
+      "times_seen": 3,
+      "last_seen": 1627845640
+    }
+  ]
+}
+```
 
 ## ⚔️ Usage Strategies
 
@@ -309,18 +309,18 @@ Sneak32 provides detailed JSON output including:
 - **Privacy Concerns:** Be aware of privacy laws such as GDPR in the EU or CCPA in California when collecting and processing device data.
 - **Ethical Use:** Consider the ethical implications of your actions. Respect individual privacy and obtain consent when necessary.
 
-For more information on legal and ethical considerations in network scanning, refer to resources such as:
+For more information on legal and ethical considerations in network scanning, please refer to resources such as:
 
 - [NIST Guidelines for Securing Wireless Local Area Networks](https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-153.pdf)
 - [OWASP Wireless Security Testing Guide](https://owasp.org/www-project-wstg/)
 
 ## 📅 Version History
 
-- **v0.0.1** (2024-10-01): Initial release.
+- **v0.0.1** (2023-10-01): Initial release.
 
 ## 📧 Contact and Support
 
-If you have questions or need assistance, feel free to open an **issue** in the repository or contact the author directly.
+If you have questions or need assistance, feel free to open an [issue](https://github.com/jordi-murgo/Sneak32/issues) in the repository or contact the author directly.
 
 ---
 
@@ -338,17 +338,17 @@ We are constantly working to enhance Sneak32. Here are some planned improvements
    - Implement data management features for handling larger datasets
 
 3. **Hardware Compatibility**
-   - Verify and ensure compatibility with other ESP32* boards and models like ESP32-C6 (currently not supported by Espressif - Platform.IO - Arduino)
+   - Verify and ensure compatibility with other ESP32* boards and models like ESP32-C6 (currently not supported by Espressif - PlatformIO - Arduino)
    - Support for LoRa32 boards
      - [LILYGO ® TTGO LoRa32](https://www.aliexpress.us/item/32872078587.html)
      - [Heltec LoRa32 ESP32 SX1262 LoRa](https://www.aliexpress.us/item/3256806616057872.html)
-   - Support for othr communication boards ([NRF24L01](https://es.aliexpress.com/item/4000603343837.html))
+   - Support for other communication boards ([NRF24L01](https://es.aliexpress.com/item/4000603343837.html))
 
 4. **Communications**
    - Stealth communications using ESP-Now, NRF24L01, ZigBee and LoRa
    - Make a BLE Server proxy to LoRa (or LoRaWAN), NRF24L01, ZigBee, and ESP-Now.
 
-We welcome contributions and suggestions from the community to help make these improvements a reality. If you have ideas or want to contribute, please check our [Contributing](#-contributing) section.
+We welcome contributions and suggestions from the community to help make these improvements a reality. If you have ideas or want to contribute, please check our [Contributing](#-contributing) section below.
 
 ## 📝 License
 
@@ -356,7 +356,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🤝 Contributing
 
-Contributions are welcome!
+Contributions are welcome! Please feel free to submit a Pull Request or open an [issue](https://github.com/jordi-murgo/Sneak32/issues) with your ideas and suggestions.
 
 ## 👤 Author
 
