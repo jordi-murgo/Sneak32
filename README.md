@@ -145,6 +145,7 @@ Choose your operation mode based on:
   - Device control interface
   - Event logging system
   - BLE-based secure communication
+  - **LCD Display Support (NEW):** Full-color TFT/IPS displays with LVGL graphics
 
 ## 💻 Hardware
 
@@ -166,6 +167,7 @@ Sneak32 has been extensively tested with the **ESP32-C3** board, a low-cost RISC
 - ESP32 development board (recommended: ESP32-C3-SuperMini or variants with PCB/external antenna)
 - (Optional) RGB LED for visual status indication
 - (Optional) Battery for portable operation
+- (Optional) **LCD Display:** TFT/IPS displays for local UI (ESP32-S3 recommended)
 
 ### Antenna Considerations
 Choose based on your specific needs:
@@ -194,6 +196,7 @@ Choose based on your specific needs:
 - [WiFi library](https://github.com/espressif/arduino-esp32/tree/master/libraries/WiFi)
 - [FreeRTOS](https://www.freertos.org/)
 - (Optional) [Adafruit NeoPixel library](https://github.com/adafruit/Adafruit_NeoPixel)
+- (Optional) **[LVGL](https://lvgl.io/)** and **[TFT_eSPI](https://github.com/Bodmer/TFT_eSPI)** for LCD display support
 
 ## 🔧 Setup and Configuration
 
@@ -244,6 +247,32 @@ Choose based on your specific needs:
    - Thresholds and filters
 
 7. **Start scanning** and monitoring using the interface options.
+
+## 📱 LCD Display Support (Optional)
+
+Sneak32 now supports full-color LCD displays for a completely self-contained monitoring device:
+
+### Supported Hardware
+- **Waveshare ESP32-S3-Touch-LCD-5B** (5" 800x480 IPS)
+- **Waveshare ESP32-S3-Touch-LCD-7** (7" 1024x600 IPS)
+- Other ESP32-S3 boards with compatible TFT displays
+
+### Build with Display Support
+```bash
+# For Waveshare 5" display
+pio run -e waveshare-esp32-s3-lcd-5b -t upload
+
+# For generic ESP32-S3 with display
+pio run -e esp32-s3-display -t upload
+```
+
+### Features
+- Real-time WiFi network and BLE device lists
+- Multiple display modes (Overview, Networks, Devices, Status)
+- Touch-ready interface framework
+- BLE command integration (`display_mode`, `display_status`)
+
+See [LCD Display Documentation](docs/LCD_DISPLAY_SUPPORT.md) for detailed setup instructions.
 
 ## 📊 Data Output
 
@@ -343,6 +372,7 @@ We are constantly working to enhance Sneak32. Here are some planned improvements
      - [LILYGO ® TTGO LoRa32](https://www.aliexpress.us/item/32872078587.html)
      - [Heltec LoRa32 ESP32 SX1262 LoRa](https://www.aliexpress.us/item/3256806616057872.html)
    - Support for other communication boards ([NRF24L01](https://es.aliexpress.com/item/4000603343837.html))
+   - **Enhanced LCD Display Support:** Additional display controllers and touch interfaces
 
 4. **Communications**
    - Stealth communications using ESP-Now, NRF24L01, ZigBee and LoRa

@@ -47,6 +47,7 @@
 #include <BLEAdvertisedDevice.h>
 
 #include "LedManager.h"
+#include "DisplayManager.h"
 
 #include "BLE.h"
 #include "Preferences.h"
@@ -107,6 +108,9 @@ LedManager ledManager(PIN_NEOPIXEL, 1);
 #else
 LedManager ledManager(LED_BUILTIN);
 #endif
+
+// Display manager
+DisplayManager displayManager;
 
 // Add these global variables at the beginning of the file
 unsigned long lastPrintTime = 0;
@@ -293,6 +297,17 @@ void setup()
   // Add a delay after setting up detectors
   delay(1000);
 
+  // Initialize display if enabled
+  if (appPrefs.enable_display) {
+    Serial.println("Initializing display...");
+    if (displayManager.begin()) {
+      Serial.println("Display initialized successfully");
+      displayManager.setStatusMessage("Sneak32 initialized successfully");
+    } else {
+      Serial.println("Display initialization failed");
+    }
+  }
+
   ledManager.setPixelColor(0, LedManager::COLOR_OFF);
   ledManager.show();
 
@@ -327,6 +342,14 @@ void scan_mode_loop()
   if (currentChannel == 14)
   {
     printSSIDAndBLELists();
+    
+    // Update display with latest data
+    if (appPrefs.enable_display) {
+      displayManager.updateWifiNetworks(ssidList);
+      displayManager.updateWifiDevices(stationsList);
+      displayManager.updateBLEDevices(bleDeviceList);
+      displayManager.showScanningStatus(true, true); // Both WiFi and BLE are scanning
+    }
   }
 
   // Save all data to flash storage every autosave_interval minutes
@@ -431,5 +454,11 @@ void loop()
     ledManager.show();
     delay(appPrefs.wifi_channel_dwell_time);
   }
+  
+  // Update display
+  if (appPrefs.enable_display) {
+    displayManager.update();
+  }
+  
   BLEStatusUpdater.update();
 }
