@@ -138,6 +138,10 @@ Choose your operation mode based on:
   - Flash storage with persistence
   - Adjustable save intervals
   - Data export capabilities
+- **LoRa Backhaul (optional):**
+  - Builds for the TTGO LoRa32 v2.1 profile expose a long-range telemetry channel
+  - Accepts `fetch`, `ssid_list`, `client_list`, `ble_list` and `ping` commands over LoRa to retrieve stored data
+  - Automatically pauses WiFi/BLE capture during transfers and resumes scanning after completion or timeout
 
 - **User Interface:**
   - Web-based configuration panel
@@ -158,6 +162,7 @@ Sneak32 has been extensively tested with the **ESP32-C3** board, a low-cost RISC
 - ✅ ESP32 (WROOM-32*/MINI-1/PICO-D4): Full support
 - ✅ ESP32-S3: Full support (recommended for high performance & data capacity)
 - ✅ ESP32-C3: Full support (recommended for low power consumption)
+- ✅ TTGO LoRa32 v2.1: Adds optional LoRa telemetry for remote data retrieval
 - ❌ ESP32-S2: Not supported (no BLE)
 - ❌ ESP32-H2: Not supported (no WiFi)
 - ❌ ESP32-C6: Not supported (no Arduino-PlatformIO framework support yet)

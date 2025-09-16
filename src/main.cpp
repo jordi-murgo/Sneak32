@@ -68,6 +68,7 @@
 #include "BLEAdvertisingManager.h"
 #include "FirmwareInfo.h"
 #include "BLEStatusUpdater.h"
+#include "LoRaCommunication.h"
 
 // Define the boot button pin (adjust if necessary)
 #define BOOT_BUTTON_PIN 0
@@ -299,6 +300,8 @@ void setup()
   pinMode(BOOT_BUTTON_PIN, INPUT_PULLUP);
 
   esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT, ESP_PWR_LVL_P9);
+
+  LoRaComm.setup();
 }
 
 /**
@@ -317,6 +320,12 @@ void scan_mode_loop()
 
   Serial.printf(">> Time: %lu, WiFi Ch: %2d, SSIDs: %zu, Stations: %zu, BLE: %zu, Heap: %d\n",
                 millis() / 1000, currentChannel, ssidList.size(), stationsList.size(), bleDeviceList.size(), ESP.getFreeHeap());
+
+  LoRaComm.loop();
+  if (LoRaComm.isRadioPaused())
+  {
+    return;
+  }
 
   delay(appPrefs.wifi_channel_dwell_time);
 
@@ -373,6 +382,12 @@ void detection_mode_loop()
   static auto clonedList = ssidList.getClonedList();
   static size_t currentSSIDIndex = 0;
 
+  LoRaComm.loop();
+  if (LoRaComm.isRadioPaused())
+  {
+    return;
+  }
+
   if (appPrefs.passive_scan)
   {
     WifiDetector.setChannel(1);
@@ -412,6 +427,15 @@ void detection_mode_loop()
  */
 void loop()
 {
+  LoRaComm.loop();
+
+  if (LoRaComm.isRadioPaused())
+  {
+    BLEStatusUpdater.update();
+    delay(20);
+    return;
+  }
+
   if (appPrefs.operation_mode == OPERATION_MODE_SCAN)
   {
     scan_mode_loop();
