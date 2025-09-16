@@ -145,6 +145,7 @@ Choose your operation mode based on:
   - Device control interface
   - Event logging system
   - BLE-based secure communication
+  - Optional LVGL dashboard for Waveshare ESP32-S3 Touch LCD 5/5B with live WiFi/BLE metrics
 
 ## 💻 Hardware
 
@@ -158,6 +159,7 @@ Sneak32 has been extensively tested with the **ESP32-C3** board, a low-cost RISC
 - ✅ ESP32 (WROOM-32*/MINI-1/PICO-D4): Full support
 - ✅ ESP32-S3: Full support (recommended for high performance & data capacity)
 - ✅ ESP32-C3: Full support (recommended for low power consumption)
+- ✅ Waveshare ESP32-S3 Touch LCD 5/5B: Integrated LVGL dashboard via `waveshare-esp32-s3-touch-lcd-5b` PlatformIO environment
 - ❌ ESP32-S2: Not supported (no BLE)
 - ❌ ESP32-H2: Not supported (no WiFi)
 - ❌ ESP32-C6: Not supported (no Arduino-PlatformIO framework support yet)
@@ -224,6 +226,7 @@ Choose based on your specific needs:
 
    ```bash
    pio run -e esp32-c3-supermini --upload-port /dev/cu.usbmodem101 -t upload
+   pio run -e waveshare-esp32-s3-touch-lcd-5b -t upload  # build LVGL dashboard for Waveshare panels
    ```
 
    With PlatformIO Visual Studio Code Extension, use the "Upload" button.
