@@ -6,35 +6,59 @@
 
 #ifdef ENABLE_DISPLAY
 
-// Driver selection
-#define ILI9488_DRIVER
-// Alternative drivers for different displays:
-// #define ST7796_DRIVER
-// #define ILI9341_DRIVER
+// Driver selection - use build flags to define specific driver
+// Example: -DILI9488_DRIVER=1
 
-// ESP32-S3 pin configuration (adjust for your specific board)
-#define TFT_MISO 12
-#define TFT_MOSI 11
-#define TFT_SCLK 14
-#define TFT_CS   10
-#define TFT_DC   13
-#define TFT_RST  21  // Connect to ESP32 EN pin if not defined
+// Pin configuration - use build flags for hardware-specific pins
+// Example: -DTFT_MISO=12 -DTFT_MOSI=11 etc.
+
+#ifndef TFT_MISO
+  #define TFT_MISO 12   // Default pins if not defined in build flags
+#endif
+#ifndef TFT_MOSI
+  #define TFT_MOSI 11
+#endif
+#ifndef TFT_SCLK
+  #define TFT_SCLK 14
+#endif
+#ifndef TFT_CS
+  #define TFT_CS   10
+#endif
+#ifndef TFT_DC
+  #define TFT_DC   13
+#endif
+#ifndef TFT_RST
+  #define TFT_RST  21
+#endif
 
 // Backlight control (if available)
-#define TFT_BL   38  // LED back-light control pin
-#define TFT_BACKLIGHT_ON HIGH  // Level to turn ON back-light (HIGH or LOW)
+#ifndef TFT_BL
+  #define TFT_BL   38  // LED back-light control pin
+#endif
+#ifndef TFT_BACKLIGHT_ON
+  #define TFT_BACKLIGHT_ON HIGH  // Level to turn ON back-light (HIGH or LOW)
+#endif
 
 // Touch controller (if available)
-#define TOUCH_CS 33
+#ifndef TOUCH_CS
+  #define TOUCH_CS 33
+#endif
 
 // SPI frequency
-#define SPI_FREQUENCY  27000000
-#define SPI_READ_FREQUENCY  20000000
-#define SPI_TOUCH_FREQUENCY  2500000
+#ifndef SPI_FREQUENCY
+  #define SPI_FREQUENCY  27000000
+#endif
+#ifndef SPI_READ_FREQUENCY
+  #define SPI_READ_FREQUENCY  20000000
+#endif
+#ifndef SPI_TOUCH_FREQUENCY
+  #define SPI_TOUCH_FREQUENCY  2500000
+#endif
 
 // Color order
-#define TFT_RGB_ORDER TFT_BGR  // Colour order Blue-Green-Red
-// Alternative: #define TFT_RGB_ORDER TFT_RGB
+#ifndef TFT_RGB_ORDER
+  #define TFT_RGB_ORDER TFT_BGR  // Colour order Blue-Green-Red
+#endif
 
 #endif // ENABLE_DISPLAY
 
