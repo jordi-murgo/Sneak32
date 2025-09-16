@@ -38,6 +38,11 @@ void printPreferences() {
     Serial.printf(" - ble_scan_duration: %u s\n", appPrefs.ble_scan_duration);
     Serial.printf(" - ignore_random_ble: %s\n", appPrefs.ignore_random_ble_addresses ? "true" : "false");
     Serial.printf(" - ble_mtu: %u\n", appPrefs.bleMTU);
+    
+    Serial.printf(" - enable_display: %s\n", appPrefs.enable_display ? "true" : "false");
+    Serial.printf(" - display_brightness: %u\n", appPrefs.display_brightness);
+    Serial.printf(" - display_rotation: %u\n", appPrefs.display_rotation);
+    Serial.printf(" - display_timeout: %u s\n", appPrefs.display_timeout);
 }
 
 void loadAppPreferences() {
@@ -85,6 +90,16 @@ void loadAppPreferences() {
 
     appPrefs.bleMTU = preferences.getUInt(Keys::BLE_MTU, 256);
     
+    // Display settings
+#ifdef ENABLE_DISPLAY
+    appPrefs.enable_display = preferences.getBool(Keys::ENABLE_DISPLAY, true);
+#else
+    appPrefs.enable_display = preferences.getBool(Keys::ENABLE_DISPLAY, false);
+#endif
+    appPrefs.display_brightness = preferences.getUInt(Keys::DISPLAY_BRIGHTNESS, 128);
+    appPrefs.display_rotation = preferences.getUInt(Keys::DISPLAY_ROTATION, 1);
+    appPrefs.display_timeout = preferences.getUInt(Keys::DISPLAY_TIMEOUT, 300);
+    
     preferences.end();
 
     Serial.println("App Preferences loaded");
@@ -112,6 +127,10 @@ void saveAppPreferences() {
     preferences.putInt(Keys::WIFI_TX_POWER, appPrefs.wifiTxPower);
     preferences.putInt(Keys::BLE_TX_POWER, appPrefs.bleTxPower);
     preferences.putUInt(Keys::BLE_MTU, appPrefs.bleMTU);
+    preferences.putBool(Keys::ENABLE_DISPLAY, appPrefs.enable_display);
+    preferences.putUInt(Keys::DISPLAY_BRIGHTNESS, appPrefs.display_brightness);
+    preferences.putUInt(Keys::DISPLAY_ROTATION, appPrefs.display_rotation);
+    preferences.putUInt(Keys::DISPLAY_TIMEOUT, appPrefs.display_timeout);
     preferences.end();
 
     Serial.println("App Preferences saved");

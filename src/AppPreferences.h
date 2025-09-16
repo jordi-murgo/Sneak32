@@ -29,6 +29,12 @@ struct AppPreferencesData {
     uint8_t cpu_speed;
     // LED
     uint8_t led_mode;
+    
+    // Display
+    bool enable_display;
+    uint8_t display_brightness;
+    uint8_t display_rotation;
+    uint32_t display_timeout;
 
     uint16_t bleMTU;
 };
@@ -58,6 +64,10 @@ namespace Keys {
     const char* const WIFI_TX_POWER = "wifi_tx_power";
     const char* const BLE_TX_POWER = "ble_tx_power";
     const char* const BLE_MTU = "ble_mtu";
+    const char* const ENABLE_DISPLAY = "enable_disp";
+    const char* const DISPLAY_BRIGHTNESS = "disp_bright";
+    const char* const DISPLAY_ROTATION = "disp_rot";
+    const char* const DISPLAY_TIMEOUT = "disp_timeout";
 }
 
 // Declaraciones de funciones

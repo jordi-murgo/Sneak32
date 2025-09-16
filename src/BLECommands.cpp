@@ -6,6 +6,8 @@
 #include "WifiDetect.h"
 #include "BLEDetect.h"
 #include "BLEStatusUpdater.h"
+#include "DisplayManager.h"
+#include "AppPreferences.h"
 #include <Arduino.h>
 #include <SimpleCLI.h>
 #include "FirmwareInfo.h"
@@ -14,6 +16,7 @@
 extern WifiDeviceList stationsList;
 extern WifiNetworkList ssidList;
 extern BLEDeviceList bleDeviceList;
+extern DisplayManager displayManager;
 
 // Callback functions declarations
 void helpCallback(cmd* cmdPtr);
@@ -27,6 +30,8 @@ void errorCallback(cmd_error* errorPtr);
 void saveWifiNetworksCallback(cmd* cmdPtr);
 void saveWifiDevicesCallback(cmd* cmdPtr);
 void saveBleDevicesCallback(cmd* cmdPtr);
+void displayModeCallback(cmd* cmdPtr);
+void displayStatusCallback(cmd* cmdPtr);
 
 BLECharacteristic* BLECommands::pCharacteristic = nullptr;
 SimpleCLI* BLECommands::pCli = nullptr;
@@ -62,6 +67,14 @@ void BLECommands::onWrite(BLECharacteristic* characteristic) {
 
     Command saveBleDevices = pCli->addCommand("save_ble_devices", saveBleDevicesCallback);
     saveBleDevices.setDescription("Save BLE devices to FlashStorage");
+
+#ifdef ENABLE_DISPLAY
+    Command displayMode = pCli->addSingleArgCmd("display_mode", displayModeCallback);
+    displayMode.setDescription("Set display mode (0=overview, 1=wifi_networks, 2=wifi_devices, 3=ble_devices, 4=status)");
+    
+    Command displayStatus = pCli->addCommand("display_status", displayStatusCallback);
+    displayStatus.setDescription("Show current display status");
+#endif
 
     Command restart = pCli->addCommand("restart", restartCallback);
     restart.setDescription("Restart the device");
@@ -186,3 +199,39 @@ String BLECommands::getFormattedHelp() {
     }
     return BLECommands::pCli->getFormattedHelp();
 }
+
+#ifdef ENABLE_DISPLAY
+void displayModeCallback(cmd* cmdPtr) {
+    Command cmd(cmdPtr);
+    
+    if (cmd.countArgs() != 1) {
+        BLECommands::respond("Error: display_mode requires one argument (0-4)");
+        return;
+    }
+    
+    int mode = cmd.getArgument(0).getValue().toInt();
+    if (mode < 0 || mode > 4) {
+        BLECommands::respond("Error: mode must be 0-4 (0=overview, 1=wifi_networks, 2=wifi_devices, 3=ble_devices, 4=status)");
+        return;
+    }
+    
+    DisplayManager::DisplayMode displayMode = static_cast<DisplayManager::DisplayMode>(mode);
+    displayManager.setDisplayMode(displayMode);
+    
+    String modeNames[] = {"overview", "wifi_networks", "wifi_devices", "ble_devices", "status"};
+    BLECommands::respond("Display mode set to: " + modeNames[mode]);
+}
+
+void displayStatusCallback(cmd* cmdPtr) {
+    extern AppPreferencesData appPrefs;
+    
+    String status = "Display: ";
+    if (appPrefs.enable_display) {
+        status += "enabled, mode=" + String(displayManager.getCurrentMode());
+    } else {
+        status += "disabled";
+    }
+    
+    BLECommands::respond(status);
+}
+#endif
