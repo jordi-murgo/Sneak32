@@ -68,6 +68,9 @@
 #include "BLEAdvertisingManager.h"
 #include "FirmwareInfo.h"
 #include "BLEStatusUpdater.h"
+#ifdef ENABLE_DISPLAY
+#include "display/DisplayManager.h"
+#endif
 
 // Define the boot button pin (adjust if necessary)
 #define BOOT_BUTTON_PIN 0
@@ -299,6 +302,11 @@ void setup()
   pinMode(BOOT_BUTTON_PIN, INPUT_PULLUP);
 
   esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_DEFAULT, ESP_PWR_LVL_P9);
+
+#ifdef ENABLE_DISPLAY
+  displayManager.begin();
+  displayManager.refresh(ssidList, stationsList, bleDeviceList, appPrefs, 0, false, "");
+#endif
 }
 
 /**
@@ -317,6 +325,10 @@ void scan_mode_loop()
 
   Serial.printf(">> Time: %lu, WiFi Ch: %2d, SSIDs: %zu, Stations: %zu, BLE: %zu, Heap: %d\n",
                 millis() / 1000, currentChannel, ssidList.size(), stationsList.size(), bleDeviceList.size(), ESP.getFreeHeap());
+
+#ifdef ENABLE_DISPLAY
+  displayManager.refresh(ssidList, stationsList, bleDeviceList, appPrefs, currentChannel, false, "");
+#endif
 
   delay(appPrefs.wifi_channel_dwell_time);
 
@@ -373,10 +385,14 @@ void detection_mode_loop()
   static auto clonedList = ssidList.getClonedList();
   static size_t currentSSIDIndex = 0;
 
+  std::string detectionTarget;
+  bool detectionAlarm = WifiDetector.isSomethingDetected();
+
   if (appPrefs.passive_scan)
   {
     WifiDetector.setChannel(1);
     Serial.println(">> Passive WiFi scan");
+    detectionTarget = "Passive";
   }
   else
   {
@@ -386,17 +402,20 @@ void detection_mode_loop()
     }
 
     const auto &currentNetwork = clonedList[currentSSIDIndex];
-    // Configure ESP32 to broadcast the selected SSID
-    // WifiDetector.setupAP(currentNetwork.ssid.c_str(), nullptr, 1);
     if (&currentNetwork && currentNetwork.ssid && currentNetwork.ssid.length() > 0) {
       WifiDetector.setupAP(currentNetwork.ssid.c_str(), nullptr, 1);
       Serial.printf(">> Detection Mode (%02d/%02d) >> Alarm: %d, Broadcasting SSID: \"%s\", Last detection: %d\n",
-                    currentSSIDIndex + 1, clonedList.size(), WifiDetector.isSomethingDetected(), currentNetwork.ssid.c_str(),
+                    currentSSIDIndex + 1, clonedList.size(), detectionAlarm, currentNetwork.ssid.c_str(),
                     millis() / 1000 - WifiDetector.getLastDetectionTime());
+      detectionTarget = currentNetwork.ssid.c_str();
     }
 
     currentSSIDIndex++;
   }
+
+#ifdef ENABLE_DISPLAY
+  displayManager.refresh(ssidList, stationsList, bleDeviceList, appPrefs, 1, detectionAlarm, detectionTarget);
+#endif
 
   checkTransmissionTimeout();
   checkAndRestartAdvertising();
@@ -412,6 +431,10 @@ void detection_mode_loop()
  */
 void loop()
 {
+#ifdef ENABLE_DISPLAY
+  displayManager.setDeviceConnected(deviceConnected);
+#endif
+
   if (appPrefs.operation_mode == OPERATION_MODE_SCAN)
   {
     scan_mode_loop();
